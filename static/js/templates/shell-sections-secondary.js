@@ -748,6 +748,7 @@
               <button class="segmented-btn" type="button" data-settings-view="currency" aria-controls="settings-currency" aria-pressed="false">Валюты и банки</button>
               <button class="segmented-btn" type="button" data-settings-view="notifications" aria-controls="settings-notifications" aria-pressed="false">Напоминания</button>
               <button class="segmented-btn" type="button" data-settings-view="alerts" aria-controls="settings-alerts" aria-pressed="false">Пороги курсов</button>
+              <button class="segmented-btn" type="button" data-settings-view="reports" aria-controls="settings-reports" aria-pressed="false">Отчёты</button>
               <button class="segmented-btn" type="button" data-settings-view="data" aria-controls="settings-data" aria-pressed="false">Данные</button>
             </nav>
             <form id="settingsForm" class="settings-form">
@@ -980,6 +981,30 @@
               </div>
               <div class="settings-actions"><button id="saveSettingsBtn" class="btn btn-primary btn-icon" type="submit" aria-label="Сохранить настройки" title="Сохранить настройки">${window.App.icons.svg("save")}</button></div>
             </form>
+              <div id="settings-reports" data-settings-panel="reports" class="settings-page hidden">
+                <form id="reportSettingsForm" class="report-settings-form">
+                  <h3>Финансовые отчёты</h3>
+                  <p class="muted">Инфографика с итогами, расходами и ближайшими платежами.</p>
+                  <p id="reportSettingsStatus" role="status" aria-live="polite">Загрузка настроек…</p>
+                  <fieldset id="reportSettingsFields" disabled>
+                    <label class="settings-switch-row"><input name="enabled" type="checkbox" role="switch" /><span>Отправлять отчёты</span></label>
+                    <div class="report-settings-grid">
+                      <section class="report-settings-card"><h4>Периоды</h4>
+                        <label class="settings-switch-row"><input name="weekly" type="checkbox" /><span>Неделя <small>Понедельник · за прошлую неделю</small></span></label>
+                        <label class="settings-switch-row"><input name="monthly" type="checkbox" /><span>Месяц <small>1-е число · за прошлый месяц</small></span></label>
+                        <label class="settings-switch-row"><input name="yearly" type="checkbox" /><span>Год <small>1 января · за прошлый год</small></span></label>
+                      </section>
+                      <section class="report-settings-card"><h4>Каналы доставки</h4>
+                        <label class="settings-switch-row"><input name="telegram" type="checkbox" /><span>Telegram <small>Личный чат с ботом</small></span></label>
+                        <label class="settings-switch-row"><input name="email" type="checkbox" /><span>Почта <small id="reportEmailRecipient"></small></span></label>
+                        <label class="field"><span>Время отправки · Минск</span><select name="send_time" aria-label="Время отправки отчётов">${Array.from({length:96},(_,i)=>{const t=String(Math.floor(i/4)).padStart(2,'0')+':'+String(i%4*15).padStart(2,'0');return '<option value="'+t+'">'+t+'</option>';}).join('')}</select></label>
+                      </section>
+                    </div>
+                    <div class="report-settings-summary"><strong id="reportNextSend"></strong><p>При совпадении дат: годовой → месячный → недельный. Один отчёт в каждом выбранном канале.</p></div>
+                    <div class="settings-actions"><button id="saveReportSettings" type="submit" class="btn btn-primary">Сохранить рассылку</button></div>
+                  </fieldset>
+                </form>
+              </div>
               <div id="settings-data" data-settings-panel="data" class="settings-page hidden">
             <section class="panel">
               <div class="row between"><h3>Фото чеков</h3><button id="deleteReceiptPhotos" type="button" class="btn btn-danger btn-icon" aria-label="Удалить фото чеков" title="Удалить фото чеков" disabled>${window.App.icons.svg("trash")}</button></div>

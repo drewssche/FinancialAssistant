@@ -89,3 +89,16 @@
   #adminSection .admin-users-table tbody td.mobile-actions-cell { display: block; }
   #adminSection .admin-users-table tbody td.mobile-actions-cell::before { display: none; }
 }
+
+#settingsSection .report-settings-form { display:grid; gap:16px; min-width:0; margin:0; }
+#settingsSection .report-settings-form fieldset { border:0; padding:0; margin:0; min-width:0; display:grid; gap:18px; }
+#settingsSection .report-settings-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+#settingsSection .report-settings-card { padding:16px; border:1px solid var(--border); border-radius:16px; min-width:0; }
+#settingsSection .report-settings-card h4 { margin:0 0 12px; }
+#settingsSection .report-settings-card small { display:block; font-size:12px; font-weight:400; opacity:.75; overflow-wrap:anywhere; margin-top:4px; }
+#settingsSection .report-settings-card .settings-switch-row { padding:10px 0; align-items:flex-start; gap:10px; }
+#settingsSection .report-settings-card .settings-switch-row span { min-width:0; }
+#settingsSection .report-settings-summary { border:1px solid var(--border); border-radius:14px; padding:16px; }
+#settingsSection .report-settings-summary p { margin-bottom:0; opacity:.8; }
+#settingsSection .report-settings-form select { width:100%; min-width:0; }
+@media(max-width:640px) { #settingsSection .report-settings-grid { grid-template-columns:minmax(0,1fr); } }

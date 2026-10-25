@@ -73,10 +73,12 @@ class ReportLedger:
                 db.execute("UPDATE deliveries SET state='uncertain', detail='interrupted', updated_at=? WHERE job=? AND channel=?", (at, row['job'], row['channel']))
                 db.execute('INSERT INTO events VALUES (?,?,?,?,?)', (at, row['job'], row['channel'], 'uncertain', 'interrupted'))
 
-    def deliver(self, job, transport, report, png, text):
+    def deliver(self, job, transport, report, png, text, channels=None):
         result = {}
         self.recover()  # caller holds process lock
         for channel, recipient in transport.recipients.items():
+            if channels is not None and channel not in channels:
+                continue
             state = self.state(job, channel)
             if state in {'sent', 'uncertain'}:
                 result[channel] = state
@@ -110,9 +112,11 @@ def atomic_write(path: Path, content: bytes):
 
 
 class ReportTransport:
-    def __init__(self, settings):
+    def __init__(self, settings, channels=None):
         self.s = settings
         self.recipients = {'telegram': settings.financial_reports_telegram_id, 'email': settings.financial_reports_email}
+        if channels is not None:
+            self.recipients = {k:v for k,v in self.recipients.items() if k in channels}
 
     def preflight(self, channel):
         s = self.s

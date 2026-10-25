@@ -24,30 +24,32 @@ class ReportPeriod:
     due: date
 
 
-def scheduled_period(day: date) -> ReportPeriod | None:
+def scheduled_period(day: date, kinds=None) -> ReportPeriod | None:
+    kinds = {'week', 'month', 'year'} if kinds is None else kinds
     # A single decision, not three independent cron jobs: year > month > week.
-    if day.month == 1 and day.day == 1:
+    if 'year' in kinds and day.month == 1 and day.day == 1:
         return ReportPeriod('year', date(day.year - 1, 1, 1), day - timedelta(days=1), day)
-    if day.day == 1:
+    if 'month' in kinds and day.day == 1:
         end = day - timedelta(days=1)
         return ReportPeriod('month', end.replace(day=1), end, day)
-    if day.weekday() == 0:
+    if 'week' in kinds and day.weekday() == 0:
         return ReportPeriod('week', day - timedelta(days=7), day - timedelta(days=1), day)
     return None
 
 
-def latest_due(now: datetime, enabled_from: date) -> ReportPeriod | None:
+def latest_due(now: datetime, enabled_from: date, *, kinds=None, send_time='09:00') -> ReportPeriod | None:
     """Catch up only the latest eligible release within seven days, never a backlog."""
     if now.tzinfo is None:
         raise ValueError('Aware clock required')
     local = now.astimezone(ZONE)
+    hour, minute = map(int, send_time.split(':'))
     for offset in range(7):
         day = local.date() - timedelta(days=offset)
         if day < enabled_from:
             break
-        if offset == 0 and local.hour < 9:
+        if offset == 0 and (local.hour, local.minute) < (hour, minute):
             continue
-        period = scheduled_period(day)
+        period = scheduled_period(day, kinds)
         if period:
             return period
     return None
@@ -87,7 +89,8 @@ def plan_label(item: dict) -> str:
     return str(item.get('note') or '').strip() or f"{item.get('category_name') or 'Платёж'} · название не указано"
 
 
-def collect_report(db, user_id: int, period: ReportPeriod, *, today: date) -> dict:
+def collect_report(db, user_id: int, period: ReportPeriod, *, today: date, kinds=None) -> dict:
+    kinds = {'week', 'month', 'year'} if kinds is None else kinds
     repo = OperationRepository(db)
     a = DashboardAnalyticsService(db, repo)
     def highlights(start, end):
@@ -123,9 +126,9 @@ def collect_report(db, user_id: int, period: ReportPeriod, *, today: date) -> di
         item['report_label'] = plan_label(item)
     # Small secondary summaries on collision days, inside this same report.
     supplements = []
-    if period.kind == 'year' and period.end.month == 12:
+    if period.kind == 'year' and period.end.month == 12 and 'month' in kinds:
         supplements.append({'label': 'Декабрь', 'data': highlights(date(period.end.year, 12, 1), period.end)})
-    if period.kind != 'week' and period.due.weekday() == 0:
+    if period.kind != 'week' and period.due.weekday() == 0 and 'week' in kinds:
         supplements.append({'label': 'Прошлая неделя', 'data': highlights(period.due - timedelta(days=7), period.due - timedelta(days=1))})
     result = dict(kind=period.kind, start=period.start, end=period.end, due=period.due,
                   generated_on=today, currency=a.highlights.get_user_base_currency(user_id),

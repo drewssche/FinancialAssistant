@@ -48,6 +48,12 @@ class PreferencesService:
         """Keep bot-owned delivery markers out of the browser's stale-write path."""
         current_data = current_data if isinstance(current_data, dict) else {}
         merged = dict(incoming_data or {})
+        # Dedicated validated endpoint owns report controls. Old browser settings
+        # payloads must not undo a pause or inject unvalidated channel settings.
+        if "financial_reports" in current_data:
+            merged["financial_reports"] = current_data["financial_reports"]
+        else:
+            merged.pop("financial_reports", None)
         current_currency = current_data.get("currency") if isinstance(current_data.get("currency"), dict) else {}
         incoming_currency = merged.get("currency") if isinstance(merged.get("currency"), dict) else {}
         next_currency = dict(incoming_currency)

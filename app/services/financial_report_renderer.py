@@ -108,133 +108,158 @@ class ReportCanvas:
 
 
 def render_report(report):
-    c = ReportCanvas(); cur = report['current']; prev = report['previous']; currency = report['currency']
-    title = TITLES[report['kind']]
-    c.text(64, 50, 'Φ', 55, ORANGE, True); c.draw.ellipse((98, 103, 110, 115), fill=GREEN)
-    c.text(130, 73, 'ФинАсист', 29, TEXT, True)
-    c.text(1016, 81, 'ЛИЧНЫЙ ОТЧЁТ', 19, MUTED, right=True)
-    c.y = 155; c.paragraph(title, size=49, color=TEXT, bold=True)
-    c.paragraph(span(report['start'], report['end']), size=27)
-    c.y += 25
-    for index, (label, key, color) in enumerate([
-        ('Пришло', 'cashflow_income_total', GREEN), ('Ушло', 'cashflow_expense_total', RED),
-        ('Разница', 'cashflow_total', GREEN if dec(cur['cashflow_total']) >= 0 else RED),
-    ]):
-        x = 64 + index * 324
-        c.box((x, c.y, x + 304, c.y + 130))
-        c.text(x + 20, c.y + 18, label, 25, MUTED, width=264)
-        c.text(x + 20, c.y + 62, money(cur[key], index == 2), 37, color, True, width=264)
+    """Visual hierarchy: KPI, comparisons, trend, composition, changes, timeline."""
+    c=ReportCanvas(); cur=report['current']; prev=report['previous']; currency=report['currency']
+    colors=[CYAN,ORANGE,'#a99ded','#ee8da8','#84ace6','#4e627d']
+    c.text(64,50,'Φ',55,ORANGE,True);c.draw.ellipse((98,103,110,115),fill=GREEN)
+    c.text(130,73,'ФинАсист',29,TEXT,True);c.text(1016,81,'ЛИЧНЫЙ ОТЧЁТ',19,MUTED,right=True)
+    c.y=151;c.paragraph(TITLES[report['kind']],size=48,color=TEXT,bold=True)
+    c.paragraph(span(report['start'],report['end']),size=27);c.y+=20
+    for i,(label,key,color) in enumerate([('Пришло','cashflow_income_total',GREEN),('Ушло','cashflow_expense_total',RED),('Разница','cashflow_total',GREEN if dec(cur['cashflow_total'])>=0 else RED)]):
+        x=64+i*324;c.box((x,c.y,x+304,c.y+140))
+        c.text(x+20,c.y+18,label,25,MUTED,width=264)
+        c.text(x+20,c.y+65,money(cur[key],i==2),38,color,True,width=264)
         c.lines.append(f'{label}: {money(cur[key])} {currency}')
-    c.y += 153
-    c.paragraph(f"{cur['cashflow_events_count']} событий · {cur['operations_count']} операций · суммы в {currency}", size=24)
-
-    if int(prev.get('cashflow_events_count') or 0) > 0:
-        change = dec(cur['cashflow_expense_total']) - dec(prev['cashflow_expense_total'])
-        relation = 'больше' if change >= 0 else 'меньше'
-        c.heading(f'Ушло на {money(abs(change))} {relation}')
-        c.paragraph(f"Сравнение: {span(prev['date_from'], prev['date_to'])}.", size=23)
-        op_change = dec(cur['expense_total']) - dec(prev['expense_total'])
-        c.paragraph(f'Изменение расходов по операциям: {money(op_change, True)} {currency}. Остальное изменение оттока связано с долгами и валютой.', max_lines=3)
-    else:
-        c.y += 14
-        c.paragraph('За предыдущий период нет записей для сравнения.', size=24)
-
-    c.heading('Как сложилась разница')
-    balance = dec(cur['income_total']) - dec(cur['expense_total'])
-    c.pair('Доходы минус расходы по операциям', money(balance, True), color=GREEN if balance >= 0 else RED,
-           note=f"Доходы {money(cur['income_total'])} − расходы {money(cur['expense_total'])} {currency}.")
-    for label, key in [('Движения по долгам', 'debt_cashflow_total'), ('Валютные операции', 'fx_cashflow_total')]:
-        value = dec(cur[key])
-        c.pair(label, money(value, True), color=GREEN if value > 0 else RED if value < 0 else MUTED)
-    if dec(cur['fx_cashflow_total']):
-        c.paragraph('Покупка валюты влияет на денежный поток, но не входит в расходы по категориям.', size=23)
-
-    yearly = report['kind'] == 'year'
-    c.heading('Результат по месяцам' if yearly else 'Ушло по дням' if report['kind'] == 'week' else 'Ушло по отрезкам месяца')
-    series = report['series']; key = 'cashflow_total' if yearly else 'cashflow_expense_total'
-    values = [dec(item[key]) for item in series]; maximum = max([abs(v) for v in values] + [Decimal(1)])
-    top = c.y + 38; baseline = top + 130; step = 952 / max(1, len(values))
-    c.draw.line((64, baseline, 1016, baseline), fill=EDGE, width=2)
-    for i, (row, value) in enumerate(zip(series, values)):
-        x = 64 + step * (i + .5); height = float(abs(value) / maximum) * 115
-        color = GREEN if yearly and value >= 0 else RED if yearly else CYAN
-        if abs(value) > 0:
-            c.draw.rectangle((x-19, baseline-height if value >= 0 else baseline, x+19, baseline if value >= 0 else baseline+height), fill=color)
-        label = f'{value:,.0f}'.replace(',', ' ') if yearly else money(value)
-        c.text(x + step/2 - 7, baseline-height-31 if value >= 0 else baseline+height+7, label, 20, color, True, right=True, width=step-12)
-        label = MONTHS[day(row['date_from']).month-1] if yearly else short(row['date_from']) if report['kind']=='week' else f"{day(row['date_from']).day}–{day(row['date_to']).day}"
-        c.text(x + step/2 - 7, baseline+160 if yearly else baseline+20, label, 20, MUTED, right=True, width=step-12)
-        c.lines.append(f"{span(row['date_from'], row['date_to'])}: {money(value)} {currency}")
-    c.y = baseline + (205 if yearly else 70)
-    if yearly:
-        c.paragraph('Подписи графика округлены до целого; итоговые суммы — до копейки.', size=21)
-
-    categories = cur.get('category_breakdown', [])
-    c.heading('Крупнейшие категории расходов')
-    c.paragraph(f"Всего по операциям: {money(cur['expense_total'])} {currency}. Доли ниже рассчитаны от этой суммы.", size=23)
-    for i, item in enumerate(categories[:3 if report['kind']=='week' else 5]):
-        amount = dec(item['total_amount']); total = dec(cur['expense_total'])
-        share = float(amount / total * 100) if total else 0
-        c.pair(item['category_name'] or 'Без категории', money(amount), note=f'{share:.1f}% расходов'.replace('.', ','))
-        width = float(amount / dec(categories[0]['total_amount'])) * 952 if dec(categories[0]['total_amount']) else 0
-        c.draw.rounded_rectangle((64, c.y-4, 64+max(3,width), c.y+2), radius=3, fill=[CYAN, ORANGE, '#9e98ed', RED, '#8bb9f3'][i])
-        c.y += 14
-    if not categories:
-        c.paragraph('За период расходов нет.')
+    c.y+=160;c.paragraph(f"{currency} · {cur['cashflow_events_count']} событий · {cur['operations_count']} операций",size=23)
 
     if int(prev.get('cashflow_events_count') or 0):
-        before = {x['category_id']: x for x in prev.get('category_breakdown', [])}
-        after = {x['category_id']: x for x in categories}
-        changes = []
-        for key in before.keys() | after.keys():
-            delta = dec(after.get(key, {}).get('total_amount')) - dec(before.get(key, {}).get('total_amount'))
-            if delta:
-                changes.append((delta, (after.get(key) or before[key])['category_name']))
+        c.heading('Ушло: сравнение периодов')
+        maximum=max(dec(cur['cashflow_expense_total']),dec(prev['cashflow_expense_total']),Decimal(1))
+        for label,data,color in [('Предыдущий',prev,'#526983'),('Текущий',cur,CYAN)]:
+            value=dec(data['cashflow_expense_total'])
+            c.text(64,c.y,f"{label} · {span(data['date_from'], data['date_to'])}",23,MUTED,width=690)
+            c.text(1016,c.y,money(value),28,TEXT,True,right=True)
+            c.draw.rounded_rectangle((64,c.y+43,1016,c.y+66),radius=10,fill='#1d2a3e')
+            if value>0:c.draw.rounded_rectangle((64,c.y+43,64+max(3,float(value/maximum)*952),c.y+66),radius=10,fill=color)
+            c.lines.append(f"{label}: {span(data['date_from'],data['date_to'])}, ушло {money(value)} {currency}");c.y+=86
+        delta=dec(cur['cashflow_expense_total'])-dec(prev['cashflow_expense_total'])
+        c.text(64,c.y,'Изменение оттока',24,MUTED);c.text(1016,c.y,money(delta,True)+' '+currency,31,ORANGE if delta>0 else GREEN,True,right=True)
+        c.lines.append(f'Изменение оттока: {money(delta,True)} {currency}');c.y+=45
+
+    yearly=report['kind']=='year'
+    c.heading('Результат по месяцам' if yearly else 'Ушло по дням' if report['kind']=='week' else 'Динамика расходов и других списаний')
+    series=report['series'];key='cashflow_total' if yearly else 'cashflow_expense_total'
+    values=[dec(row[key]) for row in series];maximum=max([abs(v) for v in values]+[Decimal(1)])
+    top=c.y+32;baseline=top+170;step=952/max(1,len(values))
+    c.draw.line((64,baseline,1016,baseline),fill=EDGE,width=2)
+    for i,(row,v) in enumerate(zip(series,values)):
+        x=64+step*(i+.5);height=float(abs(v)/maximum)*148;col=GREEN if yearly and v>=0 else RED if yearly else CYAN
+        if v:c.draw.rounded_rectangle((x-22,baseline-height if v>=0 else baseline,x+22,baseline if v>=0 else baseline+height),radius=min(7,height/2),fill=col)
+        value=f'{v:,.0f}'.replace(',',' ') if yearly else money(v)
+        size=20 if yearly else 23;length=c.draw.textlength(value,font=font(size,True))
+        c.text(x-length/2,baseline-height-35 if v>=0 else baseline+height+9,value,size,col,True,width=step-8)
+        label=MONTHS[day(row['date_from']).month-1] if yearly else short(row['date_from']) if report['kind']=='week' else f"{day(row['date_from']).day}–{day(row['date_to']).day}"
+        length=c.draw.textlength(label,font=font(20));c.text(x-length/2,baseline+197 if yearly else baseline+22,label,20,MUTED,width=step-8)
+        c.lines.append(f"{span(row['date_from'],row['date_to'])}: {money(v)} {currency}")
+    c.y=baseline+(235 if yearly else 66)
+    if yearly:c.paragraph('На графике — округлённые суммы в '+currency,size=20)
+
+    c.heading('Движение денег')
+    maximum=max(dec(cur['cashflow_income_total']),dec(cur['cashflow_expense_total']),Decimal(1))
+    for label,total_key,operations_key,col in [('Пришло','cashflow_income_total','income_total',GREEN),('Ушло','cashflow_expense_total','expense_total',RED)]:
+        total=dec(cur[total_key]);ops=dec(cur[operations_key]);other=total-ops
+        c.text(64,c.y,label,24,MUTED);c.text(1016,c.y,money(total),28,col,True,right=True)
+        left=64;c.draw.rounded_rectangle((64,c.y+40,1016,c.y+72),radius=8,fill='#1d2a3e')
+        for value,color in [(ops,col),(other,ORANGE)]:
+            width=max(0,float(value/maximum)*952)
+            if width:c.draw.rectangle((left,c.y+40,left+width,c.y+72),fill=color)
+            left+=width
+        c.text(64,c.y+88,'Операции '+money(ops),21,col)
+        c.text(1016,c.y+88,'Долги / валюта '+money(other),21,ORANGE,right=True)
+        c.lines.append(f'{label}: операции {money(ops)}, долги / валюта {money(other)} {currency}');c.y+=132
+    # Small signed component cards explain the net without paragraphs or duplicate KPIs.
+    parts=[('Операции',dec(cur['income_total'])-dec(cur['expense_total'])),('Долги',dec(cur['debt_cashflow_total'])),('Валюта',dec(cur['fx_cashflow_total']))]
+    for i,(label,value) in enumerate(parts):
+        x=64+i*324;c.box((x,c.y,x+304,c.y+96));c.text(x+16,c.y+12,label+' · итог',21,MUTED,width=272)
+        c.text(x+16,c.y+45,money(value,True),30,GREEN if value>0 else RED if value<0 else MUTED,True,width=272)
+        c.lines.append(f'{label} · итог: {money(value,True)} {currency}')
+    c.y+=110
+
+    categories=cur.get('category_breakdown',[])
+    c.heading('Структура расходов')
+    c.paragraph('По операциям · '+money(cur['expense_total'])+' '+currency,size=24)
+    if categories and dec(cur['expense_total'])>0:
+        rows=[(x['category_name'] or 'Без категории',dec(x['total_amount'])) for x in categories[:5]]
+        rest=sum(dec(x['total_amount']) for x in categories[5:])
+        if rest:rows.append(('Остальные категории',rest))
+        cy=c.y+18;start=-90
+        for i,(label,value) in enumerate(rows):
+            end=start+float(value/dec(cur['expense_total']))*360
+            c.draw.pieslice((64,cy,444,cy+380),start,end,fill=colors[i]);start=end
+        c.draw.ellipse((140,cy+76,368,cy+304),fill=SURFACE)
+        total=money(cur['expense_total']);length=c.draw.textlength(total,font=font(31,True))
+        c.text(254-length/2,cy+154,total,31,TEXT,True,width=220);c.text(231,cy+201,currency,23,MUTED)
+        for i,(label,v) in enumerate(rows):
+            y=cy+i*65;c.draw.ellipse((482,y+10,496,y+24),fill=colors[i])
+            c.text(513,y,label,24,TEXT,width=503)
+            share=float(v/dec(cur['expense_total']))*100
+            c.text(513,y+31,f'{share:.1f}%'.replace('.',','),22,MUTED)
+            c.text(1016,y+31,money(v),25,TEXT,True,right=True,width=330)
+            c.lines.append(f'{label}: {money(v)} {currency} ({share:.1f}%)')
+        c.y=cy+max(396,len(rows)*65)+15
+    else:c.paragraph('За период расходов нет.')
+
+    if int(prev.get('cashflow_events_count') or 0):
+        before={x['category_id']:x for x in prev.get('category_breakdown',[])};after={x['category_id']:x for x in categories}
+        changes=[]
+        for key in before.keys()|after.keys():
+            v=dec(after.get(key,{}).get('total_amount'));old=dec(before.get(key,{}).get('total_amount'))
+            if v!=old:changes.append((v-old,(after.get(key) or before[key])['category_name'] or 'Без категории',old,v))
         if changes:
-            c.heading('Заметные изменения категорий')
-            c.paragraph(f"К {span(prev['date_from'], prev['date_to'])}.", size=23)
-            for delta, label in sorted(changes, key=lambda x: abs(x[0]), reverse=True)[:2]:
-                c.pair(label or 'Без категории', money(delta, True), color=ORANGE if delta>0 else GREEN)
+            c.heading('Что изменилось сильнее всего')
+            for i,(delta,label,old,v) in enumerate(sorted(changes,key=lambda x:abs(x[0]),reverse=True)[:2]):
+                x=64+i*486;y=c.y;c.box((x,y,x+466,y+195));col=ORANGE if delta>0 else GREEN
+                c.text(x+20,y+16,label,24,TEXT,True,width=426);c.text(x+20,y+55,money(delta,True),36,col,True,width=426)
+                mx=max(old,v,Decimal(1))
+                for yy,value,color in [(y+112,old,'#526983'),(y+131,v,col)]:
+                    c.draw.rounded_rectangle((x+20,yy,x+20+max(3,float(value/mx)*426),yy+10),radius=4,fill=color)
+                c.text(x+20,y+157,money(old)+' → '+money(v),23,MUTED,width=426)
+                c.lines.append(f'{label}: {money(old)} → {money(v)}, изменение {money(delta,True)} {currency}')
+            c.y+=212
 
-    top_operations = cur.get('top_operations', [])[:2]
-    if top_operations:
+    operations=cur.get('top_operations',[])[:2]
+    if operations:
         c.heading('Крупные траты')
-        for item in top_operations:
-            c.pair(short(item['operation_date']), money(item['amount']), color=RED)
-            c.paragraph(item.get('report_label') or item.get('note') or 'Расход без комментария', color=TEXT, max_lines=2)
+        top=c.y;bottom=top
+        for i,item in enumerate(operations):
+            x=64+i*486;y=top;c.box((x,y,x+466,y+213))
+            c.text(x+20,y+15,short(item['operation_date']),23,MUTED)
+            c.text(x+446,y+15,money(item['amount']),31,RED,True,right=True,width=300)
+            c.y=y+69
+            c.paragraph(item.get('report_label') or item.get('note') or 'Расход без комментария',size=24,color=TEXT,max_lines=2,x=x+20,width=426)
             if item.get('receipt_summary'):
-                c.paragraph(f"{item['receipt_summary']} · позиций: {item['receipt_count']}", size=22, max_lines=2)
-            c.y += 12
+                c.paragraph(item['receipt_summary'],size=20,max_lines=2,x=x+20,width=426)
+            c.lines.append(f"{short(item['operation_date'])}: {money(item['amount'])} {currency}")
+            bottom=max(bottom,y+230)
+        c.y=bottom
 
-    plans = report['plans']
-    c.heading('Ближайшие планы')
-    c.paragraph(span(plans['date_from'], plans['date_to']), size=24)
-    c.pair('Ожидается получить', money(plans['income_total']), color=GREEN)
-    c.pair('Ожидается заплатить', money(plans['expense_total']), color=RED)
-    if plans['unpriced_count']:
-        c.paragraph(f"Нет курса для {plans['unpriced_count']} платежей. Итог требует уточнения.", color=ORANGE)
-    if not plans['occurrences']:
-        c.paragraph('На ближайшие 7 дней платежей в планах нет.')
+    plans=report['plans'];c.heading('Планы · '+short(plans['date_from'])+' — '+short(plans['date_to']))
+    for i,(label,key,col) in enumerate([('Получить','income_total',GREEN),('Заплатить','expense_total',RED)]):
+        x=64+i*486;c.box((x,c.y,x+466,c.y+100));c.text(x+20,c.y+12,label,23,MUTED)
+        c.text(x+20,c.y+47,money(plans[key])+' '+currency,32,col,True,width=426)
+        c.lines.append(f'{label} по планам: {money(plans[key])} {currency}')
+    c.y+=125
     for item in plans['occurrences'][:3]:
-        c.y += 13
-        c.pair(f"{short(item['scheduled_date'])} · {'Получить' if item['kind']=='income' else 'Заплатить'}",
-               f"{money(item['original_amount'])} {item['currency']}", color=GREEN if item['kind']=='income' else ORANGE)
-        c.paragraph(item['report_label'], color=TEXT, max_lines=2)
-        if item['currency'] != currency:
-            c.paragraph(f"≈ {money(item['current_base_amount'])} {currency} · оценка на {short(report['generated_on'])}, не факт оплаты.", size=22)
-    if len(plans['occurrences']) > 3:
-        c.paragraph(f"Ещё платежей: {len(plans['occurrences'])-3}. Подробности — в разделе «Планы».", size=23)
+        y=c.y;c.draw.ellipse((65,y+8,80,y+23),fill=GREEN if item['kind']=='income' else ORANGE)
+        c.draw.line((72,y+25,72,y+103),fill=EDGE,width=2)
+        c.text(99,y,short(item['scheduled_date']),25,MUTED)
+        c.text(1016,y,money(item['original_amount'])+' '+item['currency'],30,GREEN if item['kind']=='income' else ORANGE,True,right=True,width=650)
+        c.lines.append(f"{short(item['scheduled_date'])}: {money(item['original_amount'])} {item['currency']}")
+        c.y+=43;c.paragraph(item['report_label'],size=27,color=TEXT,max_lines=2,x=99,width=917)
+        if item['currency']!=currency:c.paragraph('≈ '+money(item['current_base_amount'])+' '+currency+' · прогноз',size=21,x=99,width=917)
+        c.y+=19
+    if not plans['occurrences']:c.paragraph('На ближайшие 7 дней платежей в планах нет.')
+    if len(plans['occurrences'])>3:c.paragraph(f"Ещё платежей: {len(plans['occurrences'])-3} · подробнее в разделе «Планы»",size=23)
+    if plans['unpriced_count']:c.paragraph('Итог неполный: для части платежей нет курса.',color=ORANGE,size=23)
     if plans['overdue_items']:
-        c.y += 16
-        item = plans['overdue_items'][0]
-        c.paragraph(f"Проверить подтверждение: {item['report_label']} · {money(item['original_amount'])} {item['currency']} · {short(item['scheduled_date'])}.", color=ORANGE, max_lines=3)
-        c.paragraph(f"Планов с прошедшей датой: {len(plans['overdue_items'])}. Это не подтверждение задолженности; проверьте факт оплаты.", size=22)
-    uncategorized = sum(dec(x['total_amount']) for x in categories if x['category_id'] is None)
-    if uncategorized:
-        c.heading('Нужно уточнить категории')
-        c.paragraph(f'{money(uncategorized)} {currency} расходов не распределено по категориям.', color=ORANGE)
-    for supplement in report.get('supplements', []):
-        data = supplement['data']
-        c.heading(supplement['label'])
-        c.paragraph(f"{span(data['date_from'], data['date_to'])}: пришло {money(data['cashflow_income_total'])}, ушло {money(data['cashflow_expense_total'])}, разница {money(data['cashflow_total'], True)} {currency}.")
+        item=plans['overdue_items'][0];c.y+=12
+        c.paragraph(f"Проверить план · {short(item['scheduled_date'])} · {money(item['original_amount'])} {item['currency']}",color=ORANGE,bold=True,size=25)
+        c.paragraph(item['report_label'],color=ORANGE,size=24,max_lines=2)
+        c.paragraph(f"Неподтверждённых планов с прошедшей датой: {len(plans['overdue_items'])}",size=21)
+    uncategorized=sum(dec(x['total_amount']) for x in categories if x['category_id'] is None)
+    if uncategorized:c.paragraph(f'Без категории: {money(uncategorized)} {currency}',color=ORANGE)
+    for extra in report.get('supplements',[]):
+        data=extra['data'];c.heading(extra['label'])
+        c.pair('Пришло / ушло',money(data['cashflow_income_total'])+' / '+money(data['cashflow_expense_total']))
+        c.pair('Разница',money(data['cashflow_total'],True))
     return c.finish()
