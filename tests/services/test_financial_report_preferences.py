@@ -24,7 +24,10 @@ def test_owner_api_validates_isolation_and_survives_old_general_payload(db,tmp_p
     assert get_financial_report_preferences(2,db)['email_address'] is None
     from fastapi import HTTPException
     with pytest.raises(HTTPException) as e:update_financial_report_preferences(ReportPreferences(),2,db)
-    assert e.value.status_code==403
+    assert e.value.status_code==422
+    second=update_financial_report_preferences(ReportPreferences(email=False),2,db)
+    assert second['available'] and second['email_address'] is None
+    assert second['settings']['telegram']
     saved=update_financial_report_preferences(ReportPreferences(enabled=False,telegram=False),1,db)
     assert saved['next_send'] is None
     merged=PreferencesService._preserve_currency_runtime_state({'financial_reports':saved['settings']},{'financial_reports':{'enabled':True},'ui':{'scale_percent':100}})

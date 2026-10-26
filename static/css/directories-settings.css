@@ -102,3 +102,11 @@
 #settingsSection .report-settings-summary p { margin-bottom:0; opacity:.8; }
 #settingsSection .report-settings-form select { width:100%; min-width:0; }
 @media(max-width:640px) { #settingsSection .report-settings-grid { grid-template-columns:minmax(0,1fr); } }
+
+#settingsSection .report-email-controls { display:grid; gap:12px; margin:12px 0 20px; min-width:0; }
+#settingsSection .report-email-controls input { width:100%; min-width:0; box-sizing:border-box; }
+#settingsSection .report-email-actions { display:flex; flex-wrap:wrap; gap:8px; }
+#settingsSection .report-email-controls .btn { height:auto; min-height:40px; white-space:normal; max-width:100%; }
+#settingsSection .report-email-controls p, #settingsSection .report-telegram-help { font-size:12px; overflow-wrap:anywhere; }
+#settingsSection #reportEmailVerification:not(.hidden) { display:grid; gap:10px; }
+#settingsSection .report-telegram-help a { color:var(--text); text-underline-offset:3px; }

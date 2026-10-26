@@ -1,6 +1,7 @@
 from app.db.models.catalog_watch import CatalogWatch, CatalogOfferWatch, CatalogPriceEvent, CatalogOfferMatch
 from app.db.models.catalog_package_replacement import CatalogPackageReplacement
 from app.db.models.catalog_identity import CatalogVariant, CatalogVariantCode, CatalogOfferIdentity
+from app.db.models.financial_report_recipient import FinancialReportRecipient
 from app.db.models.auth_identity import AuthIdentity
 from app.db.models.activity_event import ActivityEvent
 from app.db.models.category import Category
@@ -37,6 +38,7 @@ __all__ = [
     "CatalogPackageReplacement", "CatalogVariant", "CatalogVariantCode", "CatalogOfferIdentity",
     "User",
     "AuthIdentity",
+    "FinancialReportRecipient",
     "ActivityEvent",
     "CategoryGroup",
     "Category",

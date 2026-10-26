@@ -172,7 +172,7 @@ def test_runner_persists_snapshot_and_skips_sent_channels_after_restart(db,tmp_p
     from scripts.run_financial_reports import run
     from sqlalchemy.orm import sessionmaker
     settings=SimpleNamespace(financial_reports_enabled=True,financial_reports_start_date=date(2020,10,26),
-        financial_reports_state_dir=str(tmp_path),financial_reports_telegram_id='123')
+        financial_reports_state_dir=str(tmp_path),financial_reports_telegram_id='123',financial_reports_email='owner@example.test')
     transport=Transport();now=datetime(2020,10,26,9,tzinfo=ZONE)
     factory=sessionmaker(bind=db.get_bind())
     first=run(settings,now,factory,transport)
@@ -242,7 +242,7 @@ def test_renderer_update_does_not_replace_cached_image_or_resend_delivered_chann
     import scripts.run_financial_reports as runner
     from sqlalchemy.orm import sessionmaker
     settings=SimpleNamespace(financial_reports_enabled=True,financial_reports_start_date=date(2020,10,26),
-        financial_reports_state_dir=str(tmp_path),financial_reports_telegram_id='123')
+        financial_reports_state_dir=str(tmp_path),financial_reports_telegram_id='123',financial_reports_email='owner@example.test')
     transport=Transport(); transport.preflight_fail='email'
     now=datetime(2020,10,26,9,tzinfo=ZONE); factory=sessionmaker(bind=db.get_bind())
     assert runner.run(settings,now,factory,transport)['channels']=={'telegram':'sent','email':'preflight_failed'}

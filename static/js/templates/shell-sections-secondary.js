@@ -982,7 +982,7 @@
               <div class="settings-actions"><button id="saveSettingsBtn" class="btn btn-primary btn-icon" type="submit" aria-label="Сохранить настройки" title="Сохранить настройки">${window.App.icons.svg("save")}</button></div>
             </form>
               <div id="settings-reports" data-settings-panel="reports" class="settings-page hidden">
-                <form id="reportSettingsForm" class="report-settings-form">
+                <form id="reportSettingsForm" class="report-settings-form" novalidate>
                   <h3>Финансовые отчёты</h3>
                   <p class="muted">Инфографика с итогами, расходами и ближайшими платежами.</p>
                   <p id="reportSettingsStatus" role="status" aria-live="polite">Загрузка настроек…</p>
@@ -995,8 +995,19 @@
                         <label class="settings-switch-row"><input name="yearly" type="checkbox" /><span>Год <small>1 января · за прошлый год</small></span></label>
                       </section>
                       <section class="report-settings-card"><h4>Каналы доставки</h4>
-                        <label class="settings-switch-row"><input name="telegram" type="checkbox" /><span>Telegram <small>Личный чат с ботом</small></span></label>
+                        <label class="settings-switch-row"><input name="telegram" type="checkbox" /><span>Telegram <small id="reportTelegramRecipient">Telegram текущего аккаунта</small></span></label>
+                        <p class="muted report-telegram-help">Чтобы бот мог написать, откройте его личный чат и нажмите «Начать». <a id="reportTelegramBot" class="hidden" target="_blank" rel="noopener noreferrer">Открыть бота</a></p>
                         <label class="settings-switch-row"><input name="email" type="checkbox" /><span>Почта <small id="reportEmailRecipient"></small></span></label>
+                        <div class="report-email-controls">
+                          <label class="field"><span>Почта для отчётов</span><input id="reportEmailInput" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" /></label>
+                          <div class="report-email-actions"><button id="reportEmailRequest" class="btn" type="button">Получить код</button><button id="reportEmailRemove" class="btn hidden" type="button">Отключить почту</button></div>
+                          <div id="reportEmailVerification" class="hidden">
+                            <p id="reportEmailPending" class="muted"></p>
+                            <label class="field"><span>Код из письма</span><input id="reportEmailCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 цифр" /></label>
+                            <button id="reportEmailConfirm" class="btn" type="button">Подтвердить почту</button>
+                          </div>
+                          <p id="reportEmailStatus" role="status" aria-live="polite" class="muted">Адрес подключается сразу после подтверждения. Канал доставки включается после сохранения рассылки.</p>
+                        </div>
                         <label class="field"><span>Время отправки · Минск</span><select name="send_time" aria-label="Время отправки отчётов">${Array.from({length:96},(_,i)=>{const t=String(Math.floor(i/4)).padStart(2,'0')+':'+String(i%4*15).padStart(2,'0');return '<option value="'+t+'">'+t+'</option>';}).join('')}</select></label>
                       </section>
                     </div>
