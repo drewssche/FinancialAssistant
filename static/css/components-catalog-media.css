@@ -326,6 +326,7 @@
 
 .receipt-template-suggestion-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
   color: var(--muted);
@@ -573,3 +574,5 @@
 
   .catalog-media-detail { --catalog-media-size: 2.75rem; }
 }
+
+.receipt-template-suggestion-sources { min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }

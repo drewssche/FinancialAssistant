@@ -686,6 +686,19 @@
       }
     }
 
+    function receiptProductSourcesLabel(item) {
+      const sources = new Map();
+      const offers = item.product_id ? (item.offers || []) : [item];
+      for (const offer of offers) {
+        const name = normalizeReceiptName(offer.source_name || offer.shop_name || "");
+        if (!name) continue;
+        const key = offer.source_id ? `id:${offer.source_id}` : `name:${name.toLowerCase()}`;
+        if (!sources.has(key)) sources.set(key, name);
+      }
+      const names = Array.from(sources.values());
+      return names.length ? names.join(" · ") : "Источник не указан";
+    }
+
     // Shared product options for manual receipt entry and OCR review.
     // Callers own draft selection; rendering never imports catalog prices or writes data.
     function renderReceiptProductOptions(picker, {suggestions, query = "", draftId = "", allowCreate = false, showPrices = true, emptyText = "Нет совпадений"}) {
@@ -697,7 +710,7 @@
             <span class="receipt-template-suggestion-meta">
               ${item.brand_name ? `<span class="receipt-template-suggestion-brand">${renderReceiptBrandChip(item)}</span>` : ""}
               ${showPrices && Number(item.latest_unit_price || 0) > 0 ? `<span>${core.formatMoney(item.latest_unit_price)}</span>` : ""}
-              ${item.product_id ? `<span>${Number(item.offers?.length || 0)} источн.</span>` : ""}
+              <span class="receipt-template-suggestion-sources">${escHtml(receiptProductSourcesLabel(item))}</span>
               ${item.scan_match?.sizeConflict ? "<span>Другая фасовка</span>" : ""}
             </span>
           </span>

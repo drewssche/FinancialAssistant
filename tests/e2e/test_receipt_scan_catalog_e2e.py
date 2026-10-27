@@ -450,3 +450,35 @@ def test_quantity_rescales_discount_per_unit_and_total(static_server_url,page_wi
     row.locator('[data-scan-field=total]').fill('1.50');qty.fill('2')
     expect(row.locator('[data-scan-field=discount]')).to_have_value('0.70')
     expect(row.locator('[data-scan-field=total]')).to_have_value('3.00')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+def test_same_name_products_show_distinct_sources_without_merging(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock;start(p,static_server_url,width);seed_catalog(p)
+    p.evaluate('''()=>{
+      const name='Рулет Столичный из птицы копчено-вареный 1кг';
+      window.App.state.receiptProductHints=[
+        {id:519,name,offers:[{id:542,source_id:5,shop_name:'Green',name}]},
+        {id:568,name,offers:[{id:598,source_id:23,shop_name:'Маяк',name}]},
+        {id:900,name:'Рулет Другой',offers:[
+          {id:600,source_id:23,shop_name:'Маяк',name},
+          {id:601,source_id:23,shop_name:'Маяк',name},
+          {id:602,source_id:24,shop_name:'Источник с очень длинным названием для проверки переноса',name}]}];
+    }''')
+    stub(p,PIZZA);upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row').first
+    row.locator('[data-scan-field=name]').fill('Рулет')
+    options=row.locator('.receipt-template-suggestion')
+    expect(options).to_have_count(3)
+    expect(row.locator('[data-receipt-product-id="519"] .receipt-template-suggestion-sources')).to_have_text('Green')
+    expect(row.locator('[data-receipt-product-id="568"] .receipt-template-suggestion-sources')).to_have_text('Маяк')
+    expect(row.locator('[data-receipt-product-id="900"] .receipt-template-suggestion-sources')).to_have_text('Маяк · Источник с очень длинным названием для проверки переноса')
+    assert p.locator('#receiptScanDialog').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    assert row.locator('.scan-catalog-list').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    from pathlib import Path
+    target=Path('docs/_local/receipt-source-labels-20261027');target.mkdir(parents=True,exist_ok=True)
+    p.screenshot(path=str(target/f'picker-{width}.png'),full_page=True)
+    row.locator('[data-receipt-product-id="568"]').click()
+    expect(row.locator('.scan-match')).to_contain_text('Из каталога')
+    expect(row.locator('[data-scan-field=total]')).to_have_value('4.99')
