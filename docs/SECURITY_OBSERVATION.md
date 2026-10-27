@@ -142,8 +142,17 @@ Policy revised after noisy deliveries on 2026-10-24:
   changes continue to be journaled without requiring a bot restart.
 - Counters and pending summaries survive app replacement. Lists in summaries are
   capped at ten entries, access-audit queue at 100 entries; this is not a full SIEM.
-- Delivery errors are retried at most three times, subject to the same limits.
-  One channel's failure does not repeat a successful delivery on another channel.
+- Retry only errors proving that delivery did not take place (for example DNS,
+  connection refusal or an explicit SMTP rejection), at most three attempts.
+  A disconnect/timeout with an unknown delivery outcome is journaled and never
+  automatically replayed, in either Telegram or email. An SMTP QUIT failure after
+  message acceptance counts as success. One channel's failure does not repeat a
+  successful delivery on another channel.
+- Backup alerts: one message per continuously open incident. After recovery,
+  reopening the backup incident cannot notify again within seven days of the last
+  message/uncertain delivery. Known failed backup sends retry no sooner than after
+  24 hours. Recovery remains journal-only. Persistent counters survive app updates;
+  upgrading this policy does not clear acknowledgements or delivery quotas.
 - The journal records attempted/sent/failed/unconfigured/abandoned outcomes.
   "Sent" means acceptance by Telegram API or SMTP, not proof of inbox delivery.
 - After a crash during sending, the unknown outcome is recorded without automatic

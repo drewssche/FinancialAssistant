@@ -106,7 +106,7 @@ def test_failed_channel_retries_bounded_without_repeating_success(tmp_path):
     def send(channel, text):
         attempts.append(channel)
         if channel == 'email':
-            raise RuntimeError('password-secret')
+            raise ConnectionRefusedError('password-secret')
     a, now, _, audit = harness(tmp_path, send)
     sample(a, healthy=False)
     advance(a, now, 90000, healthy=False)
@@ -154,4 +154,71 @@ def test_recent_backup_job_failures_are_quiet_and_missing_copy_needs_three_days(
     advance(a,now,60,backup='unknown')
     assert len(sent)==2 and 'Резервная копия' in sent[-1][1]
     advance(a,now,600)
+    assert len(sent)==2
+
+
+def test_ambiguous_smtp_disconnect_never_replays_even_after_restart(tmp_path):
+    import smtplib
+    calls=[]
+    def send(channel,text):
+        calls.append(channel)
+        if channel=='email':raise smtplib.SMTPServerDisconnected('possibly accepted')
+    a,now,_,audit=harness(tmp_path,send)
+    sample(a,healthy=False);advance(a,now,600,healthy=False)
+    a=SecurityAlerts(a.settings,audit.append,clock=lambda:now[0],send=send)
+    a.recover_uncertain();advance(a,now,90000,healthy=False)
+    assert calls.count('email')==1 and calls.count('telegram:123')==1
+    assert any(e['event']=='operational_notification_delivery_unknown' for e in audit)
+
+
+def open_backup(a,now):
+    sample(a,backup='unknown')
+    with a.connect() as db:
+        db.execute("UPDATE operational_state SET since=? WHERE issue='backup'",(now[0]-72*3600,))
+    sample(a,backup='unknown');a.tick()
+
+
+def test_backup_known_failure_retries_no_sooner_than_next_day(tmp_path):
+    calls=[]
+    def send(channel,text):
+        calls.append(channel)
+        if channel=='email':raise ConnectionRefusedError()
+    a,now,_,_=harness(tmp_path,send)
+    open_backup(a,now)
+    advance(a,now,7200,backup='unknown')
+    assert calls.count('email')==1 and calls.count('telegram:123')==1
+    now[0]+=86400
+    sample(a,backup='unknown');a.tick()
+    assert calls.count('email')==2 and calls.count('telegram:123')==1
+
+
+def test_backup_reopening_is_silent_for_seven_days_and_state_survives_upgrade(tmp_path):
+    a,now,sent,audit=harness(tmp_path)
+    open_backup(a,now)
+    assert len(sent)==2
+    advance(a,now,360)
+    open_backup(a,now)
+    assert len(sent)==2
+    a=SecurityAlerts(a.settings,audit.append,clock=lambda:now[0],send=lambda *args:sent.append(args))
+    now[0]+=86400;sample(a,backup='unknown');a.tick()
+    assert len(sent)==2
+    now[0]+=6*86400;sample(a,backup='unknown');a.tick()
+    assert len(sent)==4
+    now[0]+=8*86400;sample(a,backup='unknown');a.tick()
+    assert len(sent)==4  # No recurring reminders for a continuously open incident.
+
+
+def test_upgrade_existing_delivery_table_preserves_sent_state_and_quota(tmp_path):
+    a,now,sent,audit=harness(tmp_path)
+    open_backup(a,now)
+    with a.connect() as db:
+        before=[tuple(r) for r in db.execute('SELECT * FROM channels ORDER BY channel')]
+        db.execute('ALTER TABLE operational_delivery DROP COLUMN last_notice_at')
+        db.execute('ALTER TABLE operational_delivery DROP COLUMN last_attempt_at')
+    a=SecurityAlerts(a.settings,audit.append,clock=lambda:now[0],send=lambda *args:sent.append(args))
+    with a.connect() as db:
+        assert [tuple(r) for r in db.execute('SELECT * FROM channels ORDER BY channel')]==before
+        rows=db.execute("SELECT notified,last_notice_at FROM operational_delivery WHERE issue='backup'").fetchall()
+        assert all(r['notified']==1 and r['last_notice_at']>=now[0] for r in rows)
+    a.tick()
     assert len(sent)==2

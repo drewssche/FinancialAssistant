@@ -3,6 +3,9 @@ from datetime import datetime
 import json
 from zoneinfo import ZoneInfo
 
+BACKUP_RETRY_SECONDS = 24 * 3600
+BACKUP_REOPEN_SECONDS = 7 * 86400
+
 LABELS = {
     'backup': ('Резервная копия', 'Выгрузка резервных копий снова подтверждена.'),
     'bot': ('Telegram-бот', 'Бот снова стабильно работает.'),
@@ -27,6 +30,17 @@ def initialize(db):
         target INTEGER NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY(channel,issue))''')
     db.execute('CREATE TABLE IF NOT EXISTS operational_probe (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)')
+    columns = {row[1] for row in db.execute('PRAGMA table_info(operational_delivery)')}
+    for name in ('last_attempt_at', 'last_notice_at'):
+        if name not in columns:
+            db.execute(f'ALTER TABLE operational_delivery ADD COLUMN {name} REAL NOT NULL DEFAULT 0')
+            # Preserve existing incident acknowledgements on app upgrades.
+            predicate = 'attempts>0' if name == 'last_attempt_at' else 'notified=1'
+            db.execute(f"""UPDATE operational_delivery SET {name}=MAX(
+                COALESCE((SELECT changed FROM operational_state WHERE issue=operational_delivery.issue),0),
+                COALESCE((SELECT next_at FROM channels WHERE channel=operational_delivery.channel),0))
+                WHERE {predicate}""")
+
 
 
 def observe(alerts, sample):
@@ -78,15 +92,17 @@ def pending(db, channel, now):
     # Recovery is recorded, but never creates another email/Telegram message.
     db.execute('''UPDATE operational_delivery SET notified=0 WHERE channel=?
         AND issue IN (SELECT issue FROM operational_state WHERE active=0)''', (channel,))
-    return [dict(row) for row in db.execute('''SELECT s.issue,s.active,s.reason,s.changed,s.since,s.last_seen FROM operational_state s
+    return [dict(row) for row in db.execute('''SELECT s.issue,s.active,s.reason,s.changed,s.since,s.last_seen,d.last_attempt_at,d.last_notice_at FROM operational_state s
         JOIN operational_delivery d ON d.issue=s.issue WHERE d.channel=?
         AND s.active=1 AND d.notified<>s.active AND d.attempts<3 AND s.last_seen>=?
-        AND s.candidate=s.active ORDER BY s.issue''', (channel, now - 180))]
+        AND s.candidate=s.active
+        AND (s.issue<>'backup' OR (d.last_attempt_at<=? AND d.last_notice_at<=?))
+        ORDER BY s.issue''', (channel, now - 180, now - BACKUP_RETRY_SECONDS, now - BACKUP_REOPEN_SECONDS))]
 
 
 def acknowledge(db, channel, operations):
     for item in operations:
-        db.execute('UPDATE operational_delivery SET notified=? WHERE channel=? AND issue=?',
+        db.execute('UPDATE operational_delivery SET notified=?,last_notice_at=last_attempt_at WHERE channel=? AND issue=?',
             (item['active'], channel, item['issue']))
 
 
@@ -121,12 +137,19 @@ def tick(alerts, *, cooldown, daily_limit):
             db.execute('UPDATE channels SET inflight=?,next_at=?,day=?,attempts=? WHERE channel=?',
                 (json.dumps(payload), now + cooldown, day, count + 1, channel))
             for item in operations:
-                db.execute('UPDATE operational_delivery SET attempts=attempts+1 WHERE channel=? AND issue=?', (channel, item['issue']))
+                db.execute('UPDATE operational_delivery SET attempts=attempts+1,last_attempt_at=? WHERE channel=? AND issue=?', (now, channel, item['issue']))
         alerts.audit('operational_notification_attempted', channel, notification_id=payload['id'])
         try:
             alerts.send_notification(channel, build_text(operations), payload)
         except Exception as exc:
-            alerts.audit('operational_notification_failed', channel, notification_id=payload['id'], error=type(exc).__name__)
+            from app.services.security_alert_service import safe_to_retry
+            known_failure = safe_to_retry(exc)
+            if not known_failure:
+                # Delivery may already have succeeded; suppress replay, including after restart.
+                with alerts.connect() as db:
+                    acknowledge(db, channel, operations)
+            alerts.audit('operational_notification_failed' if known_failure else 'operational_notification_delivery_unknown',
+                         channel, notification_id=payload['id'], error=type(exc).__name__)
         else:
             with alerts.connect() as db:
                 acknowledge(db, channel, operations)

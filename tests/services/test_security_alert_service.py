@@ -64,7 +64,7 @@ def test_channel_failure_does_not_repeat_success_or_expose_secrets(tmp_path):
     now, sends, audit = [1792776000.0], [], []
     def send(channel, text):
         sends.append(channel)
-        if channel == 'email': raise RuntimeError('smtp-secret token-secret')
+        if channel == 'email': raise ConnectionRefusedError('smtp-secret token-secret')
     alerts = SecurityAlerts(settings(tmp_path), audit.append, clock=lambda: now[0], send=send)
     alerts.record(event())
     now[0] += 901
@@ -179,3 +179,32 @@ def test_quota_delayed_incident_expires_instead_of_sending_old_night_report(tmp_
     assert not sent
     with a.connect() as db:
         assert all(r[0] is None for r in db.execute('SELECT pending FROM channels'))
+
+
+def test_smtp_quit_disconnect_after_acceptance_is_success(monkeypatch,tmp_path):
+    import smtplib
+    calls=[];audit=[]
+    class SMTP:
+        def __init__(self,*args,**kwargs):pass
+        def __enter__(self):return self
+        def __exit__(self,*args):raise smtplib.SMTPServerDisconnected('QUIT disconnected')
+        def login(self,*args):pass
+        def send_message(self,message):calls.append(message['To']);return {}
+    monkeypatch.setattr('app.services.security_alert_service.smtplib.SMTP_SSL',SMTP)
+    SecurityAlerts(settings(tmp_path),audit.append).deliver('email','test')
+    assert len(calls)==1 and audit[-1]['event']=='notification_media_accepted'
+
+
+def test_uncertain_security_delivery_is_not_retried(tmp_path):
+    import smtplib
+    now,calls,audit=[1792776000.0],[],[]
+    def send(channel,text):
+        calls.append(channel)
+        if channel=='email':raise smtplib.SMTPServerDisconnected()
+    s=settings(tmp_path)
+    a=SecurityAlerts(s,audit.append,clock=lambda:now[0],send=send)
+    a.record(event());now[0]+=61;a.tick()
+    a=SecurityAlerts(s,audit.append,clock=lambda:now[0],send=send)
+    now[0]+=86400;a.recover_uncertain();a.tick()
+    assert calls.count('email')==1
+    assert any(e['event']=='security_notification_delivery_unknown' for e in audit)

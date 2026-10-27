@@ -10,6 +10,7 @@ from pathlib import Path
 import smtplib
 import sqlite3
 import ssl
+import socket
 from threading import Event, Thread
 from time import time
 from uuid import uuid4
@@ -26,6 +27,16 @@ COOLDOWN_SECONDS = 3600
 DAILY_LIMIT = 2
 INCIDENT_QUIET_SECONDS = 6 * 3600
 POLICY_VERSION = 2
+
+
+def safe_to_retry(error):
+    """Only failures proving no message was accepted may be retried."""
+    return isinstance(error, (
+        socket.gaierror, ConnectionRefusedError,
+        httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout,
+        smtplib.SMTPConnectError, smtplib.SMTPAuthenticationError,
+        smtplib.SMTPRecipientsRefused, smtplib.SMTPSenderRefused, smtplib.SMTPDataError,
+    ))
 
 
 def qualifies(event):
@@ -238,7 +249,9 @@ class SecurityAlerts:
                     db.execute('BEGIN IMMEDIATE')
                     row = db.execute('SELECT pending FROM channels WHERE channel=?', (channel,)).fetchone()
                     pending = json.loads(row['pending']) if row['pending'] else {}
-                    if payload['retries'] < 3:
+                    if not safe_to_retry(exc):
+                        self.audit('security_notification_delivery_unknown', channel, notification_id=payload['id'])
+                    elif payload['retries'] < 3:
                         pending = merge(pending, payload)
                     else:
                         self.audit('security_notification_abandoned', channel, notification_id=payload['id'])
@@ -298,17 +311,24 @@ class SecurityAlerts:
             message.get_payload()[-1].add_related(png, maintype='image', subtype='png', cid=cid, disposition='inline')
         context = ssl.create_default_context()
         if s.smtp_security == 'ssl':
-            client = smtplib.SMTP_SSL(s.smtp_host, s.smtp_port, timeout=8, context=context)
+            client = smtplib.SMTP_SSL(s.smtp_host, s.smtp_port, timeout=20, context=context)
         else:
-            client = smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=8)
-        with client:
-            if s.smtp_security == 'starttls':
-                client.ehlo()
-                client.starttls(context=context)
-                client.ehlo()
-            client.login(s.smtp_username, s.smtp_password)
-            if client.send_message(message):
-                raise RuntimeError('SMTP recipient rejected')
+            client = smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=20)
+        accepted = False
+        try:
+            with client:
+                if s.smtp_security == 'starttls':
+                    client.ehlo()
+                    client.starttls(context=context)
+                    client.ehlo()
+                client.login(s.smtp_username, s.smtp_password)
+                if client.send_message(message):
+                    raise RuntimeError('SMTP recipient rejected')
+                accepted = True
+        except (smtplib.SMTPException, OSError):
+            # A broken QUIT after SMTP accepted DATA cannot undo delivery.
+            if not accepted:
+                raise
         self.audit('notification_media_accepted', channel, media='inline_png' if png else 'text')
 
     def run(self):
