@@ -196,3 +196,89 @@ def test_merge_piece_and_pack_keeps_offer_measurements_codes_and_history(client,
     assert saved['amount']==purchase['amount']
     for key in (*FIELDS,'quantity','unit_price','line_total','variant_snapshot'):
         assert saved['receipt_items'][0].get(key)==purchase['receipt_items'][0].get(key)
+
+
+@pytest.mark.parametrize('unknown_target', [False, True])
+@pytest.mark.parametrize('mapped', [False, True])
+@pytest.mark.parametrize('known', [dict(sale_unit='kg'), PACK])
+def test_merge_missing_defaults_preserves_offer_units_prices_and_receipts(client, unknown_target, mapped, known):
+    from app.main import app
+    from app.db.session import get_db
+    from app.db.models import CatalogProduct
+
+    unknown = product(client)
+    measured = product(client, **known)
+    old = operation(client, [line(product_id=unknown['id'], shop_name='Green', **(known if mapped else {}))])
+    other = operation(client, [line(product_id=measured['id'], shop_name='Маяк', **known)])
+    offer_id = old['receipt_items'][0]['template_id']
+    if mapped:
+        r = client.post(f"/api/v1/operations/catalog-products/{unknown['id']}/variants", json={
+            'name': 'Фасовка магазина', **known, 'codes': ['4006381333931'], 'is_archived': False,
+        })
+        assert r.status_code == 201, r.text
+        variant_id = r.json()['variants'][0]['id']
+        r = client.put(f"/api/v1/operations/catalog-products/{unknown['id']}/offers/{offer_id}/identity", json={
+            'variant_id': variant_id, 'retailer_code': '1459548',
+        })
+        assert r.status_code == 200, r.text
+    # Reproduce legacy catalog data: the source has an explicit measurement,
+    # while the product default was never populated.
+    session = app.dependency_overrides[get_db]()
+    db = next(session)
+    try:
+        row = db.get(CatalogProduct, unknown['id'])
+        for field in FIELDS:
+            setattr(row, field, None)
+        db.commit()
+    finally:
+        session.close()
+    target, source = (unknown, measured) if unknown_target else (measured, unknown)
+    prices_before = client.get(f'/api/v1/operations/item-templates/{offer_id}/prices').json()
+    candidates = client.get('/api/v1/operations/catalog-products/merge-candidates').json()
+    assert any({p['id'] for p in group['products']} == {unknown['id'], measured['id']} for group in candidates['items'])
+    r = client.post(f"/api/v1/operations/catalog-products/{target['id']}/merge", json={'source_product_ids': [source['id']]})
+    assert r.status_code == 200, r.text
+    merged = r.json()['product']
+    assert merged['sale_unit'] == known['sale_unit']
+    assert merged['offers_count'] == 2
+    original_offer = next(o for o in merged['offers'] if o['id'] == offer_id)
+    assert original_offer['sale_unit'] == (known['sale_unit'] if mapped else None)
+    assert client.get(f'/api/v1/operations/item-templates/{offer_id}/prices').json() == prices_before
+    if mapped:
+        identity = client.get(f"/api/v1/operations/catalog-products/{target['id']}/identity").json()
+        mapping = next(m for m in identity['offers'] if m['template_id'] == offer_id)
+        assert mapping['variant_id'] == variant_id and mapping['retailer_code'] == '1459548'
+        assert next(v for v in identity['variants'] if v['id'] == variant_id)['codes'] == ['4006381333931']
+    for purchase in [old, other]:
+        saved = client.get(f"/api/v1/operations/{purchase['id']}").json()
+        assert saved['amount'] == purchase['amount']
+        for field in (*FIELDS, 'quantity', 'unit_price', 'line_total', 'variant_snapshot'):
+            assert saved['receipt_items'][0].get(field) == purchase['receipt_items'][0].get(field)
+
+
+@pytest.mark.parametrize('measurements', [
+    [dict(sale_unit='kg'), dict(sale_unit='piece')],
+    [PACK, {**PACK, 'package_quantity': '800'}],
+])
+def test_empty_target_cannot_bridge_conflicting_sources(client, measurements):
+    unknown = product(client)
+    sources = [product(client, **m) for m in measurements]
+    response = client.post(f"/api/v1/operations/catalog-products/{unknown['id']}/merge", json={
+        'source_product_ids': [p['id'] for p in sources],
+    })
+    assert response.status_code == 400, response.text
+    assert all(client.get(f"/api/v1/operations/catalog-products/{p['id']}").status_code == 200 for p in [unknown, *sources])
+
+
+def test_missing_default_does_not_hide_conflicting_source_variant(client):
+    from tests.api.test_catalog_products_api import _source, _offer
+    unknown = product(client)
+    weighted = product(client, sale_unit='kg')
+    offer = _offer(client, source_id=_source(client, 'Green'), name='Крупа', price='3.25', product_id=unknown['id'])
+    r = client.post(f"/api/v1/operations/catalog-products/{unknown['id']}/variants", json={
+        'name': 'Упаковка', **PACK, 'codes': [], 'is_archived': False,
+    })
+    variant_id = r.json()['variants'][0]['id']
+    assert client.put(f"/api/v1/operations/catalog-products/{unknown['id']}/offers/{offer['id']}/identity", json={'variant_id': variant_id}).status_code == 200
+    r = client.post(f"/api/v1/operations/catalog-products/{weighted['id']}/merge", json={'source_product_ids': [unknown['id']]})
+    assert r.status_code == 400, r.text

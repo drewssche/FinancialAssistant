@@ -62,3 +62,21 @@ def test_merge_error_is_visible_and_retry_submits_selected_target(static_server_
     page.click('#submitCatalogProductMergeBtn')
     expect(page.locator('#catalogProductMergeModal')).to_be_hidden()
     assert requests==[{'source_product_ids':[402]},{'source_product_ids':[402]}]
+
+
+@pytest.mark.e2e
+def test_merge_weighted_product_label_does_not_repeat_unit(static_server_url, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.goto(static_server_url + '/static/index.html')
+    _login(page)
+    _ensure_categories_loaded(page)
+    page.evaluate("""() => window.App.getRuntimeModule('catalog-products').openMerge([
+        {id:568,name:'Рулет Столичный 1кг',sale_unit:'kg',offers_count:1,sources_count:1,offers:[{id:598,source_name:'Маяк',latest_unit_price:'18.59'}]},
+        {id:519,name:'Рулет Столичный 1кг',sale_unit:null,offers_count:1,sources_count:1,offers:[{id:542,source_name:'Green',latest_unit_price:'19.39'}]}
+    ])""")
+    options = page.locator('#catalogProductMergeOptions')
+    expect(options).to_contain_text('Маяк')
+    expect(options).to_contain_text('Green')
+    expect(options).to_contain_text('1 предл. · 1 источн. · кг')
+    expect(options).not_to_contain_text('кг · кг')
+    expect(options).to_contain_text('Единица не указана')

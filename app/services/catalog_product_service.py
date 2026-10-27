@@ -16,6 +16,7 @@ from app.core.cache import (
 )
 from app.db.models import CatalogProduct, Category, ItemBrand, CatalogPackageReplacement, CatalogVariant, CatalogOfferIdentity
 from app.repositories.catalog_product_repo import CatalogProductRepository
+from app.repositories.catalog_measurement_repo import offer_measurements
 from app.repositories.operation_item_template_repo import (
     OperationItemTemplateRepository,
 )
@@ -408,6 +409,42 @@ class CatalogProductService:
         self.db.commit()
         self._invalidate(user_id)
 
+    @staticmethod
+    def _combine_merge_measurements(measurements: Sequence[dict]) -> dict:
+        """Unknown fields are not conflicts; check every known value, not just target."""
+        result = dict.fromkeys(MEASUREMENT_FIELDS)
+        for measurement in measurements:
+            unit = measurement["sale_unit"]
+            known_unit = result["sale_unit"]
+            if unit and known_unit and unit != known_unit and {unit, known_unit} != {"piece", "pack"}:
+                raise ValueError("Единицы продажи различаются. Проверьте их в карточках товаров перед объединением.")
+            if unit and not known_unit:
+                result["sale_unit"] = unit
+            size = (measurement["package_quantity"], measurement["package_unit"])
+            known_size = (result["package_quantity"], result["package_unit"])
+            if size != (None, None):
+                if known_size != (None, None) and size != known_size:
+                    raise ValueError("Размеры упаковки различаются. Проверьте их в карточках товаров перед объединением.")
+                result["package_quantity"], result["package_unit"] = size
+        return normalize_measurement(result)
+
+    def _product_merge_measurement(self, product, offers, measurements) -> dict:
+        """Use source measurements only to complete missing product defaults.
+
+        Explicit complete defaults can coexist with historical source variants;
+        those variants move unchanged. Ambiguous missing defaults fail closed.
+        """
+        current = measurement_snapshot(product)
+        if current["sale_unit"] and (
+            current["sale_unit"] not in {"piece", "pack"} or current["package_quantity"] is not None
+        ):
+            return current
+        evidence = [current]
+        for offer in offers:
+            if offer.product_id == product.id and not offer.is_archived:
+                evidence.append(measurement_snapshot(measurements.get(int(offer.id), current)))
+        return self._combine_merge_measurements(evidence)
+
     def merge(
         self,
         *,
@@ -431,21 +468,17 @@ class CatalogProductService:
         )
         if target is None or len(sources) != len(source_ids):
             raise LookupError("One or more catalog products were not found")
-        target_measurement = measurement_snapshot(target)
-        def compatible(source):
-            measurement = measurement_snapshot(source)
-            if measurement == target_measurement:
-                return True
-            # A boxed item can be priced per piece or per pack in different stores.
-            # Keep those units on the offers; never infer or convert package sizes.
-            return (measurement["sale_unit"] in {"piece", "pack"}
-                    and target_measurement["sale_unit"] in {"piece", "pack"}
-                    and all(measurement[key] == target_measurement[key]
-                            for key in ("package_quantity", "package_unit")))
-        if any(not compatible(source) for source in sources):
-            raise ValueError("Размеры упаковки или единицы веса различаются. Проверьте их в карточках товаров перед объединением.")
         source_by_id = {int(product.id): product for product in sources}
         ordered_sources = [source_by_id[product_id] for product_id in source_ids]
+        selected_products = [target, *ordered_sources]
+        original_measurements = {product.id: measurement_snapshot(product) for product in selected_products}
+        offers = self.repo.list_offers_for_products(
+            user_id=user_id, product_ids=[target_product_id, *source_ids], include_archived=True,
+        )
+        measurements = offer_measurements(self.db, user_id=user_id, template_ids=[offer.id for offer in offers])
+        target_measurement = self._combine_merge_measurements([
+            self._product_merge_measurement(product, offers, measurements) for product in selected_products
+        ])
         if target.brand_id is None:
             source_brand_ids = {
                 int(product.brand_id)
@@ -471,20 +504,14 @@ class CatalogProductService:
                 target.image_id = image_source.image_id
                 image_source.image_id = None
         self.db.flush()
-        all_ids = [target_product_id, *source_ids]
-        offers = self.repo.list_offers_for_products(
-            user_id=user_id,
-            product_ids=all_ids,
-            include_archived=True,
-        )
         previous_categories = {
             int(offer.id): offer.last_category_id for offer in offers
         }
         conflicts = self._source_conflicts(offers=offers)
         # Offers without their own variant inherit the product's defaults. Freeze
         # the old defaults before moving them to a target with a different unit.
-        for source in ordered_sources:
-            measurement = measurement_snapshot(source)
+        for source in selected_products:
+            measurement = original_measurements[source.id]
             if measurement == target_measurement:
                 continue
             inherited = []
@@ -493,7 +520,8 @@ class CatalogProductService:
                     continue
                 identity = self.db.get(CatalogOfferIdentity, offer.id)
                 mapped = self.db.get(CatalogVariant, identity.variant_id) if identity and identity.variant_id else None
-                if mapped is None or mapped.is_archived:
+                if (mapped is None or mapped.is_archived or mapped.user_id != user_id
+                        or mapped.product_id != source.id):
                     inherited.append((offer, identity))
             if not inherited:
                 continue
@@ -507,6 +535,9 @@ class CatalogProductService:
                     self.db.add(identity)
                 identity.variant_id = variant.id
             self.db.flush()
+        for field, value in target_measurement.items():
+            setattr(target, field, value)
+        self.db.flush()
         reassigned = self.repo.reassign_offers(
             user_id=user_id,
             source_product_ids=source_ids,
@@ -537,6 +568,8 @@ class CatalogProductService:
             metadata={
                 "source_product_ids": source_ids,
                 "reassigned_offers": reassigned,
+                "measurement_before": measurement_snapshot(original_measurements[target.id], json_safe=True),
+                "measurement_after": measurement_snapshot(target_measurement, json_safe=True),
             },
         )
         self.db.commit()
@@ -659,6 +692,16 @@ class CatalogProductService:
         offers_by_product: dict[int, list] = defaultdict(list)
         for offer in offers:
             offers_by_product[int(offer.product_id)].append(offer)
+        measurements = offer_measurements(self.db, user_id=user_id, template_ids=[offer.id for offer in offers])
+        merge_measurements = {}
+        for product in products:
+            try:
+                merge_measurements[product.id] = self._product_merge_measurement(
+                    product, offers_by_product.get(product.id, []), measurements,
+                )
+            except ValueError:
+                # Conflicting source sizes need a manual decision first.
+                continue
         groups: dict[str, list[CatalogProduct]] = defaultdict(list)
         for product in products:
             groups[str(product.name_ci)].append(product)
@@ -671,20 +714,23 @@ class CatalogProductService:
                 product_sources = self._offer_source_keys(
                     offers_by_product.get(int(product.id), [])
                 )
-                if not product_sources:
+                if not product_sources or product.id not in merge_measurements:
                     continue
                 for index, cluster in enumerate(clusters):
                     if not product_sources.isdisjoint(cluster_sources[index]):
                         continue
                     if not all(
-                        measurement_snapshot(item) == measurement_snapshot(product)
-                        and self._compatible_dimension(item.brand_id, product.brand_id)
+                        self._compatible_dimension(item.brand_id, product.brand_id)
                         and self._compatible_dimension(
                             item.category_id,
                             product.category_id,
                         )
                         for item in cluster
                     ):
+                        continue
+                    try:
+                        self._combine_merge_measurements([merge_measurements[item.id] for item in [*cluster, product]])
+                    except ValueError:
                         continue
                     cluster.append(product)
                     cluster_sources[index].update(product_sources)

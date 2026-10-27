@@ -621,7 +621,7 @@
         <label class="catalog-product-merge-option">
           <input type="radio" name="catalogProductMergeTarget" value="${product.id}" ${index === 0 ? "checked" : ""} />
           ${media().renderThumb?.(product.image_id, { kind: "item", size: "picker", alt: product.name, fallback: product.name.slice(0, 1) }) || ""}
-          <span><strong>${esc(product.name)}</strong><small class="catalog-product-merge-sources">${esc(productOfferSummary(product))}</small><small>${product.offers_count} предл. · ${product.sources_count} источн. · ${esc(window.App.measurements.units[product.sale_unit] || "Единица не указана")} · ${esc(window.App.measurements.summary(product))}</small></span>
+          <span><strong>${esc(product.name)}</strong><small class="catalog-product-merge-sources">${esc(productOfferSummary(product))}</small><small>${product.offers_count} предл. · ${product.sources_count} источн. · ${esc(window.App.measurements.units[product.sale_unit] || "Единица не указана")}${product.package_quantity ? ` · ${esc(window.App.measurements.summary(product))}` : ""}</small></span>
         </label>`).join("");
     }
     if (el.catalogProductMergeWarning) {
