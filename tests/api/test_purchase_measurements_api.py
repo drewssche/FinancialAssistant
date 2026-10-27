@@ -282,3 +282,47 @@ def test_missing_default_does_not_hide_conflicting_source_variant(client):
     assert client.put(f"/api/v1/operations/catalog-products/{unknown['id']}/offers/{offer['id']}/identity", json={'variant_id': variant_id}).status_code == 200
     r = client.post(f"/api/v1/operations/catalog-products/{weighted['id']}/merge", json={'source_product_ids': [unknown['id']]})
     assert r.status_code == 400, r.text
+
+
+def test_merge_keeps_site_tracking_and_history_without_replaying_suppressed_alerts(client):
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import select
+    from app.main import app
+    from app.db.session import get_db
+    from app.db.models.catalog_watch import CatalogWatch, CatalogOfferWatch, CatalogPriceEvent
+    from tests.api.test_catalog_products_api import _source, _offer
+
+    target = product(client, sale_unit='kg')
+    source = product(client)
+    target_offer = _offer(client, source_id=_source(client, 'Маяк'), name='Крупа', price='18.59', product_id=target['id'])
+    source_offer = _offer(client, source_id=_source(client, 'Green'), name='Крупа', price='19.39', product_id=source['id'])
+    now = datetime.now(timezone.utc)
+    session = app.dependency_overrides[get_db]()
+    db = next(session)
+    try:
+        db.add(CatalogWatch(user_id=1, product_id=source['id'], enabled=True, enabled_at=now-timedelta(days=1)))
+        db.add(CatalogWatch(user_id=1, product_id=target['id'], enabled=False, enabled_at=now-timedelta(days=2)))
+        db.add(CatalogOfferWatch(user_id=1, product_id=source['id'], template_id=source_offer['id'],
+            url='https://green-dostavka.by/product/test', snapshot={'price': '19.39'}, checked_at=now, next_check_at=now))
+        for product_id, offer_id, offset, sent in [
+            (source['id'], source_offer['id'], 0, None),
+            (source['id'], source_offer['id'], -3, None),
+            (source['id'], source_offer['id'], -2, now),
+            (target['id'], target_offer['id'], 0, None),
+        ]:
+            db.add(CatalogPriceEvent(user_id=1, product_id=product_id, template_id=offer_id,
+                data={'price': '19.39', 'offset': offset}, created_at=now+timedelta(days=offset), telegram_sent_at=sent))
+        db.commit()
+        before = [(e.id, e.data, e.created_at, e.template_id) for e in db.scalars(select(CatalogPriceEvent).order_by(CatalogPriceEvent.id))]
+        r = client.post(f"/api/v1/operations/catalog-products/{target['id']}/merge", json={'source_product_ids': [source['id']]})
+        assert r.status_code == 200, r.text
+        db.expire_all()
+        watch = db.get(CatalogOfferWatch, source_offer['id'])
+        assert watch.product_id == target['id'] and watch.snapshot == {'price': '19.39'}
+        assert db.get(CatalogWatch, target['id']).enabled
+        events = list(db.scalars(select(CatalogPriceEvent).order_by(CatalogPriceEvent.id)))
+        assert [(e.id, e.data, e.created_at, e.template_id) for e in events] == before
+        assert all(e.product_id == target['id'] for e in events)
+        assert [e.telegram_sent_at is None for e in events] == [True, False, False, False]
+    finally:
+        session.close()

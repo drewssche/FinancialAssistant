@@ -4,6 +4,7 @@ import unicodedata
 from collections import defaultdict
 from collections.abc import Sequence
 from decimal import Decimal, ROUND_HALF_UP
+from datetime import datetime, timezone
 
 from sqlalchemy import or_, select, update
 
@@ -15,6 +16,7 @@ from app.core.cache import (
     invalidate_plans_cache,
 )
 from app.db.models import CatalogProduct, Category, ItemBrand, CatalogPackageReplacement, CatalogVariant, CatalogOfferIdentity
+from app.db.models.catalog_watch import CatalogWatch, CatalogOfferWatch, CatalogPriceEvent
 from app.repositories.catalog_product_repo import CatalogProductRepository
 from app.repositories.catalog_measurement_repo import offer_measurements
 from app.repositories.operation_item_template_repo import (
@@ -445,6 +447,38 @@ class CatalogProductService:
                 evidence.append(measurement_snapshot(measurements.get(int(offer.id), current)))
         return self._combine_merge_measurements(evidence)
 
+    def _merge_price_tracking(self, *, user_id: int, target_product_id: int, source_ids: list[int]):
+        """Move site history and keep enabled tracking without replaying old alerts."""
+        product_ids = [target_product_id, *source_ids]
+        watches = {row.product_id: row for row in self.db.scalars(
+            select(CatalogWatch).where(CatalogWatch.user_id == user_id,
+                                      CatalogWatch.product_id.in_(product_ids)).with_for_update()
+        )}
+        enabled = [row for row in watches.values() if row.enabled]
+        if enabled:
+            # A combined enabled watch must not turn previously suppressed events
+            # into new notifications. This is the same acknowledgement used when
+            # disabling tracking; eligible pending notifications remain pending.
+            for product_id in product_ids:
+                watch = watches.get(product_id)
+                stmt = update(CatalogPriceEvent).where(
+                    CatalogPriceEvent.user_id == user_id,
+                    CatalogPriceEvent.product_id == product_id,
+                    CatalogPriceEvent.telegram_sent_at.is_(None),
+                )
+                if watch and watch.enabled:
+                    stmt = stmt.where(CatalogPriceEvent.created_at < watch.enabled_at)
+                self.db.execute(stmt.values(telegram_sent_at=datetime.now(timezone.utc)))
+            target = watches.get(target_product_id)
+            if target is None:
+                target = CatalogWatch(user_id=user_id, product_id=target_product_id)
+                self.db.add(target)
+            target.enabled = True
+            target.enabled_at = min(row.enabled_at for row in enabled)
+        for model in (CatalogOfferWatch, CatalogPriceEvent):
+            self.db.execute(update(model).where(model.user_id == user_id,
+                model.product_id.in_(source_ids)).values(product_id=target_product_id))
+
     def merge(
         self,
         *,
@@ -557,6 +591,7 @@ class CatalogProductService:
         )
         self.db.execute(update(CatalogVariant).where(CatalogVariant.user_id == user_id, CatalogVariant.product_id.in_(source_ids)).values(product_id=target_product_id))
         self.db.execute(update(CatalogPackageReplacement).where(CatalogPackageReplacement.user_id == user_id, CatalogPackageReplacement.product_id.in_(source_ids)).values(product_id=target_product_id))
+        self._merge_price_tracking(user_id=user_id, target_product_id=target_product_id, source_ids=source_ids)
         self.repo.archive_many(user_id=user_id, product_ids=source_ids)
         self.activity.record(
             user_id=user_id,
