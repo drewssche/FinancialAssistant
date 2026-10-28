@@ -129,7 +129,7 @@
       for (const item of categories) {
         targetNode.appendChild(createCategoryChipButton(item, selectedId === item.id, query));
       }
-      if (!categories.length && query && createQueryDataset) {
+      if (query && createQueryDataset && !categories.some(item => item.name.toLowerCase() === query.toLowerCase())) {
         const createChip = pickerUtils.createActionChipButton({
           datasetName: createQueryDataset,
           datasetValue: query,
@@ -143,6 +143,7 @@
       if (!categories.length && query && !createQueryDataset) {
         targetNode.innerHTML = "<span class='muted-small'>Ничего не найдено</span>";
       }
+      pickerUtils.pinCreateActions(targetNode);
     }
 
     function renderCreateCategoryPicker() {

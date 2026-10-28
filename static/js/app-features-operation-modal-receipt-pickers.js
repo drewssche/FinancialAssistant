@@ -621,6 +621,7 @@
         </button>
       `;
       picker.innerHTML = `${suggestionsHtml}${createHtml}` || "<span class='muted-small'>Нет источников</span>";
+      pickerUtils.pinCreateActions(picker);
       bindReceiptEntityTooltip(picker);
       pickerUtils.setPopoverOpen(picker, true, {
         owners: [rowNode, rowNode.querySelector(".receipt-shop-cell")],
@@ -830,7 +831,7 @@
           : effectiveCategoryId === Number(item.id);
         picker.appendChild(createReceiptCategoryChipButton(item, isActive, normalizedQuery));
       }
-      if (!categories.length && normalizedQuery) {
+      if (normalizedQuery && !categories.some(item => item.name.toLowerCase() === normalizedQuery.toLowerCase())) {
         const createChip = pickerUtils.createActionChipButton({
           datasetName: "receiptCreateCategory",
           datasetValue: normalizedQuery,
@@ -845,6 +846,7 @@
         empty.textContent = "Без категорий для выбранного типа";
         picker.appendChild(empty);
       }
+      pickerUtils.pinCreateActions(picker);
       pickerUtils.setPopoverOpen(picker, true, {
         owners: [rowNode, rowNode.querySelector(".receipt-category-cell")],
         outsideScopes: [rowNode.querySelector(".receipt-category-cell")],

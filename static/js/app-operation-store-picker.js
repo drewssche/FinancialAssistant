@@ -58,7 +58,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.tabIndex = -1;
-        button.className = 'chip-btn receipt-store-option';
+        button.className = 'chip-btn receipt-store-option' + (option.custom ? ' chip-btn-create' : '');
         button.id = `${popup.id}-${index}`;
         button.setAttribute('role', 'option');
         const selected = option.name === input.value && !option.custom;
@@ -79,6 +79,7 @@
         empty.textContent = config.emptyLabel || 'Введите название магазина';
         popup.append(empty);
       }
+      utils.pinCreateActions(popup, {stack: true});
       utils.setPopoverOpen(popup, true, {owners: [input], outsideScopes: [owner], onClose: close});
       input.setAttribute('aria-expanded', 'true');
     }
@@ -95,8 +96,8 @@
         if (!options.length) return;
         const down = event.key === 'ArrowDown';
         active = active < 0 ? (down ? 0 : options.length - 1) : (active + (down ? 1 : -1) + options.length) % options.length;
-        [...popup.children].forEach((node, index) => node.classList.toggle('is-focused', index === active));
-        const selected = popup.children[active];
+        [...popup.querySelectorAll('[role=option]')].forEach((node, index) => node.classList.toggle('is-focused', index === active));
+        const selected = popup.querySelectorAll('[role=option]')[active];
         input.setAttribute('aria-activedescendant', selected.id);
         selected.scrollIntoView({block: 'nearest'});
       } else if (event.key === 'Enter') {

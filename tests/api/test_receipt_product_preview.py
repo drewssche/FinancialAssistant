@@ -201,3 +201,28 @@ def test_lookup_returns_measurement_and_site_price_without_writing(client,retail
     assert hit['measurement']=={'package_quantity':'125','package_unit':'g'}
     assert hit['site_price']['price']=='7.99'
     assert client.get('/api/v1/operations/catalog-products').json()['total']==0
+
+
+def test_explicit_price_refresh_bypasses_incomplete_cached_preview(client, retailer, monkeypatch):
+    product=preview.parse_product(document(),URL)
+    product['identifiers']={'barcodes':[CODES[0]['code']],'article':CODES[1]['code']}
+    product['url']=site_tests.URL
+    quote=product['site_price'];product['site_price']=None
+    monkeypatch.setattr(preview,'fetch_product',lambda url:dict(product))
+    monkeypatch.setattr(site.time,'time',lambda:1000000)
+    assert lookup(client).json()['items'][0]['site_price'] is None
+    product['site_price']=quote
+    assert lookup(client).json()['items'][0]['site_price'] is None
+    assert lookup(client,refresh=True).json()['items'][0]['site_price']['price']=='7.99'
+    assert client.get('/api/v1/operations/catalog-products').json()['total']==0
+
+
+def test_price_refresh_revisits_signed_page_but_rechecks_code(client, retailer, monkeypatch):
+    first=lookup(client).json()['items'][0]
+    monkeypatch.setattr(preview,'search_products',lambda *args:pytest.fail('verified page needs no new search'))
+    assert lookup(client,refresh=True,refresh_selection=first['site_selection']).json()['items']
+
+
+@pytest.mark.parametrize('token',['invalid',None])
+def test_untrusted_refresh_selection_uses_normal_discovery(client,retailer,token):
+    assert lookup(client,refresh=True,refresh_selection=token).json()['items']

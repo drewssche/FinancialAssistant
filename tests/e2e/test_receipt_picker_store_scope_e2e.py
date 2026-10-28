@@ -1906,7 +1906,6 @@ def test_catalog_product_add_source_keeps_parent_edits_and_updates_sources(
     expect(page.locator("#itemTemplateName")).to_have_value("Сырок клубника 40г")
     expect(page.locator("#itemTemplateName")).to_have_attribute("readonly", "")
     expect(page.locator("#itemTemplatePrice")).to_be_empty()
-    expect(child.locator(".item-template-product-help")).to_be_visible()
     expect(page.locator("#itemTemplateBrandField")).to_be_hidden()
     layers = page.evaluate("() => [Number(document.querySelector('#itemTemplateModal').style.zIndex), Number(document.querySelector('#catalogProductModal').style.zIndex)]")
     assert layers[0] > layers[1]

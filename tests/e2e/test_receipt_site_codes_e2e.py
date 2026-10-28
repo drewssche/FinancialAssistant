@@ -226,3 +226,26 @@ def test_site_autofill_does_not_replace_catalog_or_use_ambiguous_results(static_
     else:
         expect(row.locator('.scan-catalog-reference')).not_to_contain_text('Фасовка подставлена с сайта')
     expect(row.locator('[data-scan-field=total]')).to_have_value('5.99')
+
+
+@pytest.mark.e2e
+def test_missing_site_price_can_be_refreshed_without_changing_receipt(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;requests=[]
+    found={'name':'Пельмени 430 г','url':'https://sosedi-dostavka.by/products/pelmeni-42',
+           'source':'Соседи','matched_by':'barcode','matched_code':'4811040140757'}
+    def lookup(route):
+        data=route.request.post_data_json;requests.append(data)
+        item=dict(found)
+        if data.get('refresh'):
+            item['site_price']={'price':'3.89','regular_price':'5.09','currency':'BYN','unit':'шт.'}
+        route.fulfill(json={'items':[item]})
+    p.route('**/lookup-codes',lambda r:r.fulfill(json={'items':[],'auto_match':False}))
+    p.route('**/lookup-site-codes',lookup)
+    start(p,static_server_url,320);stub(p,TEXT);upload(p);p.click('#scanRun')
+    expect(p.locator('.receipt-preview-price')).to_contain_text('Не удалось получить цену')
+    p.get_by_role('button',name='Обновить цену',exact=True).click()
+    expect(p.locator('.receipt-preview-price')).to_contain_text('3,89 BYN')
+    expect(p.locator('.receipt-preview-price s')).to_have_text('5,09 BYN')
+    expect(p.locator('[data-scan-field=price]').first).to_have_value('5.99')
+    expect(p.locator('[data-scan-field=total]').first).to_have_value('5.99')
+    assert requests[-1]['refresh'] is True

@@ -38,6 +38,8 @@ class ReceiptCodeLookupInput(BaseModel):
 class ReceiptSiteLookupInput(ReceiptCodeLookupInput):
     template_id: int | None = Field(default=None, gt=0)
     other_sources: bool = False
+    refresh: bool = False
+    refresh_selection: str | None = Field(default=None, max_length=16384)
 
 
 class ReceiptThumbnailInput(BaseModel):

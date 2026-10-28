@@ -364,6 +364,7 @@
         ? `<button type="button" class="chip-btn chip-btn-create" data-item-template-source-create="${escapeHtml(normalizedQuery)}">+ Создать источник «${escapeHtml(normalizedQuery)}»</button>`
         : "";
       el.itemTemplateSourceAll.innerHTML = chips + createChip || "<span class='muted-small'>Нет источников</span>";
+      pickerUtils.pinCreateActions(el.itemTemplateSourceAll);
       pickerUtils.setPopoverOpen(el.itemTemplateSourcePickerBlock, true, {
         owners: [el.itemTemplateSourceField],
         onClose: closeItemTemplateSourcePicker,

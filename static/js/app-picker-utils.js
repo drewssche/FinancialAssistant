@@ -77,6 +77,36 @@
     return btn;
   }
 
+  // Keep creation outside the scrolling results, preserving delegated events.
+  function pinCreateActions(node, {stack = false} = {}) {
+    const children = Array.from(node.children);
+    const actions = children.filter(child => child.classList.contains("chip-btn-create"));
+    const body = document.createElement("div");
+    body.className = "picker-scroll-options" + (stack ? " picker-scroll-options-stack" : "");
+    body.append(...children.filter(child => !actions.includes(child)));
+    node.replaceChildren(body);
+    node.classList.add("picker-with-create-footer");
+    if (actions.length) {
+      const footer = document.createElement("div");
+      footer.className = "picker-create-footer";
+      for (const action of actions) {
+        action.title ||= action.textContent.trim();
+        footer.append(action);
+      }
+      node.append(footer);
+    }
+    const popover = node.closest(".app-popover");
+    if (popover && popover !== node) {
+      popover.classList.add("picker-footer-shell", "app-popover-floating");
+      popover.dataset.popoverMaxHeight = "360";
+      popover.dataset.popoverAlign = "start";
+      for (let parent = node.parentElement; parent && parent !== popover; parent = parent.parentElement) {
+        parent.classList.add("picker-footer-shell");
+      }
+      if (!popover.classList.contains("hidden")) setPopoverOpen(popover, true);
+    }
+  }
+
   function eventPathIncludes(event, matcher) {
     if (!event || typeof matcher !== "function") {
       return false;
@@ -188,7 +218,7 @@
       || (popover.classList.contains("category-icon-popover") ? 520 : viewportMaxHeight);
     const popoverMaxHeight = Math.min(requestedMaxHeight, viewportMaxHeight);
     popover.style.maxHeight = `${popoverMaxHeight}px`;
-    popover.style.overflowY = "auto";
+    popover.style.overflowY = popover.classList.contains("picker-with-create-footer") || popover.classList.contains("picker-footer-shell") ? "hidden" : "auto";
     const anchorRect = anchor.getBoundingClientRect();
     const ownerModal = anchor.closest(".modal:not(.hidden)");
     const ownerModalZIndex = ownerModal ? Number(window.getComputedStyle(ownerModal).zIndex || 0) : 0;
@@ -342,6 +372,7 @@
     createChipButton,
     createMetaChipButton,
     createActionChipButton,
+    pinCreateActions,
     eventPathIncludes,
     setPopoverOpen,
     closePopoverOnOutside,

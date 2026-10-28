@@ -112,7 +112,7 @@ class ReceiptSiteService:
     def __init__(self, db):
         self.db = db
 
-    def lookup(self, *, user_id, codes, shop_name='', source_id=None, template_id=None, other_sources=False):
+    def lookup(self, *, user_id, codes, shop_name='', source_id=None, template_id=None, other_sources=False, refresh=False, refresh_selection=None):
         if source_id:
             shop_name = ItemSourceService(self.db).get(user_id=user_id, source_id=source_id)['name']
         key = provider.source_provider(shop_name)
@@ -136,11 +136,22 @@ class ReceiptSiteService:
                         saved_url = url
                 except ValueError:
                     pass
+        if refresh and refresh_selection and not other_sources:
+            # Revisit the previously verified page, without repeating the retailer search.
+            try:
+                chosen = jwt.decode(refresh_selection, signing_key(), algorithms=['HS256'])
+                if (chosen.get('user_id') == user_id and chosen.get('provider') == key
+                        and chosen.get('codes') == [list(c) for c in context]):
+                    saved_key, url = provider.identify_url(chosen['snapshot']['url'])
+                    if saved_key == key:
+                        saved_url = url
+            except (JWTError, ValueError, KeyError, TypeError):
+                pass  # Expired or mismatched selections fall back to normal code discovery.
         keys = [k for k in provider.PROVIDERS if k != key] if other_sources else [key]
         items, incomplete, failures = [], False, 0
         for search_key in keys:
             try:
-                snapshots, partial = discover(search_key, tuple(context), int(time.time() // 300), saved_url if search_key == key else None)
+                snapshots, partial = (discover.__wrapped__ if refresh else discover)(search_key, tuple(context), int(time.time() // 300), saved_url if search_key == key else None)
                 incomplete |= partial
             except (ValueError, LookupError, OSError):
                 failures += 1

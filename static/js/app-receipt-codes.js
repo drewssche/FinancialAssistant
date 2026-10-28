@@ -159,9 +159,11 @@
           const checked=quote.checked_at&&Number.isFinite(Date.parse(quote.checked_at))?'Проверено '+core.formatDateTimeRu(quote.checked_at):'';
           conditions.textContent=[quote.available===false?'Нет в наличии':'',quote.conditions,checked,'Суммы чека не меняются.'].filter(Boolean).join(' · ');price.append(conditions);
         }else{
-          const missing=document.createElement('small');missing.className='muted-small';missing.textContent='Цена на сайте не указана или недоступна';price.append(missing);
+          const missing=document.createElement('small');missing.className='muted-small';missing.textContent='Не удалось получить цену при последней проверке. Можно обновить данные сайта.';price.append(missing);
         }
         const actions=document.createElement('div');actions.className='receipt-preview-actions';
+        const refresh=document.createElement('button');refresh.type='button';refresh.className='btn btn-secondary btn-xs';refresh.textContent='Обновить цену';
+        refresh.onclick=()=>lookupSite(Boolean(found.reference_only),true,found.site_selection);actions.append(refresh);
         let safeUrl=null;try{const u=new URL(found.url);if(u.protocol==='https:'&&!u.username&&!u.password)safeUrl=u.href;}catch{}
         if(safeUrl){const link=document.createElement('a');link.href=safeUrl;link.target='_blank';link.rel='noopener noreferrer';link.className='btn btn-secondary btn-xs';link.textContent='Открыть страницу';actions.append(link);}
         if(found.site_selection){
@@ -192,19 +194,24 @@
     };
     let timer,seq=0;
     host.invalidateSite=()=>{seq++;onSiteSelect({clear_measurement:true});row.site_selection=null;row.site_name='';row.site_preview=null;siteStatus.textContent='';siteResults.replaceChildren();siteActions.replaceChildren();};
-    async function lookupSite(otherSources=false,force=false){
+    async function lookupSite(otherSources=false,force=false,refreshSelection=null){
       if(!siteSearch||!connected())return;
-      if(!force&&row.site_preview?.length){showPreview(row.site_preview);webActions();return;}
+      if(!force&&row.site_preview?.length){
+        const complete=row.site_preview.every(item=>Number(item.site_price?.price)>0);
+        if(complete||Date.now()-(row.site_price_retry_at||0)<300000){showPreview(row.site_preview);webActions();return;}
+        row.site_price_retry_at=Date.now();force=true;refreshSelection=row.site_preview.find(item=>item.site_selection)?.site_selection;
+      }
       const codes=payload(row);
       if(!codes.length||validationError(codes,shop()))return;
       const token=++seq,before=signature();siteStatus.textContent=otherSources?'Ищу по штрихкоду в других магазинах…':'Ищу на сайте магазина…';siteResults.replaceChildren();siteActions.replaceChildren();
       try{
         const template=row.template_id||row.catalog?.template_id;
-        const request={codes,shop_name:shop()||'',...(template?{template_id:Number(template)}:{}),...(otherSources?{other_sources:true}:{})};
+        const request={codes,shop_name:shop()||'',...(template?{template_id:Number(template)}:{}),...(otherSources?{other_sources:true}:{}),...(force?{refresh:true,...(refreshSelection?{refresh_selection:refreshSelection}:{})}:{})};
         const data=await siteRequest(()=>{if(token!==seq||!connected()||before!==signature())return null;return core.requestJson('/api/v1/operations/catalog-products/lookup-site-codes',{timeoutMs:60000,method:'POST',headers:{...core.authHeaders(),'Content-Type':'application/json'},body:JSON.stringify(request)});});
         if(!data||token!==seq||!connected()||before!==signature())return;
         const items=data.items||[];
         row.site_preview=items;
+        row.site_price_retry_at=Date.now();
         siteStatus.textContent=items.length?(otherSources?'Найдено в других магазинах — для сверки':'Найдено на сайте источника'):data.state==='unavailable'?'Не удалось проверить сайт или прочитать карточку. Повторите поиск или проверьте другие магазины.':data.state==='not_found'?'На сайте точных совпадений по коду не найдено':data.state==='unsupported'?'Поиск на сайте этого источника пока не поддерживается.':data.state==='missing_codes'?'Внутренние коды проверяются только в каталоге выбранного магазина.':'';
         if(data.partial&&items.length)siteStatus.textContent+=' · Поиск выполнен не полностью';
         if(!otherSources&&!data.partial&&items.length===1&&!items[0].reference_only&&!items[0].code_warning&&!sizeMismatch(items[0])){
