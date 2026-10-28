@@ -717,11 +717,12 @@
         </button>
       `).join("");
       const createHtml = !query || !allowCreate ? "" : `
-        <button type="button" class="chip-btn chip-btn-create" data-receipt-create-name="${escHtml(query)}" data-receipt-item-id="${draftId}">
-          + Создать позицию «${escHtml(query)}»
+        <button type="button" class="chip-btn chip-btn-create" data-receipt-create-name="${escHtml(query)}" data-receipt-item-id="${draftId}" title="Создать позицию «${escHtml(query)}»">
+          <span class="receipt-product-create-label">+ Создать позицию «${escHtml(query)}»</span>
         </button>
       `;
-      picker.innerHTML = `${suggestionsHtml}${createHtml}` || `<span class="muted-small receipt-picker-empty">${escHtml(emptyText)}</span>`;
+      picker.classList.add("receipt-product-picker");
+      picker.innerHTML = `<div class="receipt-product-options">${suggestionsHtml || (!createHtml ? `<span class="muted-small receipt-picker-empty">${escHtml(emptyText)}</span>` : "")}</div>${createHtml ? `<div class="receipt-product-create-footer">${createHtml}</div>` : ""}`;
     }
 
     function renderReceiptNamePickerForRow(rowNode, rowItem, query) {

@@ -635,6 +635,51 @@
   font-weight: 600;
 }
 
+/* Only suggestions scroll; creation remains a separate, visible footer. */
+.receipt-name-picker.receipt-product-picker {
+  overflow: hidden;
+  gap: 0;
+}
+
+.receipt-product-options {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  flex: 0 1 auto;
+  min-height: 0;
+  min-width: 0;
+  gap: var(--space-2);
+  padding: 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.receipt-product-options:empty { display: none; }
+
+.receipt-product-create-footer {
+  align-self: stretch;
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+  background: inherit;
+}
+
+.receipt-product-options:empty + .receipt-product-create-footer {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.receipt-product-create-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .receipt-category-picker {
   position: absolute;
   top: calc(100% + var(--space-2));

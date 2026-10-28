@@ -482,3 +482,40 @@ def test_same_name_products_show_distinct_sources_without_merging(static_server_
     row.locator('[data-receipt-product-id="568"]').click()
     expect(row.locator('.scan-match')).to_contain_text('Из каталога')
     expect(row.locator('[data-scan-field=total]')).to_have_value('4.99')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width,height',[(320,640),(390,844),(390,400),(1440,1000)])
+def test_create_product_footer_stays_visible_while_results_scroll(static_server_url,page_with_receipt_api_mock,width,height):
+    p=page_with_receipt_api_mock;start(p,static_server_url,width);seed_catalog(p)
+    p.evaluate('''()=>{window.App.state.receiptProductHints=Array.from({length:24},(_,i)=>({
+      id:1000+i,name:'Пицца вариант '+i+' с длинным названием и начинкой 200г',offers:[{
+        id:2000+i,template_id:2000+i,source_id:301,shop_name:'Соседи',name:'Пицца вариант '+i}]}));}''')
+    stub(p,PIZZA);upload(p);p.click('#scanRun')
+    p.set_viewport_size({'width':width,'height':height})
+    row=p.locator('.scan-row').first;name=row.locator('[data-scan-field=name]')
+    query='Пицца новая с очень длинным названием, курицей, грибами и сыром 200г'
+    name.fill(query)
+    name.evaluate("n=>n.scrollIntoView({block:'start'})")
+    picker=row.locator('.scan-catalog-list');options=picker.locator('.receipt-product-options');create=picker.locator('[data-receipt-create-name]')
+    expect(picker.locator('.receipt-template-suggestion')).to_have_count(8)
+    expect(create).to_be_visible()
+    def footer_bounds():
+        return create.evaluate('''n=>{const b=n.getBoundingClientRect();return {x:b.x,y:b.y,right:b.right,bottom:b.bottom,
+          hit:n.contains(document.elementFromPoint(b.x+b.width/2,b.y+b.height/2)),width:innerWidth,height:innerHeight};}''')
+    before=footer_bounds()
+    assert before['hit'] and before['x']>=0 and before['right']<=width and before['bottom']<=height
+    assert options.evaluate('n=>n.scrollHeight>n.clientHeight+20')
+    assert picker.evaluate('n=>n.scrollHeight<=n.clientHeight+1 && n.scrollWidth<=n.clientWidth+1')
+    options.hover();p.mouse.wheel(0,600)
+    p.wait_for_function("()=>document.querySelector('.scan-catalog-list:not([hidden]) .receipt-product-options').scrollTop>0")
+    after=footer_bounds()
+    assert after['hit'] and abs(after['y']-before['y'])<1
+    assert options.evaluate('n=>n.getBoundingClientRect().bottom')<=create.bounding_box()['y']
+    p.screenshot(path=f'/tmp/fa-create-footer-{width}-{height}.png')
+    name.press('ArrowUp')
+    expect(create).to_have_attribute('aria-selected','true')
+    name.press('Enter')
+    expect(picker).to_be_hidden();expect(row.locator('.scan-match')).to_contain_text('Новый товар')
+    expect(name).to_have_value(query)
+    expect(row.locator('[data-scan-field=total]')).to_have_value('4.99')

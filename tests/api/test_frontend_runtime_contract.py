@@ -320,7 +320,7 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "function getCore()" in analytics_init
     assert "function getSessionFeature()" in analytics_init
     assert 'registerRuntimeModule?.("analytics-hover-coordinator"' in analytics_hover_coordinator
-    assert 'getRuntimeModule?.("analytics-hover-coordinator")' in analytics_init
+    assert 'getRuntimeModule?.("analytics-hover-coordinator")' in analytics_breakdown_ui
     assert 'registerRuntimeModule?.("analytics-hover-state-coordinator"' in analytics_hover_state
     assert 'getRuntimeModule?.("analytics-hover-state-coordinator")' in analytics_highlights_ui
     assert 'registerRuntimeModule?.("analytics-breakdown-ui-coordinator"' in analytics_breakdown_ui

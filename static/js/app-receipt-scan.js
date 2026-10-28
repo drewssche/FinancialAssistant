@@ -375,7 +375,7 @@
         catalog().renderOptions(list,{suggestions:options,query:name.value.trim(),allowCreate:!options.some(item=>item.scan_match?.exact),showPrices:false,emptyText:catalogNotice()||'Нет совпадений'});
         list.querySelectorAll('.receipt-template-suggestion').forEach((button,i)=>{button.onclick=()=>choose(options[i]);});
         const create=list.querySelector('[data-receipt-create-name]');if(create)create.onclick=createNew;
-        if(catalogNotice()&&list.querySelector('button')){const notice=document.createElement('span');notice.className='muted-small receipt-picker-empty';notice.textContent=catalogNotice();list.prepend(notice);}
+        if(catalogNotice()&&list.querySelector('button')){const notice=document.createElement('span');notice.className='muted-small receipt-picker-empty';notice.textContent=catalogNotice();list.querySelector('.receipt-product-options').prepend(notice);}
         list.querySelectorAll('button').forEach((button,i)=>{button.id=`scanOption${index}-${i}`;button.setAttribute('role','option');button.setAttribute('aria-selected','false');button.tabIndex=-1;});
         setCatalogOpen(list,true);
       }

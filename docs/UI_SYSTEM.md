@@ -376,6 +376,7 @@ At the bottom-left sidebar, show compact static user block:
 - Picker behavior contract:
 - popover closes on first outside click / `Esc` / chip selection
 - `+ Создать позицию «...` adds position into local picker source immediately for next rows (optimistic UI), DB persistence remains on operation save
+- In both manual receipt entry and scan review, product suggestions scroll independently; `Создать позицию` stays in a separate footer. Long creation labels truncate visually without changing the entered name.
 - source chips act as grouping filter for position chips inside the same row (`Источник` -> filtered `Позиция`)
 - Operation rows with receipt items should expose a dedicated clickable `Чек` shortcut in its own desktop data column; clicking it opens the read-only receipt modal directly
 - desktop table/list sections should no longer rely on hover-only inline action clusters; editable rows, groups and items should keep a persistent square kebab trigger on the right edge for secondary actions
