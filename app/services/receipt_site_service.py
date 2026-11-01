@@ -13,6 +13,8 @@ from app.db.models.catalog_identity import CatalogOfferIdentity
 from app.db.models.catalog_watch import CatalogOfferWatch
 from app.services import retailer_price_provider as provider
 from app.services import receipt_product_preview as preview
+from app.services import korona_product_provider as korona
+from app.db.models.operation_item_template import OperationItemTemplate
 from app.services.catalog_match_service import barcodes
 from app.services.catalog_watch_service import CatalogWatchService, now
 from app.services.item_source_service import ItemSourceService
@@ -112,9 +114,11 @@ class ReceiptSiteService:
     def __init__(self, db):
         self.db = db
 
-    def lookup(self, *, user_id, codes, shop_name='', source_id=None, template_id=None, other_sources=False, refresh=False, refresh_selection=None):
+    def lookup(self, *, user_id, codes, name='', shop_name='', source_id=None, template_id=None, other_sources=False, refresh=False, refresh_selection=None):
         if source_id:
             shop_name = ItemSourceService(self.db).get(user_id=user_id, source_id=source_id)['name']
+        if korona.is_source(shop_name) and not other_sources:
+            return self.lookup_korona(user_id=user_id, codes=codes, name=name, template_id=template_id, refresh=refresh)
         key = provider.source_provider(shop_name)
         context = code_context(codes)
         if other_sources:
@@ -169,6 +173,62 @@ class ReceiptSiteService:
                 'state': 'found' if items else 'unavailable' if failures else 'not_found',
                 'partial': incomplete, 'source': provider.PROVIDERS[key]['source'] if key else shop_name}
 
+    @staticmethod
+    def korona_context(codes):
+        # Internal codes have meaning only inside this store. Keep their exact
+        # type/value in the signed confirmation, including leading zeroes.
+        return sorted({(entry['kind'], entry['code'].strip()) for entry in codes if entry['code'].strip()})
+
+    def lookup_korona(self, *, user_id, codes, name, template_id, refresh):
+        saved_url = None
+        if template_id:
+            template = self.db.get(OperationItemTemplate, template_id)
+            if not template or template.user_id != user_id or template.is_archived:
+                raise LookupError('Предложение не найдено')
+            source = ItemSourceService(self.db).get(user_id=user_id, source_id=template.source_id) if template.source_id else None
+            if not korona.is_source(source['name'] if source else template.shop_name):
+                raise ValueError('Предложение не относится к Короне')
+            identity = self.db.get(CatalogOfferIdentity, template_id)
+            if identity and identity.user_id == user_id and identity.product_url:
+                saved_url = korona.canonical_url(identity.product_url)
+        context = self.korona_context(codes)
+        if not saved_url and not korona.words(name):
+            return {'items': [], 'auto_match': False, 'state': 'missing_name', 'source': 'Корона'}
+        try:
+            snapshots = [korona.fetch_product(saved_url)] if saved_url else korona.search(name, refresh=refresh)
+        except (ValueError, LookupError, OSError, httpx.HTTPError, TypeError):
+            return {'items': [], 'auto_match': False, 'state': 'unavailable', 'source': 'Корона'}
+        items = []
+        for snapshot in snapshots:
+            if saved_url:
+                snapshot = dict(snapshot, matched_by='saved_link', requires_confirmation=False)
+            token = jwt.encode({'user_id': user_id, 'provider': 'korona', 'codes': context,
+                                'template_id': template_id, 'snapshot': snapshot,
+                                'exp': now() + timedelta(days=7)}, signing_key(), algorithm='HS256')
+            image_token = jwt.encode({'user_id': user_id, 'purpose': 'receipt-thumbnail', 'url': snapshot['image_url'],
+                                     'exp': now() + timedelta(hours=1)}, signing_key(), algorithm='HS256') if snapshot.get('image_url') else None
+            items.append({k: v for k, v in snapshot.items() if k != 'image_url'} |
+                         {'site_selection': token, 'image_token': image_token, 'reference_only': False})
+        return {'items': items, 'auto_match': False, 'state': 'found' if items else 'not_found', 'source': 'Корона'}
+
+    def attach_korona(self, *, user_id, template, item, chosen):
+        source = ItemSourceService(self.db).get(user_id=user_id, source_id=template.source_id) if template.source_id else None
+        if (chosen.get('user_id') != user_id or not korona.is_source(source['name'] if source else template.shop_name)
+                or chosen.get('codes') != [list(c) for c in self.korona_context(item.get('catalog_codes') or [])]
+                or chosen.get('template_id') not in (None, template.id)):
+            raise ValueError('Магазин, товар или коды изменились. Подтвердите карточку Короны заново.')
+        snapshot = chosen['snapshot']
+        url = korona.canonical_url(snapshot['url'])
+        identity = self.db.get(CatalogOfferIdentity, template.id)
+        if identity is None:
+            identity = CatalogOfferIdentity(template_id=template.id, user_id=user_id, variant_id=item.get('variant_id'))
+            self.db.add(identity)
+        if identity.user_id != user_id or (identity.product_url and identity.product_url.rstrip('/') != url):
+            raise ValueError('У предложения уже другая ссылка. Измените её в карточке товара.')
+        identity.product_url, identity.external_name = url, snapshot['name']
+        # ReceiptCodeService attaches the codes in this same transaction. This
+        # catalogue publishes no prices: do not create a price watch or event.
+
     def image(self, *, user_id, token):
         try:
             chosen = jwt.decode(token, signing_key(), algorithms=['HS256'])
@@ -182,7 +242,9 @@ class ReceiptSiteService:
         try:
             chosen = jwt.decode(item['site_selection'], signing_key(), algorithms=['HS256'])
         except JWTError as exc:
-            raise ValueError('Выбор товара на сайте устарел. Откройте чек и повторите поиск по кодам.') from exc
+            raise ValueError('Выбор товара на сайте устарел. Откройте чек и повторите поиск товара.') from exc
+        if chosen.get('provider') == 'korona':
+            return self.attach_korona(user_id=user_id, template=template, item=item, chosen=chosen)
         key = CatalogWatchService(self.db).provider(template)
         context = code_context(item.get('catalog_codes') or [])
         if chosen.get('user_id') != user_id or chosen.get('provider') != key or chosen.get('codes') != [list(c) for c in context]:

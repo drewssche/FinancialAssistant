@@ -207,7 +207,7 @@ def search_products(key, query, kind):
 
 # Only known retailer media origins; never follow redirects or fetch arbitrary URLs.
 IMAGE_HOSTS = frozenset({'edostavka.by', 'img.e-dostavka.by', 'static.e-dostavka.by',
-    'cdn.ime.by', 'bazar-store.by', 'io.activecloud.com', 'green-dostavka.by', 'sosedi-dostavka.by'})
+    'cdn.ime.by', 'bazar-store.by', 'io.activecloud.com', 'green-dostavka.by', 'sosedi-dostavka.by', 'korona.by'})
 
 
 def safe_image_url(value, page_url):

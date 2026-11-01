@@ -36,6 +36,8 @@ class ReceiptCodeLookupInput(BaseModel):
 
 
 class ReceiptSiteLookupInput(ReceiptCodeLookupInput):
+    codes: list[LookupCodeInput] = Field(default_factory=list, max_length=10)
+    name: str = Field(default='', max_length=160)
     template_id: int | None = Field(default=None, gt=0)
     other_sources: bool = False
     refresh: bool = False

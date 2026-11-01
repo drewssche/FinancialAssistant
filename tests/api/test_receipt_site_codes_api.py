@@ -135,4 +135,4 @@ def test_korona_catalogue_link_does_not_claim_automatic_lookup(client):
     source_id = _source(client, 'Корона')
     source = next(s for s in client.get('/api/v1/operations/item-sources').json()['items'] if s['id'] == source_id)
     assert source['website_url'] == 'https://korona.by/our-production'
-    assert lookup(client, source_id=source_id).json()['state'] == 'unsupported'
+    assert lookup(client, source_id=source_id).json()['state'] == 'missing_name'
