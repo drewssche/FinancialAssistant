@@ -16,6 +16,12 @@ def canonical_source_name(name):
     """Receipt legal entity names are aliases, not separate shops."""
     return "Соседи" if re.search(r"(?<![а-яё])либрет[ие]к(?![а-яё])", str(name or ""), re.I) else name
 
+def source_website(name: str) -> str | None:
+    # A public catalogue link is not a claim of barcode/price lookup support.
+    normalized = unicodedata.normalize("NFKC", str(name or "")).strip().casefold()
+    return "https://korona.by/our-production" if normalized == "корона" else None
+
+
 class ItemSourceService:
     ACTIVITY_FIELDS = ["name", "image_id", "is_archived"]
     ACTIVITY_LABELS = {
@@ -43,6 +49,7 @@ class ItemSourceService:
         return {
             "id": int(item.id),
             "name": item.name,
+            "website_url": source_website(item.name),
             "image_id": item.image_id,
             "is_archived": bool(item.is_archived),
             "positions_count": int(positions_count or 0),

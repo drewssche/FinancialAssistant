@@ -494,6 +494,7 @@ class ItemSourceUpdate(BaseModel):
 class ItemSourceOut(BaseModel):
     id: int
     name: str
+    website_url: str | None = None
     image_id: int | None = None
     is_archived: bool = False
     positions_count: int = 0

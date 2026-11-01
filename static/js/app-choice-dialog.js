@@ -10,13 +10,16 @@
   function render() {
     if (!source) return;
     results.replaceChildren();
+    const utils = window.App.getRuntimeModule('picker-utils');
+    const categories = utils.sortCategoriesByUsage(window.App.state.categories, search.value);
     for (const option of source.options) {
-      if (option.hidden || !window.App.search.matches(option.textContent, search.value)) continue;
+      if (option.hidden) continue;
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'choice-option';
       const category = option.dataset.categoryId
-        ? window.App.state.categories.find(item => String(item.id) === option.dataset.categoryId) : null;
-      if (category) button.innerHTML = window.App.core.renderCategoryChip(category, search.value);
+        ? categories.find(item => String(item.id) === option.dataset.categoryId) : null;
+      if (option.dataset.categoryId ? !category : !window.App.search.matches(option.textContent, search.value)) continue;
+      if (category) button.innerHTML = utils.categorySearchHtml(category, search.value);
       else button.textContent = option.textContent;
       button.disabled = option.disabled || option.closest('optgroup')?.disabled || false;
       button.setAttribute('aria-pressed', String(option.selected));

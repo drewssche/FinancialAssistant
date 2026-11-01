@@ -138,12 +138,14 @@
     }catch(error){if(token!==openGeneration)return;if(mode==='edit')context='';core.notify(error.message||'Не удалось открыть чек',{type:'error'});}
   }
   node('scanClose').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>{storePicker.close();if(busy)cancel();node('scanTextDialog').close();closeCatalogLists();refreshEntry();});
+  dialog.addEventListener('close',()=>{storePicker.close();if(busy)cancel();node('scanTextDialog').close();closeCatalogLists();closeCategoryPickers();refreshEntry();});
   dialog.addEventListener('click',e=>{const r=dialog.getBoundingClientRect();if(e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))dialog.close();});
   // Installed before the global choice listener: Escape in a nested choice belongs to it.
   document.addEventListener('keydown',e=>{
     if(e.key!=='Escape'||!dialog.open||node('appChoiceDialog')?.open)return;
     e.preventDefault();e.stopImmediatePropagation();
+    if(!node('createCategoryModal').classList.contains('hidden')&&dialog.contains(node('createCategoryModal'))){window.App.categoryUi.closeCreateCategoryModal();return;}
+    if(dialog.querySelector('.scan-category-picker:not(.hidden)')){closeCategoryPickers();return;}
     if(storePicker.isOpen()&&!node('scanTextDialog').open){storePicker.close();return;}
     const list=dialog.querySelector('.scan-catalog-list:not([hidden])');
     if(list&&!node('scanTextDialog').open){closeCatalogLists();return;}
@@ -239,6 +241,7 @@
     name.setAttribute('aria-expanded',String(open));
     if(!open)name.removeAttribute('aria-activedescendant');
   }
+  function closeCategoryPickers(){dialog.querySelectorAll('.scan-category').forEach(host=>host.closeCategoryPicker?.());}
   function closeCatalogLists(){
     dialog.querySelectorAll('.scan-catalog-list').forEach(n=>setCatalogOpen(n,false));
   }
@@ -246,10 +249,11 @@
     node('scanRows').querySelectorAll('.scan-row').forEach(el=>{el.refreshCategory?.();el.refreshBrand?.();el.refreshCatalog?.();el.refreshSearch?.();});
   }
   function renderRows(){
+    closeCategoryPickers();
     node('scanRows').replaceChildren();
     draft.rows.forEach((row,index)=>{
       const el=document.createElement('section');el.className='scan-row';
-      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list receipt-name-picker app-popover hidden" role="listbox" hidden></div></div><div class="scan-row-actions">${iconButton('', 'trash', 'Удалить позицию '+(index+1))}</div><div class="scan-match"></div><div class="scan-codes-host"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><label class="field scan-brand"><span>Бренд</span><select data-scan-brand aria-label="Бренд товара"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-catalog-reference" role="status" hidden></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка на всю позицию'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><p class="scan-row-calculation muted-small" hidden></p><p class="scan-row-error scan-error" id="scanRowError${index}" role="status" hidden></p><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
+      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list receipt-name-picker app-popover hidden" role="listbox" hidden></div></div><div class="scan-row-actions">${iconButton('', 'trash', 'Удалить позицию '+(index+1))}</div><div class="scan-match"></div><div class="scan-codes-host"></div><div class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></div><label class="field scan-brand"><span>Бренд</span><select data-scan-brand aria-label="Бренд товара"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-catalog-reference" role="status" hidden></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка на всю позицию'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><p class="scan-row-calculation muted-small" hidden></p><p class="scan-row-error scan-error" id="scanRowError${index}" role="status" hidden></p><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
       const name=el.querySelector('[data-scan-field=name]'), list=el.querySelector('.scan-catalog-list'), match=el.querySelector('.scan-match');
       name.value=row.name;name.title=row.source||'';
       el.querySelectorAll('[data-scan-field]').forEach(input=>input.setAttribute('aria-describedby',[input.getAttribute('aria-describedby'),`scanRowError${index}`].filter(Boolean).join(' ')));
@@ -277,14 +281,18 @@
       const category=el.querySelector('[data-scan-category]');
       category.add(new Option('Без категории', ''));
       (state.categories||[]).filter(c=>c.kind==='expense').sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(c=>category.add(core.createCategoryOption(c)));
+      let categoryPicker;
       const refreshCategory=()=>{
         const choice=categoryChoice(row);category.value=String(choice.id||'');
         category.previousElementSibling.textContent=choice.reason?'Категория · предложена':'Категория';
-        category.title=choice.reason||'';
+        category.title=choice.reason||'';categoryPicker?.sync();
       };
       el.refreshCategory=refreshCategory;
       refreshCategory();
       category.onchange=()=>{row.category_id=Number(category.value)||null;row.category_touched=true;refreshCategory();node('scanConfirmed').checked=false;validate();};
+      categoryPicker=window.App.scanCategoryPicker.mount(el.querySelector('.scan-category'),{select:category,ownerDialog:dialog,
+        onCreated:created=>{category.add(core.createCategoryOption(created));category.value=String(created.id);category.dispatchEvent(new Event('change',{bubbles:true}));}});
+      categoryPicker.sync();
       const brand=el.querySelector('[data-scan-brand]');
       const refreshBrand=()=>{
         brand.replaceChildren(new Option('Без бренда',''));

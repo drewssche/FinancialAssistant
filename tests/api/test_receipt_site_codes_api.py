@@ -129,3 +129,10 @@ def test_internal_store_code_is_not_searched_as_website_article(client,monkeypat
     result=lookup(client,codes=[{'kind':'retailer','code':code}])
     assert result.status_code==200,result.text
     assert not result.json()['items'] and result.json()['state']=='missing_codes'
+
+
+def test_korona_catalogue_link_does_not_claim_automatic_lookup(client):
+    source_id = _source(client, 'Корона')
+    source = next(s for s in client.get('/api/v1/operations/item-sources').json()['items'] if s['id'] == source_id)
+    assert source['website_url'] == 'https://korona.by/our-production'
+    assert lookup(client, source_id=source_id).json()['state'] == 'unsupported'

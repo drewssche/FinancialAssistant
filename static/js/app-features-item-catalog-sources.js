@@ -127,12 +127,19 @@
         return;
       }
       const sourceKey = getItemCatalogShopKey(sourceName);
+      const source = (state.itemSources || []).find(item => !item.is_archived && getItemCatalogShopKey(item.name) === sourceKey);
       const existingGroup = buildItemCatalogGroups(state.itemCatalogItems || []).find((group) => group.shopKey === sourceKey);
       const positions = existingGroup?.items?.length || 0;
       const usage = existingGroup?.useCountTotal || 0;
       el.sourceGroupPreviewBody.innerHTML = existingGroup
         ? `<span>${positions} позиций</span><span>${usage} использований</span>`
         : "";
+      if (source?.website_url) {
+        const link = document.createElement("a");
+        link.className = "btn btn-secondary btn-xs"; link.textContent = "Каталог продукции";
+        link.href = source.website_url; link.target = "_blank"; link.rel = "noopener noreferrer";
+        el.sourceGroupPreviewBody.append(link);
+      }
     }
 
     async function submitSourceGroupForm(event) {

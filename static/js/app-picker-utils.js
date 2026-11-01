@@ -14,15 +14,23 @@
   function sortCategoriesByUsage(categories, query = "", storageKey = DEFAULT_CATEGORY_USAGE_KEY) {
     const usage = readUsageMap(storageKey);
     const normalizedQuery = String(query || "").trim().toLowerCase();
+    const matches = new Map();
+    if (normalizedQuery) {
+      for (const product of window.App.state.receiptProductHints || []) {
+        if (product.is_archived || !product.category_id || !window.App.search.matches(product.name, normalizedQuery)) continue;
+        const names = matches.get(Number(product.category_id)) || [];
+        if (!names.includes(product.name) && names.length < 2) names.push(product.name);
+        matches.set(Number(product.category_id), names);
+      }
+    }
     return (categories || [])
-      .filter((item) => {
-        if (!normalizedQuery) {
-          return true;
-        }
-        return window.App.search.matches(item.name, normalizedQuery) || window.App.search.matches(item.group_name, normalizedQuery);
-      })
-      .map((item) => ({ ...item, usage: Number(usage[String(item.id)] || 0) }))
+      .filter(item => !item.is_archived)
+      .map(item => ({...item, matched_products: matches.get(Number(item.id)) || [],
+        direct_match: !normalizedQuery || window.App.search.matches(item.name, normalizedQuery) || window.App.search.matches(item.group_name, normalizedQuery),
+        usage: Number(usage[String(item.id)] || 0)}))
+      .filter(item => item.direct_match || item.matched_products.length)
       .sort((a, b) => {
+        if (a.direct_match !== b.direct_match) return Number(b.direct_match) - Number(a.direct_match);
         const relevance = window.App.search.compare(query, [a.name, a.group_name], [b.name, b.group_name]);
         if (relevance) return relevance;
         if (b.usage !== a.usage) {
@@ -40,6 +48,12 @@
         }
         return a.name.localeCompare(b.name, "ru");
       });
+  }
+
+  function categorySearchHtml(category, query = "") {
+    const chip = window.App.core.renderCategoryChip({...category, accent_color: category.group_accent_color || null}, query);
+    if (!category.matched_products?.length) return chip;
+    return chip + '<small class="category-product-match">Есть товары: ' + category.matched_products.map(name => window.App.core.escapeHtml(name)).join(' · ') + '</small>';
   }
 
   function createChipButton({ datasetName, datasetValue = "", selected = false, html = "", className = "chip-btn" } = {}) {
@@ -369,6 +383,7 @@
     DEFAULT_CATEGORY_USAGE_KEY,
     readUsageMap,
     sortCategoriesByUsage,
+    categorySearchHtml,
     createChipButton,
     createMetaChipButton,
     createActionChipButton,

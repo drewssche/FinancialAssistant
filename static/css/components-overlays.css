@@ -1013,3 +1013,10 @@
 .receipt-category-picker.picker-with-create-footer {
   width: min(22rem, calc(100vw - 3rem));
 }
+
+/* Category matches explain the connection to catalogue products. */
+.category-product-match { display: block; margin-top: .3rem; font-size: .75rem; color: var(--muted); white-space: normal; overflow-wrap: anywhere; }
+.chip-btn:has(.category-product-match) { display: block; width: 100%; text-align: left; white-space: normal; }
+.scan-category { position: relative; min-width: 0; }
+.scan-category-picker { padding: 8px; width: min(28rem, calc(100vw - 3rem)); max-height: 360px; }
+.scan-category-picker .is-focused { background: var(--surface-active, #243b59); outline: 1px solid var(--accent, #ff9a32); }

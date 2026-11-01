@@ -283,14 +283,7 @@
         datasetName: "receiptCategoryId",
         datasetValue: category.id,
         selected,
-        html: core.renderCategoryChip(
-          {
-            name: category.name,
-            icon: category.icon || category.group_icon || null,
-            accent_color: category.group_accent_color || null,
-          },
-          searchQuery,
-        ),
+        html: pickerUtils.categorySearchHtml(category, searchQuery),
       });
     }
 

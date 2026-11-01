@@ -121,6 +121,11 @@
     if(siteSearch)details.append(siteActions);
     function webActions(){
       siteActions.replaceChildren();
+      const source=window.App.state.itemSources?.find(s=>!s.is_archived&&window.App.search.normalize(s.name)===window.App.search.normalize(shop()));
+      if(source?.website_url){
+        const link=document.createElement('a');link.className='btn btn-secondary btn-xs';link.textContent='Каталог источника';
+        link.href=source.website_url;link.target='_blank';link.rel='noopener noreferrer';siteActions.append(link);
+      }
       const codes=payload(row),barcode=codes.find(e=>e.kind==='barcode'&&validBarcode(e.code)&&!internalRetailerCode(e.code));
       if(!barcode)return;
       const others=document.createElement('button');others.type='button';others.className='btn btn-secondary btn-xs';others.textContent='Другие магазины';
@@ -193,7 +198,7 @@
       return Boolean(current&&site&&(units[current[1]][0]!==units[site[2].toLowerCase()][0]||Math.abs(current[0]*units[current[1]][1]-Number(site[1].replace(',','.'))*units[site[2].toLowerCase()][1])>.001));
     };
     let timer,seq=0;
-    host.invalidateSite=()=>{seq++;onSiteSelect({clear_measurement:true});row.site_selection=null;row.site_name='';row.site_preview=null;siteStatus.textContent='';siteResults.replaceChildren();siteActions.replaceChildren();};
+    host.invalidateSite=()=>{seq++;onSiteSelect({clear_measurement:true});row.site_selection=null;row.site_name='';row.site_preview=null;siteStatus.textContent='';siteResults.replaceChildren();webActions();};
     async function lookupSite(otherSources=false,force=false,refreshSelection=null){
       if(!siteSearch||!connected())return;
       if(!force&&row.site_preview?.length){
@@ -221,7 +226,7 @@
       }catch(error){if(token===seq&&connected()&&before===signature()){siteStatus.textContent='Не удалось проверить сайт. Повторите поиск.';webActions();}}
     }
     const signature=()=>JSON.stringify([shop(),list,row.name,row.catalog_new,window.App.measurements.snapshot(row)]);
-    function changed(){seq++;onSiteSelect({clear_measurement:true});row.site_selection=null;row.site_name='';row.site_preview=null;siteStatus.textContent='';siteResults.replaceChildren();siteActions.replaceChildren();row.code_errors=[];row.code_match_label='';results.replaceChildren();status.textContent='';refreshCodes();onChange();}
+    function changed(){seq++;onSiteSelect({clear_measurement:true});row.site_selection=null;row.site_name='';row.site_preview=null;siteStatus.textContent='';siteResults.replaceChildren();siteActions.replaceChildren();row.code_errors=[];row.code_match_label='';results.replaceChildren();status.textContent='';refreshCodes();webActions();onChange();}
     function draw(){
       fields.replaceChildren();
       list.forEach((entry,index)=>{
@@ -269,7 +274,7 @@
     add.onclick=()=>{list.push({kind:'unknown',code:''});changed();draw();fields.lastElementChild.querySelector('input').focus();};
     search.onclick=()=>{clearTimeout(timer);row.site_preview=null;lookup(false);};
     host.lookupCodes=()=>lookup(false);
-    draw();if(auto&&list.some(e=>e.code))timer=setTimeout(()=>{if(connected())lookup(true);},500);
+    draw();webActions();if(auto&&list.some(e=>e.code))timer=setTimeout(()=>{if(connected())lookup(true);},500);
     else if(siteSearch&&list.some(e=>e.code))timer=setTimeout(()=>{if(connected())lookupSite();},500);
     const entity=String(row.product_id||'')+':'+String(row.template_id||'');
     if(loadKnown&&row.product_id&&row.template_id&&row.codes_loaded_entity!==entity){

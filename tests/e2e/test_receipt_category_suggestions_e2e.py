@@ -50,7 +50,7 @@ def test_suggestion_changes_with_name_but_manual_clear_sticks(static_server_url,
     category=row.locator('[data-scan-category]');name=row.locator('[data-scan-field=name]')
     name.fill('Неизвестный продукт');name.press('Escape');expect(category).to_have_value('')
     name.fill('Опята маринованные');name.press('Escape');expect(category).to_have_value('9801')
-    category.click();p.locator('#appChoiceDialog').get_by_role('button',name='Без категории',exact=True).click()
+    row.locator('.scan-category input').click();p.locator('.scan-category-picker:not(.hidden)').get_by_role('option',name='Без категории',exact=True).click()
     name.fill('Огурчики маринованные');name.press('Escape');expect(category).to_have_value('')
     expect(row.locator('.scan-category')).not_to_contain_text('предложена')
     p.locator('#scanConfirmed').check();p.click('#scanTransfer')

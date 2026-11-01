@@ -42,3 +42,18 @@ if(row.price!==789||row.total!==789||row.quantity!==1)throw Error('receipt money
 console.log('ok');
 '''
     assert subprocess.check_output(['node', '-e', 'global.window={App:{}};'+MODULE+script], text=True).strip() == 'ok'
+
+
+def test_prepared_meat_sushi_and_renamed_curds():
+    script = r"""
+const api=window.App.receiptCategories;
+const categories=['Мясные изделия','Готовая еда','Сырки/творожные десерты','Молочка/Сыры'].map((name,i)=>({id:i+1,name,kind:'expense'}));
+for(const [name,id] of [['Паста мясная Тое Самае с итальянскими травами 140г',1],['Паста мясная Сваё с охотничными колбасками 140г',1],['Ролл Калифорния 1кг',2],['Сырок глазированный 45г',3]]) {
+ if(api.suggest(name,categories)?.id!==id)throw Error(name);
+}
+for(const name of ['Паста с кальмаром','Палочки Лосось-ролл','Чипсы со вкусом мяса']) {
+ if(api.suggest(name,categories))throw Error(name);
+}
+console.log('ok');
+"""
+    assert subprocess.check_output(['node','-e','global.window={App:{}};'+MODULE+script],text=True).strip()=='ok'

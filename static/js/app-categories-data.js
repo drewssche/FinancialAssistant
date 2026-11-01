@@ -186,6 +186,7 @@
       return;
     }
 
+    const completeCreation = categoryUi.captureCategoryCreation();
     const createdCategory = await core.requestJson("/api/v1/categories", {
       method: "POST",
       headers: core.authHeaders(),
@@ -201,6 +202,8 @@
     categoryUi.closeIconPopovers();
     categoryUi.setCategoryKind("create", "expense");
     categoryUi.closeCreateCategoryModal(false);
+    if (!state.categories.some(category => category.id === createdCategory.id)) state.categories.push(createdCategory);
+    completeCreation(createdCategory);
     await loadCategories();
     if (getOperationModal().onCategoryCreated) {
       getOperationModal().onCategoryCreated(createdCategory);

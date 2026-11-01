@@ -71,7 +71,8 @@ def test_automatic_merge_can_split_without_remerging_or_losing_catalog_edits(sta
     stub(p,REPEATS);upload(p);p.click('#scanRun')
     expect(p.locator('.scan-row')).to_have_count(2)
     row=p.locator('.scan-row').last
-    row.locator('[data-scan-category]').select_option('101')
+    row.locator('.scan-category input').fill('Еда')
+    p.locator('.scan-category-picker:not(.hidden)').get_by_role('option',name='Еда',exact=True).click()
     row.locator('[data-scan-unit=pack]').click()
     row.get_by_role('combobox',name='Тип кода').first.select_option('retailer')
     p.locator('#scanConfirmed').check()

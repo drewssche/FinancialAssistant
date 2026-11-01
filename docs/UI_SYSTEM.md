@@ -378,6 +378,9 @@ At the bottom-left sidebar, show compact static user block:
 - `+ Создать позицию «...` adds position into local picker source immediately for next rows (optimistic UI), DB persistence remains on operation save
 - In both manual receipt entry and scan review, product suggestions scroll independently; `Создать позицию` stays in a separate footer. Long creation labels truncate visually without changing the entered name.
 - Source and category popovers use the shared `pinCreateActions` layout: only options scroll, creation stays in the footer, and partial category matches do not hide creation. Floating popovers constrain the whole panel to the viewport without scrolling the footer.
+- Category search also matches product names from the current user’s loaded catalogue. Direct category/group matches come first; product matches show examples and never assign a category automatically. Archived products are excluded.
+- Scan review uses the same category chips and pinned creation footer. Creating a category opens the standard editor inside the native scan dialog, returns the category to that row, and makes it available to other rows; Escape cancels only the top editor/picker. Receipt money is unchanged.
+- Known source catalogue links are exposed as `website_url`; Корона links to `https://korona.by/our-production`. This is a manual catalogue link, separate from supported retailer code/price integrations.
 - Retailer preview prices remain informational. `Обновить цену` bypasses the discovery cache and revisits the signed, code-verified product page; incomplete previews can retry after five minutes. It never changes receipt amounts or discounts.
 - source chips act as grouping filter for position chips inside the same row (`Источник` -> filtered `Позиция`)
 - Operation rows with receipt items should expose a dedicated clickable `Чек` shortcut in its own desktop data column; clicking it opens the read-only receipt modal directly

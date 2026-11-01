@@ -377,7 +377,23 @@
     }
   }
 
+  let creationCallback = null, creationOwner = null, creationHome = null;
+  function captureCategoryCreation() {
+    const callback = creationCallback;
+    return category => {
+      if (callback && creationCallback === callback) {
+        creationCallback = null; callback(category);
+      }
+    };
+  }
   function openCreateCategoryModal(options = {}) {
+    creationCallback = options.onCreated || null;
+    if (options.ownerDialog?.open) {
+      creationOwner = options.ownerDialog;
+      creationHome = {parent: el.createCategoryModal.parentNode, next: el.createCategoryModal.nextSibling};
+      creationOwner.append(el.createCategoryModal);
+      creationOwner.addEventListener('close', cancelOwnedCreation, {once: true});
+    }
     const kind = options.kind || "expense";
     const prefillName = typeof options.prefillName === "string" ? options.prefillName.trim() : "";
     const preselectGroupId = options.groupId ? String(options.groupId) : "";
@@ -409,13 +425,21 @@
     }
     renderCreateGroupPicker();
     el.createCategoryModal.classList.remove("hidden");
+    if (creationOwner) el.categoryName.focus({preventScroll: true});
   }
 
+  function cancelOwnedCreation() { closeCreateCategoryModal(); }
   function closeCreateCategoryModal(clearPending = true) {
     closeIconPopovers();
     closeCreateGroupPopover();
     el.createCategoryModal.classList.add("hidden");
+    if (creationHome) {
+      creationHome.parent.insertBefore(el.createCategoryModal, creationHome.next?.parentNode === creationHome.parent ? creationHome.next : null);
+      creationOwner.removeEventListener('close', cancelOwnedCreation);
+      creationOwner = null; creationHome = null;
+    }
     if (clearPending) {
+      creationCallback = null;
       state.pendingCreateCategoryFromOperation = "";
       state.pendingCreateCategoryFromReceipt = null;
     }
@@ -527,6 +551,7 @@
     toggleIconPopover,
     setupCategoryIconPickers,
     openCreateCategoryModal,
+    captureCategoryCreation,
     closeCreateCategoryModal,
     openCreateGroupModal,
     closeCreateGroupModal,
