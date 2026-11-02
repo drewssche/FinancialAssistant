@@ -1,4 +1,4 @@
-from app.api.v1 import catalog_watch
+from app.api.v1 import catalog_watch, receipt_ocr
 from fastapi import APIRouter
 
 from app.api.v1 import catalog_identity, activity, admin, auth, categories, currency, dashboard, debts, operations, plans, preferences, users, work
@@ -19,3 +19,5 @@ api_router.include_router(users.router)
 api_router.include_router(admin.router)
 
 api_router.include_router(catalog_watch.router)
+
+api_router.include_router(receipt_ocr.router)

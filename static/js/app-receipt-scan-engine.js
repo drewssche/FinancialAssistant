@@ -28,5 +28,20 @@
     window.addEventListener('message',receive);document.body.append(frame);
     return {promise,cancel:()=>finish('Распознавание отменено')};
   }
-  window.App.receiptScanEngine={recognize};
+  function recognizeRemote(canvas, progress){
+    const controller=new AbortController();let cancelled=false;
+    const timer=setTimeout(()=>controller.abort(),105000);
+    const promise=(async()=>{
+      progress(null);
+      const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.95));
+      if(cancelled)throw new Error('Распознавание отменено');
+      if(!blob||blob.size>8*1024*1024)throw new Error('Фото слишком большое. Уменьшите область чека.');
+      const response=await fetch('/api/v1/receipt-ocr/recognize',{method:'POST',headers:{...window.App.core.authHeaders(),'Content-Type':blob.type},body:blob,signal:controller.signal});
+      const data=await response.json();
+      if(!response.ok)throw new Error(typeof data.detail==='string'?data.detail:'Не удалось распознать фото');
+      return data;
+    })().catch(error=>{if(error.name==='AbortError')throw new Error(cancelled?'Распознавание отменено':'Сервер не ответил вовремя. Попробуйте Tesseract.');throw error;}).finally(()=>clearTimeout(timer));
+    return {promise,cancel(){cancelled=true;controller.abort();}};
+  }
+  window.App.receiptScanEngine={recognize,recognizeRemote};
 })();

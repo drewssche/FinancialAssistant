@@ -256,3 +256,36 @@ def test_quantity_discount_scaling_preserves_original_basis_and_rounds_cents():
     data=json.loads(subprocess.check_output(['node','-e',script],text=True))
     assert [r['discount'] for r in data]==[33,67,67,100,17,100,144]
     assert [r['total'] for r in data]==[152,303,None,455,76,455,966]
+
+
+def test_pharmacy_explicit_quantity_first_currency_and_labelled_short_date():
+    result=run('ООО Аптека\n№ ДОК 123\nЛекарство 20мл №4\n2.000X19.82BYN 39.64\n#ПРОДАНО 0.5000 УП.\n#ЦЕНА ЗА УПАКОВКУ 79.28\nИТОГО К ОПЛАТЕ 39.64\nДАТА 27.10.26 ВРЕМЯ 19:11:22')
+    assert result['draft']['date']=='2026-10-27'
+    row=result['draft']['rows'][0]
+    assert (row['price'],row['quantity'],row['total'])==(1982,2,3964)
+    assert len(result['draft']['rows'])==1 and not result['errors']
+    ambiguous=run('Товар\n2.000X19.82 39.64\n27.10.26 19:11:22')
+    assert ambiguous['draft']['date']==''
+    assert not any(r['price']==1982 for r in ambiguous['draft']['rows'])
+
+
+def test_volume_and_percent_in_name_do_not_split_financial_rows():
+    text='ООО Магазин\n№ ДOK. 123\nНапиток Фриззанте\nP03E(*6)0.33n 4810112014682\n3.29 ×1.000 3.29\n'
+    result=run(text+'Напиток Фриззанте\nP03E(*6)0.33n 4810112014682\n3.29 ×1.000 3.29\nИТОГО К ОПЛАТЕ 6.58\n30.10.2026 18:54:46')
+    assert len(result['draft']['rows'])==2
+    assert all(r['name'].startswith('Напиток Фриззанте') for r in result['draft']['rows'])
+    assert not result['errors']
+
+
+def test_payment_total_punctuation_bank_label_and_conflicting_amounts():
+    text='ООО Магазин\n№ ДОК\nТовар\n3.00 ×1.000 3.00\nИТОГО, К ОПЛАТЕ\nБAHК.KAPTA 3.00\n3.00\n01.11.2026 10:00:00'
+    assert run(text)['draft']['total']==300
+    assert run(text.replace('БAHК.KAPTA 3.00','БAHК.KAPTA 4.00'))['draft']['total'] is None
+    # A later unrelated amount is not used when no adjacent payment amount exists.
+    assert run(text.replace('БAHК.KAPTA 3.00','Баллы: 3.00'))['draft']['total'] is None
+
+
+def test_table_header_at_end_of_product_name_does_not_erase_product():
+    result=run('ООО Корона\n№ ДОК\nКофе Капучино 260 мл Цена Кол-во Итого\n4.60 *2.000 9.20\nИС ТО К ОПЛАТЕ\n9.20\n31.10.2026 19:26:14')
+    assert result['draft']['rows'][0]['name']=='Кофе Капучино 260 мл'
+    assert result['draft']['total']==920 and not result['errors']

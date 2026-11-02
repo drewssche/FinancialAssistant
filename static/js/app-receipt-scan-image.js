@@ -15,7 +15,7 @@
     }
     return a.map(row=>row[8]);
   }
-  function prepare(source, normalized) {
+  function prepare(source, normalized, {enhance=true}={}) {
     const points = normalized.map(([x,y]) => [x*source.width,y*source.height]);
     const cross = points.map((p,i) => {const q=points[(i+1)%4],r=points[(i+2)%4];return (q[0]-p[0])*(r[1]-q[1])-(q[1]-p[1])*(r[0]-q[0]);});
     if(cross.some(v=>v<=0))throw new Error('Углы должны идти по краям одного чека, без пересечений');
@@ -28,6 +28,18 @@
     const m=transform(points,out.width,out.height), ctx=out.getContext('2d'), data=ctx.createImageData(out.width,out.height);
     const input=source.getContext('2d').getImageData(0,0,source.width,source.height).data;
     const grayAt=(x,y)=>{const i=(y*source.width+x)*4,alpha=input[i+3]/255;return (.299*input[i]+.587*input[i+1]+.114*input[i+2])*alpha+255*(1-alpha);};
+    if(!enhance){
+      const channel=(x,y,c)=>{const i=(y*source.width+x)*4,a=input[i+3]/255;return input[i+c]*a+255*(1-a);};
+      for(let y=0;y<out.height;y++)for(let x=0;x<out.width;x++){
+        const d=m[6]*x+m[7]*y+1;
+        const sx=Math.max(0,Math.min(source.width-1,(m[0]*x+m[1]*y+m[2])/d)),sy=Math.max(0,Math.min(source.height-1,(m[3]*x+m[4]*y+m[5])/d));
+        const x0=Math.floor(sx),y0=Math.floor(sy),x1=Math.min(x0+1,source.width-1),y1=Math.min(y0+1,source.height-1),fx=sx-x0,fy=sy-y0;
+        const di=(y*out.width+x)*4;
+        for(let c=0;c<3;c++)data.data[di+c]=(channel(x0,y0,c)*(1-fx)+channel(x1,y0,c)*fx)*(1-fy)+(channel(x0,y1,c)*(1-fx)+channel(x1,y1,c)*fx)*fy;
+        data.data[di+3]=255;
+      }
+      ctx.putImageData(data,0,0);return out;
+    }
     const gray=new Float32Array(out.width*out.height);
     for(let y=0;y<out.height;y++)for(let x=0;x<out.width;x++){
       const d=m[6]*x+m[7]*y+1;

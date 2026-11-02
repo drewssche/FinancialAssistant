@@ -139,3 +139,6 @@
 .scan-row-error {grid-column:1/-1;margin:0;padding:10px 12px;border:1px solid #784552;border-radius:10px;background:#a63d5014;font-size:.8rem;line-height:1.45;overflow-wrap:anywhere;}
 
 .scan-row-calculation {grid-column:1/-1;margin:0;line-height:1.45;overflow-wrap:anywhere;}
+
+.scan-engine-choice { margin-top:16px; min-width:0; max-width:100%; }
+.scan-engine-choice select { width:100%; min-width:0; max-width:100%; }

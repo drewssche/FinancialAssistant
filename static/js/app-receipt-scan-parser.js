@@ -31,6 +31,8 @@
       // Camera watermark and promotion dates are not purchase timestamps.
       if (!/redmi|note\s*\d|дата (начала|окончания)|действия|акци/i.test(line)) {
         const stamp = line.match(/\b(\d{2})[.,-](\d{2})[.,-](20\d{2})\s+(\d{2}[:;]\d{2}[:;]\d{2})/);
+        const shortStamp = /^дата\s+(\d{2})[.,-](\d{2})[.,-](\d{2})\s+время\s+(\d{2}[:;]\d{2}[:;]\d{2})/i.exec(line);
+        if(shortStamp){const date=`20${shortStamp[3]}-${shortStamp[2]}-${shortStamp[1]}`;if(validDate(date))dates.add(date);}
         if (stamp) { const date = `${stamp[3]}-${stamp[2]}-${stamp[1]}`; if (validDate(date)) dates.add(date); }
       }
       if (!ended && !rows.length) {
@@ -38,9 +40,18 @@
         if (merchant) shop = merchant;
         else if (!shop && /(?:ООО|ОАО|000\s*["«]|ЧТУП|магазин|аптека|общество с)/i.test(line)) shop = line;
       }
-      if (/итого\s*к[.,:]?\s*[оo][а-яa-z]{4,7}/i.test(line)) {
-        const value = amountAtEnd(line) ?? (/^\d+[.,]\d{2}$/.test(lines[i + 1] || '') ? money(lines[i + 1]) : null);
-        if (value !== null) totals.add(value);
+      if (/итого[.,:]?\s*к[.,:]?\s*[оo][а-яa-z]{4,7}|(?:^|\s)к\s+[оo]плате(?:\s|$)/i.test(line)) {
+        const value=amountAtEnd(line);
+        if(value!==null)totals.add(value);
+        else {
+          // Only an adjacent amount, optionally separated by the bank-card label.
+          const next=lines[i+1]||'',after=lines[i+2]||'';
+          if(/^\d+[.,]\d{2}$/.test(next))totals.add(money(next));
+          else if(/^[бb][аa][нh][кk][.\s]*[кk][аa][рp][тt][аa](?:\s|$)/i.test(next)){
+            const bank=amountAtEnd(next);if(bank!==null)totals.add(bank);
+            if(/^\d+[.,]\d{2}$/.test(after))totals.add(money(after));
+          }
+        }
       }
       if (/^(итого|банк|кассир|оплата|фишки|номер карты)/i.test(line)) { ended = true; names = []; }
       if (ended) continue;
@@ -70,7 +81,10 @@
         if (/скидк|оплата бонус/i.test(line) || pendingDiscount || /^[-−]?\s*\d+[.,]\d{2}$/.test(line)) continue;
       }
       const normalized = line.replace(/(\d)\s*([.,‚])\s*(?=\d)/g, '$1$2').replace(/‚/g, ',');
-      const match = normalized.match(/(?<![\d.,а-яa-z])(\d{1,7}[.,]\d{2})\s*[xхХX×*]\s*(\d{1,7}(?:[.,]\d{1,3})?)\s+(\d{1,7}[.,]\d{2})\s*$/i);
+      let match = normalized.match(/(?<![\d.,а-яa-z])(\d{1,7}[.,]\d{2})\s*[xхХX×*]\s*(\d{1,7}(?:[.,]\d{1,3})?)\s+(\d{1,7}[.,]\d{2})\s*$/i);
+      // The currency suffix makes the pharmacy quantity × unit-price order explicit.
+      const reverse=normalized.match(/(?<![\d.,а-яa-z])(\d{1,7}(?:[.,]\d{1,3})?)\s*[xхХX×*]\s*(\d{1,7}[.,]\d{2})\s*BYN\s+(\d{1,7}[.,]\d{2})\s*$/i);
+      if(!match&&reverse)match=Object.assign([reverse[0],reverse[2],reverse[1],reverse[3]],{index:reverse.index});
       if (match) {
         if (rows.length >= 151) continue;
         if (/[-−]\s*$/.test(normalized.slice(0, match.index))) {warnings.push('Отрицательные позиции требуют ручного ввода');continue;}
@@ -81,15 +95,15 @@
         rows.push({name, price, quantity, printed_total: total, total, discount: 0, discount_type: null,
           source: [...names, line].join('\n'), issue: calculated !== total ? 'Цена × количество не совпадает с суммой строки' : ''});
         names = []; pendingDiscount = false;
-      } else if (names.length && ((/[xхХX×*]\s*[\d!|]/.test(normalized) && /\d[.,]\d/.test(normalized)) || (/^\d{8,14}\s/.test(normalized) && amountAtEnd(normalized)!==null && (normalized.match(/[а-яa-z]/gi)||[]).length<=4))) {
+      } else if (names.length && ((/(?:^|\s)[\dЗОOIl|]+[.,][\dОOIl|]{2}\s*[xхХX×*]\s*[\d!|]/i.test(normalized) && /\d[.,]\d/.test(normalized)) || (/^\d{8,14}\s/.test(normalized) && amountAtEnd(normalized)!==null && (normalized.match(/[а-яa-z]/gi)||[]).length<=4))) {
         // Keep uncertain money rows visible, with unknown fields empty. Never
         // turn OCR lookalikes (!/I/O) into digits or infer price from the total.
         if(rows.length<151)rows.push({name:names.map(cleanName).join(' '),price:null,quantity:null,printed_total:amountAtEnd(normalized),total:amountAtEnd(normalized),discount:0,discount_type:null,source:[...names,rawLine].join('\n'),issue:'Проверьте нераспознанную строку'});
         names=[];pendingDiscount=false;
       } else if (/^\d{5,14}$/.test(line) && names.length) names.push(line);
       else if (/^[\d\s.,*xх−-]+$/.test(line)) continue;
-      else if (/упн|скко|платеж|документ|^[№N]\s*док|кол.?во|^цена|^г\.\s*минск|^чек:|^касса/i.test(line)) names = [];
-      else if (/[а-яa-z]/i.test(line)) names = [...names, rawLine].slice(-4);
+      else if (/упн|скко|платеж|документ|^[№N]\s*[дd][оo][кk]|^кол.?во|^цена|^г\.\s*минск|^чек:|^касса/i.test(line)) names = [];
+      else if (/[а-яa-z]/i.test(line)) names = [...names, rawLine.replace(/\s+цена\s+кол.?во\s+итого\s*$/i,'')].slice(-4);
     }
     for(const row of rows) row.code_entries=extractCodes(row.source);
     if (dates.size !== 1) warnings.push('Проверьте дату покупки по чеку');

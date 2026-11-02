@@ -149,3 +149,32 @@ Notes:
 
 ## Notes
 Telegram `initData` signature and `auth_date` freshness validation are implemented in `app/core/telegram_auth.py`.
+
+### Экспериментальное распознавание чеков (RapidOCR)
+
+Tesseract остаётся режимом по умолчанию и работает в браузере. RapidOCR выбирается
+явно в окне сканирования; фото передаётся только серверу ФинАсиста. До подтверждения
+пользователем результат остаётся черновиком. Сам OCR-сервис не сохраняет фото или текст.
+
+Дополнительный сервис запускается профилем `receipt-ocr`:
+
+```sh
+docker compose --profile receipt-ocr build receipt-ocr
+docker compose --profile receipt-ocr up -d --no-deps receipt-ocr
+```
+
+`app` обращается к нему через `RECEIPT_OCR_URL` в закрытой Docker-сети. У OCR нет
+публичного порта, доступа к БД, токенам бота и SMTP или внешней сети. Модели PP-OCRv5
+mobile / eslav загружаются при сборке и проверяются по SHA-256. Версии OpenCV и NumPy
+закреплены; поиск текстовых областей ограничен длинной стороной 1280 px,
+а чтение использует более подробные вырезки. Автоматическое обновление этих зависимостей требует повторного прогона чеков.
+
+Лимиты: 640 МиБ без swap, 0.50 CPU, одна задача без очереди, 90 секунд на распознавание,
+8 МиБ и 4 мегапикселя на изображение. Каждый чек обрабатывается отдельным процессом;
+таймаут или авария движка возвращают ошибку с предложением выбрать Tesseract.
+Сервис не является зависимостью readiness основного приложения. Отключить эксперимент:
+`docker compose --profile receipt-ocr stop receipt-ocr`; Tesseract продолжит работать.
+
+Проверки: `tests/test_receipt_ocr_worker.py`, `tests/api/test_receipt_ocr_api.py`,
+`tests/test_receipt_scan_parser.py`, `tests/e2e/test_receipt_rapidocr_e2e.py`.
+Приватные эталоны чеков и результаты сравнений находятся только в `docs/_local/`.

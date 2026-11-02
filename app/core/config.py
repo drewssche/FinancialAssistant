@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     financial_reports_start_date: date | None = Field(default=None, alias="FINANCIAL_REPORTS_START_DATE")
     financial_reports_state_dir: str = Field(default="/var/log/financialassistant/reports", alias="FINANCIAL_REPORTS_STATE_DIR")
 
+    receipt_ocr_url: str = Field(default="", alias="RECEIPT_OCR_URL")
+
     postgres_user: str = Field(default="fin_user", alias="POSTGRES_USER")
     postgres_password: str = Field(default="fin_pass", alias="POSTGRES_PASSWORD")
     postgres_db: str = Field(default="financial_assistant", alias="POSTGRES_DB")
