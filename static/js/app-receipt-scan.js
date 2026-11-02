@@ -12,7 +12,7 @@
   dialog.id='receiptScanDialog';dialog.className='receipt-scan-dialog';dialog.setAttribute('aria-labelledby','receiptScanTitle');
   const iconButton=(id,icon,label)=>`<button id="${id}" type="button" class="btn btn-secondary btn-icon" aria-label="${label}" title="${label}">${icons.svg(icon)}</button>`;
   dialog.innerHTML=`<header><h3 id="receiptScanTitle">Сканировать чек</h3>${iconButton('scanClose','close','Закрыть сканирование')}</header>
-    <label class="field scan-engine-choice"><span>Распознавание</span><select id="scanEngine"><option value="local">Tesseract · на устройстве</option><option value="rapid" disabled>RapidOCR · эксперимент</option></select></label>
+    <label class="field scan-engine-choice"><span>Распознавание</span><select id="scanEngine"><option value="local">Tesseract · на устройстве</option><option value="rapid" disabled>RapidOCR · на сервере</option></select></label>
     <p class="muted-small" id="scanPrivacy">Фото обрабатывается на устройстве.</p>
     <button type="button" id="scanDropzone" class="scan-dropzone">${icons.svg('upload')}<strong>Выберите или перетащите фото чека</strong><span>Или вставьте из буфера: <kbd>Ctrl+V</kbd> / <kbd>⌘V</kbd></span><small>JPG, PNG, WebP · до 20 МБ</small></button>
     <div class="scan-toolbar" id="scanPhotoTools">${iconButton('scanBack','back','Изменить фото и распознать заново')}${iconButton('scanUpload','upload','Загрузить фото чека')}${iconButton('scanRotate','refresh','Повернуть фото')}${iconButton('scanReset','expand','Сбросить углы')}<input id="scanFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><span id="scanStep" class="muted-small">Загрузите фото или вставьте Ctrl+V / ⌘V · до 20 МБ</span></div>
@@ -25,15 +25,23 @@
     <dialog id="scanTextDialog" class="choice-dialog task-dialog"><header><h3>Распознанный текст</h3>${iconButton('scanTextClose','close','Закрыть текст')}</header><div class="segmented" id="scanTextModes"><button type="button" class="segmented-btn active" data-text-mode="edited">Уточнённый</button><button type="button" class="segmented-btn" data-text-mode="original">Исходный</button></div><textarea id="scanText" rows="15" maxlength="80000" aria-label="Распознанный текст"></textarea><button id="scanReparse" class="btn btn-primary btn-icon" type="button" aria-label="Разобрать исправленный текст" title="Разобрать исправленный текст">${icons.svg("refresh")}</button></dialog>`;
   document.body.append(dialog);
   const storePicker=window.App.getRuntimeModule('operation-store-picker').bind(node('scanShop').closest('.field'),'scan');
-  const updatePrivacy=()=>{node('scanPrivacy').textContent=node('scanEngine').value==='rapid'?'Фото отправится на сервер ФинАсиста для распознавания. Внешние сервисы не используются; фото не сохраняется этим режимом.':'Фото обрабатывается на устройстве.';};
-  node('scanEngine').onchange=updatePrivacy;
+  let engineChosen=false, engineCheck=0, engineAvailable=null;
+  const updatePrivacy=()=>{node('scanPrivacy').textContent=node('scanEngine').value==='rapid'?'Фото отправится на сервер ФинАсиста для распознавания. Внешние сервисы не используются; фото не сохраняется этим режимом.':(engineAvailable===false?'RapidOCR недоступен. ':'')+'Фото обрабатывается на устройстве.';};
+  node('scanEngine').onchange=()=>{engineChosen=true;updatePrivacy();};
   async function refreshEngines(){
+    const check=++engineCheck;
+    let available=false;
     try{
       const result=await core.requestJson('/api/v1/receipt-ocr/status',{headers:core.authHeaders()});
-      const option=node('scanEngine').querySelector('[value=rapid]');option.disabled=!result.available;
-      option.textContent=result.available?'RapidOCR · эксперимент':'RapidOCR · недоступен';
-      if(!result.available&&!busy){node('scanEngine').value='local';updatePrivacy();}
-    }catch{/* Local OCR remains usable without the optional service. */}
+      available=result.available===true;
+    }catch{/* Tesseract remains usable when the server check fails. */}
+    if(check!==engineCheck||busy)return;
+    engineAvailable=available;
+    const option=node('scanEngine').querySelector('[value=rapid]');option.disabled=!available;
+    option.textContent=available?'RapidOCR · на сервере':'RapidOCR · недоступен';
+    if(!available)node('scanEngine').value='local';
+    else if(!engineChosen)node('scanEngine').value='rapid';
+    updatePrivacy();
   }
   let source=null, points=[], draft=null, job=null, generation=0, transferred=false, originalText='', busy=false, pendingPaste=null;
   let originalTextMode=false, editedText='', storedImage=null;

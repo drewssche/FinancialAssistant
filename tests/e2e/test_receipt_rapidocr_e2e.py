@@ -6,7 +6,7 @@ from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, pag
 
 @pytest.mark.e2e
 @pytest.mark.parametrize('width',[320,390,1440])
-def test_explicit_remote_choice_privacy_preview_and_manual_confirmation(static_server_url,page_with_receipt_api_mock,width):
+def test_default_remote_privacy_preview_and_manual_confirmation(static_server_url,page_with_receipt_api_mock,width):
     page=page_with_receipt_api_mock;sent=[]
     page.route('**/api/v1/receipt-ocr/status',lambda r:r.fulfill(json={'available':True}))
     def recognize(route):
@@ -14,9 +14,8 @@ def test_explicit_remote_choice_privacy_preview_and_manual_confirmation(static_s
         route.fulfill(json={'text':TEXT,'blocks':[],'engine':'rapidocr-v5-eslav'})
     page.route('**/api/v1/receipt-ocr/recognize',recognize)
     start(page,static_server_url,width)
-    expect(page.locator('#scanEngine')).to_have_value('local')
+    expect(page.locator('#scanEngine')).to_have_value('rapid')
     upload(page);assert sent==[]
-    page.locator('#scanEngine').select_option('rapid')
     expect(page.locator('#scanPrivacy')).to_contain_text('сервер ФинАсиста')
     assert sent==[]
     page.click('#scanRun');expect(page.locator('#scanReview')).to_be_visible()
@@ -53,6 +52,32 @@ def test_cancel_remote_ignores_late_result(static_server_url,page_with_receipt_a
     expect(page.locator('#scanReview')).not_to_be_visible()
     assert page.evaluate('window.remoteCancelled')
     expect(page.locator('#scanRun')).to_be_enabled()
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('failure',['unavailable','network'])
+def test_unavailable_default_falls_back_with_explanation(static_server_url,page_with_receipt_api_mock,failure):
+    page=page_with_receipt_api_mock
+    page.route('**/api/v1/receipt-ocr/status',lambda r:r.abort() if failure=='network' else r.fulfill(json={'available':False}))
+    start(page,static_server_url,320)
+    expect(page.locator('#scanEngine')).to_have_value('local')
+    expect(page.locator('#scanPrivacy')).to_contain_text('RapidOCR недоступен')
+    stub(page);upload(page);page.click('#scanRun')
+    expect(page.locator('#scanReview')).to_be_visible()
+
+
+@pytest.mark.e2e
+def test_manual_local_choice_survives_reopening(static_server_url,page_with_receipt_api_mock):
+    page=page_with_receipt_api_mock
+    page.route('**/api/v1/receipt-ocr/status',lambda r:r.fulfill(json={'available':True}))
+    start(page,static_server_url)
+    expect(page.locator('#scanEngine')).to_have_value('rapid')
+    page.locator('#scanEngine').select_option('local')
+    page.click('#scanClose')
+    with page.expect_response('**/api/v1/receipt-ocr/status'):
+        page.click('#openReceiptScan')
+    expect(page.locator('#scanEngine')).to_have_value('local')
+    expect(page.locator('#scanPrivacy')).to_have_text('Фото обрабатывается на устройстве.')
 
 
 @pytest.mark.e2e
