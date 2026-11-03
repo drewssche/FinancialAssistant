@@ -1,6 +1,6 @@
 (() => {
   const manifest = Array.isArray(window.__APP_SCRIPT_MANIFEST__) ? window.__APP_SCRIPT_MANIFEST__ : [];
-  const assetVersion = "20261102-rapidocr-default";
+  const assetVersion = "20261103-category-search-rows";
 
   function showBootstrapError(message) {
     const text = String(message || "Не удалось загрузить приложение.");

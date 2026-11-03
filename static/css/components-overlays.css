@@ -1016,7 +1016,25 @@
 
 /* Category matches explain the connection to catalogue products. */
 .category-product-match { display: block; margin-top: .3rem; font-size: .75rem; color: var(--muted); white-space: normal; overflow-wrap: anywhere; }
-.chip-btn:has(.category-product-match) { display: block; width: 100%; text-align: left; white-space: normal; }
+/* A category with product examples is a list row, not a pill-shaped control. */
+.chip-btn:has(.category-product-match) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  white-space: normal;
+  line-height: 1.4;
+}
+.chip-btn:has(.category-product-match):hover { transform: none; }
+.chip-btn > .category-product-match { margin: 0; width: 100%; }
+.chip-btn:has(.category-product-match) .category-chip-text { white-space: normal; overflow-wrap: anywhere; }
+
 .scan-category { position: relative; min-width: 0; }
 .scan-category-picker { padding: 8px; width: min(28rem, calc(100vw - 3rem)); max-height: 360px; }
 .scan-category-picker .is-focused { background: var(--surface-active, #243b59); outline: 1px solid var(--accent, #ff9a32); }
