@@ -165,3 +165,79 @@
  #dashboardProductWatches [data-watch-products] > .watch-product-card {display:grid;grid-row:span 2;grid-template-rows:subgrid;}
  #dashboardProductWatches [data-watch-events] > .watch-card {display:grid;grid-row:span 3;grid-template-rows:subgrid;}
 }
+
+/* Picker rows keep long labels and secondary hints inside their hover surface. */
+.receipt-template-suggestion.chip-btn {
+  min-width: 0;
+  height: auto;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  align-items: flex-start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+.receipt-template-suggestion-meta > * { min-width: 0; max-width: 100%; }
+.receipt-template-suggestion-meta .receipt-template-suggestion-brand { max-width: 100%; }
+.receipt-template-suggestion .item-brand-chip-name { white-space: normal; overflow-wrap: anywhere; }
+.receipt-store-options .receipt-store-option { height: auto; white-space: normal; line-height: 1.4; }
+.receipt-store-option > span:last-child { flex: 0 0 auto; }
+.app-popover .chip-btn.catalog-source-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  justify-items: start;
+  gap: 6px 8px;
+  max-width: 100%;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.app-popover .catalog-source-identity > .muted-small { grid-column: 2; overflow-wrap: anywhere; }
+.app-popover .catalog-source-identity .category-chip-text { white-space: normal; overflow-wrap: anywhere; }
+.app-popover .chip-btn:has(> .item-brand-chip) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.app-popover .chip-btn > .item-brand-chip .item-brand-chip-name { white-space: normal; overflow-wrap: anywhere; }
+.app-popover .chip-btn:is(.receipt-template-suggestion, .receipt-store-option, .catalog-source-identity):hover,
+.app-popover .chip-btn:has(> .item-brand-chip):hover { transform: none; }
+.receipt-entity-option.chip-btn:is(:hover, :focus-visible),
+.receipt-entity-option.chip-btn:is(:hover, :focus-visible) .catalog-media-thumb { transform: none; }
+.receipt-entity-option.chip-btn:is(:hover, :focus-visible) { box-shadow: inset 0 0 0 1px rgba(143, 184, 244, .52); }
+.receipt-entity-option:focus-visible { outline-offset: -2px; }
+.receipt-entity-option-check { top: 2px; right: 2px; }
+@media (hover: none), (pointer: coarse) {
+  .receipt-shop-picker.picker-with-create-footer .picker-scroll-options {
+    grid-template-columns: repeat(auto-fill, minmax(min(8rem, 100%), 1fr));
+  }
+  .receipt-entity-option {
+    height: auto;
+    min-height: 44px;
+    align-items: flex-start;
+    padding: 8px;
+  }
+  .receipt-entity-option-label { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+  .receipt-entity-option.active { padding-right: 20px; }
+}
+/* Explicit specificity prevents generic chip pills from overriding entity tiles. */
+.receipt-entity-option.chip-btn { border-radius: var(--radius-sm); text-align: left; }
+.receipt-entity-option-label { flex: 1 1 auto; }
+.app-popover .chip-btn > .item-brand-chip,
+.receipt-template-suggestion .item-brand-chip,
+.app-popover .catalog-source-identity .category-chip { border-radius: 8px; }
+@media (max-width: 700px) {
+  .receipt-brand-picker.app-popover,
+  .receipt-name-picker.app-popover:not(.scan-catalog-list),
+  #itemTemplateBrandPickerBlock { width: 100%; max-width: 100%; }
+}
+@media (max-width: 700px) and (pointer: coarse) {
+  .receipt-brand-picker,
+  .receipt-shop-picker.picker-with-create-footer .picker-scroll-options { grid-template-columns: minmax(0, 1fr); }
+}
