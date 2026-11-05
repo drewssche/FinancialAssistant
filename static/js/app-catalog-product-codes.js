@@ -32,7 +32,7 @@
         const wrap=document.createElement('label');wrap.className='field';const text=document.createElement('span');text.textContent=title;
         const input=document.createElement(field==='package_quantity'?'input':'select');input.dataset.offerSizeField=field;input.setAttribute('form','catalogProductForm');
         if(field==='package_quantity'){input.type='number';input.min='0.001';input.step='0.001';input.placeholder='Например, 200';}else input.innerHTML=window.App.measurements.options(current.size[field],field==='package_unit');
-        input.value=current.size[field]||'';input.disabled=!data||(field!=='sale_unit'&&!['piece','pack'].includes(current.size.sale_unit));
+        input.value=field==='package_quantity'?window.App.measurements.packageSize(current.size[field]):current.size[field]||'';input.disabled=!data||(field!=='sale_unit'&&!['piece','pack'].includes(current.size.sale_unit));
         input.onchange=()=>{const updated={...current.size,[field]:input.value||null};if(field==='sale_unit'&&!['piece','pack'].includes(updated.sale_unit)){updated.package_quantity=null;updated.package_unit=null;}sizes.set(id,updated);choices.delete(id);render();};
         wrap.append(text,input);grid.append(wrap);
       }

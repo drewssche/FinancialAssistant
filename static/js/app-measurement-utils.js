@@ -9,10 +9,13 @@
       .filter(([key]) => !content || key !== "pack")
       .map(([key, label]) => `<option value="${key}" ${key === selected ? "selected" : ""}>${label}</option>`).join("");
   }
+  function packageSize(value) {
+    return String(value ?? '').replace(/(\.\d*?[1-9])0+$|\.0+$/, '$1');
+  }
   function summary(value) {
     const sale = units[value.sale_unit] || "Размер не указан";
     return value.package_quantity && units[value.package_unit]
-      ? `${value.package_quantity} ${units[value.package_unit]} в упаковке` : sale;
+      ? `${packageSize(value.package_quantity).replace('.', ',')} ${units[value.package_unit]} в упаковке` : sale;
   }
   function priceLabel(value, discounted = false) {
     const unit = units[value.sale_unit] || 'ед.';
@@ -57,6 +60,7 @@
       write(packed?{sale_unit:key}:{sale_unit:key,package_quantity:'',package_unit:''}); sync();
     }});
     input.addEventListener('input',()=>{write({package_quantity:input.value});sync();});
+    input.addEventListener('blur',()=>{input.value=packageSize(quantity.value);});
     renderUnitButtons(size.querySelector('.measurement-units'),{choices:['g','kg','ml','l','piece'].map(key=>[key,units[key]]),onSelect:key=>{write({package_unit:key});sync();}});
     const clear=document.createElement('button');clear.type='button';clear.className='btn btn-secondary btn-icon';
     window.App.icons.apply(clear,'close','Не указывать размер');
@@ -65,7 +69,10 @@
       const packed=['piece','pack'].includes(sale.value);
       size.hidden=!packed;
       input.disabled=!packed;
-      input.value=quantity.value;
+      if (document.activeElement !== input || input.value !== quantity.value) {
+        const display = packageSize(quantity.value);
+        if (input.value !== display) input.value = display;
+      }
       input.required=packed&&Boolean(unit.value);
       input.setCustomValidity(packed&&quantity.value&&!unit.value?'Выберите единицу размера: г, кг, мл, л или шт.':'');
       saleButtons.querySelectorAll('button').forEach(button=>{
@@ -81,5 +88,5 @@
     return {refresh:sync};
   }
   window.App = window.App || {};
-  window.App.measurements = { fields, units, snapshot, options, summary, priceLabel, quantityLabel, renderUnitButtons, mount };
+  window.App.measurements = { fields, units, snapshot, options, packageSize, summary, priceLabel, quantityLabel, renderUnitButtons, mount };
 })();
