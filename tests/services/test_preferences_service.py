@@ -268,3 +268,72 @@ def test_update_preferences_preserves_bank_alert_marker_only_for_same_rule():
     assert reset_rule["last_above_marker"] == ""
     assert "action" not in preserved_rule
     assert "threshold" not in preserved_rule
+
+
+def test_ui_autosaves_preserve_pending_reminder_jobs():
+    from sqlalchemy import select
+    from app.db.models import PlanReminderJob
+
+    engine, factory = _make_session()
+    with factory() as db:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(UserPreference(user_id=1, preferences_version=1, data={
+            "plans": {"reminders_enabled": True, "reminder_time": "09:00"},
+            "ui": {"timezone": "Europe/Minsk"},
+        }))
+        db.add(PlanOperation(id=1, user_id=1, kind="expense", amount="10.00",
+                            scheduled_date=date(2030, 3, 20), status="active",
+                            recurrence_enabled=False))
+        db.commit()
+        service = PreferencesService(db)
+        service.plan_reminder_service.sync_user_jobs(user_id=1)
+        db.commit()
+        original = list(db.scalars(select(PlanReminderJob)))
+        assert len(original) == 1
+        job_id = original[0].id
+        for period in ["week", "month", "day"]:
+            service.update_preferences(user_id=1, preferences_version=1, data={
+                "plans": {"reminders_enabled": True, "reminder_time": "09:00"},
+                "ui": {"timezone": "Europe/Minsk", "scale_percent": 100},
+                "dashboard": {"period": period},
+            })
+        jobs = list(db.scalars(select(PlanReminderJob)))
+        assert len(jobs) == 1
+        assert jobs[0].id == job_id and jobs[0].status == "pending"
+    engine.dispose()
+
+
+def test_reminder_sync_uses_effective_debt_fallback_and_timezone(monkeypatch):
+    from copy import deepcopy
+    engine, factory = _make_session()
+    with factory() as db:
+        data = {"plans": {"reminders_enabled": True, "reminder_time": "09:00"},
+                "ui": {"timezone": "auto", "browser_timezone": "Europe/Minsk"}}
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(UserPreference(user_id=1, preferences_version=1, data=data))
+        db.commit()
+        service = PreferencesService(db)
+        calls = []
+        monkeypatch.setattr(service.plan_reminder_service, "sync_user_jobs", lambda **kw: calls.append("plans"))
+        monkeypatch.setattr(service.debt_reminder_service, "sync_user_jobs", lambda **kw: calls.append("debts"))
+        def save():
+            service.update_preferences(user_id=1, preferences_version=1, data=deepcopy(data))
+        data["plans"]["reminder_time"] = "10:00"
+        save()
+        assert calls == ["plans", "debts"]  # debt settings inherit plans
+        calls.clear()
+        data["debts"] = {"reminders_enabled": True, "reminder_time": "10:00"}
+        save()
+        assert not calls  # explicit settings match the inherited schedule
+        data["plans"]["reminder_time"] = "11:00"
+        save()
+        assert calls == ["plans"]
+        calls.clear()
+        data["ui"]["browser_timezone"] = "UTC"
+        save()
+        assert calls == ["plans", "debts"]
+        calls.clear()
+        data["debts"]["reminders_enabled"] = False
+        save()
+        assert calls == ["debts"]
+    engine.dispose()

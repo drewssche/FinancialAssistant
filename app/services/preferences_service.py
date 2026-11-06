@@ -22,9 +22,16 @@ class PreferencesService:
         # the browser's stale payload cannot erase that marker.
         current = self.repo.get_fresh(user_id, for_update=True)
         merged_data = self._preserve_currency_runtime_state(current.data, data)
+        # Filters, sorting and other UI autosaves must not rebuild reminders.
+        # Compare effective settings, including legacy debt fallback and timezone.
+        changed_reminders = [
+            service for service in (self.plan_reminder_service, self.debt_reminder_service)
+            if service._get_user_reminder_config_from_prefs(user_id=user_id, prefs=current.data or {})
+            != service._get_user_reminder_config_from_prefs(user_id=user_id, prefs=merged_data)
+        ]
         item = self.repo.update(user_id=user_id, preferences_version=preferences_version, data=merged_data)
-        self.plan_reminder_service.sync_user_jobs(user_id=user_id)
-        self.debt_reminder_service.sync_user_jobs(user_id=user_id)
+        for service in changed_reminders:
+            service.sync_user_jobs(user_id=user_id)
         self.db.commit()
         self.db.refresh(item)
         plans_prefs = data.get("plans") if isinstance(data.get("plans"), dict) else {}
