@@ -343,8 +343,24 @@
           const heading=document.createElement('span');heading.textContent='Цена в каталоге';
           const value=document.createElement('strong');value.textContent=Number(reference.amount).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+(reference.currency?' '+reference.currency:'');
           const date=document.createElement('small');date.textContent=[node('scanShop').value,reference.recorded_at?.split('-').reverse().join('.')].filter(Boolean).join(' · ');
-          host.title='Последняя сохранённая цена выбранного магазина. На цену, скидку и оплату по чеку не влияет.';
-          host.append(heading,value,date);
+          host.title='Последняя сохранённая цена выбранного магазина. Подставляется только по кнопке.';
+          const apply=document.createElement('button');apply.type='button';
+          apply.className='btn btn-secondary scan-apply-catalog-price';apply.textContent='Подтянуть цену';
+          apply.dataset.catalogCurrency=reference.currency||'';
+          apply.onclick=()=>{
+            if(reference.currency&&reference.currency!==node('scanCurrency').value)return;
+            const price=inputMoney(String(reference.amount));if(!Number.isSafeInteger(price)||price<=0)return;
+            row.price=price;delete row.discount_basis;
+            const priceInput=el.querySelector('[data-scan-field=price]');priceInput.value=decimal(price);
+            // Missing quantity must not erase the paid amount read from the receipt.
+            if(Number.isFinite(row.quantity)&&row.quantity>0){
+              for(const field of parser.recalculateRow(row,'price')){
+                el.querySelector(`[data-scan-field=${field}]`).value=decimal(row[field]);
+              }
+            }
+            node('scanConfirmed').checked=false;validate();priceInput.focus({preventScroll:true});
+          };
+          host.append(heading,value,apply,date);
         }
         if(row.catalog&&row.catalog_size_from_name){const hint=document.createElement('small');hint.textContent='Размер упаковки подставлен из названия товара в каталоге';host.append(hint);}
         if(row.site_measurement_before&&!row.measurement_user_edited){const hint=document.createElement('small');hint.textContent='Фасовка подставлена с сайта выбранного магазина. Сохранится вместе с чеком.';host.append(hint);}
@@ -481,6 +497,11 @@
       hint.textContent=messages.join(' · ');hint.hidden=!messages.length;
       el.classList.toggle('has-error',Boolean(messages.length||codeErrors[index]));
       const row=draft.rows[index],calculation=el.querySelector('.scan-row-calculation');
+      const applyPrice=el.querySelector('.scan-apply-catalog-price');
+      if(applyPrice){
+        applyPrice.disabled=Boolean(applyPrice.dataset.catalogCurrency&&applyPrice.dataset.catalogCurrency!==node('scanCurrency').value);
+        applyPrice.title=applyPrice.disabled?'Валюта цены отличается от валюты чека':'Подставить цену и пересчитать оплату по количеству и скидке';
+      }
       const gross=Number.isFinite(row.quantity)&&row.quantity>0&&row.quantity<=100000&&Number.isSafeInteger(row.price)&&row.price>0?parser.subtotal(row.price,row.quantity):null;
       const show=gross!==null&&Number.isInteger(row.discount)&&row.discount>0;
       calculation.hidden=!show;

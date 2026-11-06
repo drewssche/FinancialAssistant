@@ -2,7 +2,9 @@
 import hashlib
 import json
 from datetime import timedelta, timezone
+from collections import defaultdict
 from sqlalchemy import select
+from app.db.models import ItemSource
 from app.db.models.catalog_identity import CatalogOfferIdentity, CatalogVariant, CatalogVariantCode
 from app.db.models.catalog_product import CatalogProduct
 from app.db.models.operation_item_template import OperationItemTemplate
@@ -34,17 +36,22 @@ class CatalogMatchService:
         variants = list(self.db.scalars(select(CatalogVariant).where(
             CatalogVariant.product_id == product.id, CatalogVariant.user_id == offer.user_id,
             CatalogVariant.is_archived.is_(False))))
+        codes = list(self.db.execute(select(CatalogVariantCode.variant_id, CatalogVariantCode.code).where(
+            CatalogVariantCode.user_id == offer.user_id,
+            CatalogVariantCode.variant_id.in_([v.id for v in variants]))))
+        return self._context(offer, product, identity, variants, codes, self.watch.provider(offer))
+
+    @staticmethod
+    def _context(offer, product, identity, variants, code_rows, source_provider):
         if identity and identity.variant_id:
             variants = [v for v in variants if v.id == identity.variant_id]
         else:
-            # Only the current package's codes; historical sizes must not leak in.
             variants = [v for v in variants if (v.sale_unit, v.package_quantity, v.package_unit) ==
                         (product.sale_unit, product.package_quantity, product.package_unit)]
-        codes = list(self.db.scalars(select(CatalogVariantCode.code).where(
-            CatalogVariantCode.user_id == offer.user_id,
-            CatalogVariantCode.variant_id.in_([v.id for v in variants]))))
+        variant_ids = {v.id for v in variants}
+        codes = [code for variant_id, code in code_rows if variant_id in variant_ids]
         context = {'product_id': product.id, 'source_id': offer.source_id,
-                   'provider': self.watch.provider(offer), 'barcodes': sorted(barcodes(codes)),
+                   'provider': source_provider, 'barcodes': sorted(barcodes(codes)),
                    'barcode_queries': sorted(set(c for c in codes if barcodes([c]))),
                    'article': (identity.retailer_code or '').strip() if identity else '',
                    'variant_ids': sorted(v.id for v in variants),
@@ -121,7 +128,7 @@ class CatalogMatchService:
             if not queries:
                 row.state = 'missing_codes'
                 self.db.commit()
-                return False
+                return True
             candidates = []
             state, error, delay = 'not_found', None, 6
             try:
@@ -180,7 +187,9 @@ class CatalogMatchService:
             return True
 
     def discover_pending(self, limit=2, user_id=None):
-        stmt = select(OperationItemTemplate).join(CatalogProduct, CatalogProduct.id == OperationItemTemplate.product_id).outerjoin(
+        stmt = select(OperationItemTemplate, CatalogProduct, CatalogOfferIdentity, CatalogOfferMatch, ItemSource.name).join(CatalogProduct, CatalogProduct.id == OperationItemTemplate.product_id).outerjoin(
+            CatalogOfferIdentity, CatalogOfferIdentity.template_id == OperationItemTemplate.id).outerjoin(
+            ItemSource, ItemSource.id == OperationItemTemplate.source_id).outerjoin(
             CatalogOfferWatch, CatalogOfferWatch.template_id == OperationItemTemplate.id).outerjoin(
             CatalogOfferMatch, CatalogOfferMatch.template_id == OperationItemTemplate.id).outerjoin(
             CatalogWatch, CatalogWatch.product_id == CatalogProduct.id).where(
@@ -189,9 +198,45 @@ class CatalogMatchService:
             CatalogWatch.enabled.desc().nullslast(), CatalogOfferMatch.next_check_at.asc().nullslast(), OperationItemTemplate.id)
         if user_id is not None:
             stmt = stmt.where(OperationItemTemplate.user_id == user_id)
+        if limit <= 0:
+            return 0
+        # Cheap batch preflight: unchanged offers whose next check is in the
+        # future must not acquire a connection/lock and reload the full context
+        # one by one. discover() still rechecks everything under its lock.
+        rows = self.db.execute(stmt).all()
+        product_ids = {product.id for _, product, _, _, _ in rows}
+        if not product_ids:
+            return 0
+        variants = defaultdict(list)
+        for variant in self.db.scalars(select(CatalogVariant).where(
+                CatalogVariant.product_id.in_(product_ids), CatalogVariant.is_archived.is_(False))):
+            variants[(variant.user_id, variant.product_id)].append(variant)
+        codes = defaultdict(list)
+        for uid, pid, vid, code in self.db.execute(
+                select(CatalogVariantCode.user_id, CatalogVariant.product_id,
+                       CatalogVariantCode.variant_id, CatalogVariantCode.code)
+                .join(CatalogVariant, CatalogVariant.id == CatalogVariantCode.variant_id)
+                .where(CatalogVariant.product_id.in_(product_ids), CatalogVariant.is_archived.is_(False))):
+            codes[(uid, pid)].append((vid, code))
+        pending = []
+        checked_at = now()
+        for offer, product, identity, match, source_name in rows:
+            source_provider = provider.source_provider(source_name if offer.source_id else offer.shop_name)
+            if not source_provider or (match and match.state == 'paused'):
+                continue
+            _, fingerprint = self._context(
+                offer, product, identity, variants[(offer.user_id, product.id)],
+                codes[(offer.user_id, product.id)], source_provider)
+            if match and match.fingerprint == fingerprint:
+                due = match.next_check_at
+                due = due.replace(tzinfo=timezone.utc) if due.tzinfo is None else due
+                if due > checked_at:
+                    continue
+            pending.append(offer.id)
         processed = 0
-        for offer in self.db.scalars(stmt).all():
-            if self.discover(offer):
+        for template_id in pending:
+            offer = self.db.get(OperationItemTemplate, template_id)
+            if offer and not offer.is_archived and self.discover(offer):
                 processed += 1
             if processed >= limit:
                 break

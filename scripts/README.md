@@ -81,7 +81,7 @@ Backups are opt-in and require an `rclone` destination outside the VPS. The scri
 ```bash
 BACKUP_REMOTE_DIR=remote:financialassistant/postgres \
 BACKUP_ENCRYPTION_PASSWORD_FILE=/secure/financialassistant-backup.pass \
-BACKUP_RETENTION_DAYS=30 \
+BACKUP_RETENTION_DAYS=7 \
 ./scripts/backup_postgres.sh
 ```
 
@@ -96,7 +96,7 @@ BACKUP_ENCRYPTION_PASSWORD_FILE=/secure/financialassistant-backup.pass \
 Production deployment status (2026-07-19):
 - remote: Yandex Disk via root-only `rclone` config
 - schedule: `financialassistant-backup.timer`, daily at `04:15 Europe/Minsk`
-- retention: 30 days with permanent deletion of expired backup objects
+- retention: 7 days with permanent deletion of expired backup objects
 - recovery key copy outside the VPS: `~/.config/financialassistant/backup-encryption.pass`
 - first restore drill: passed against a disposable PostgreSQL database with 23 public tables
 
@@ -115,7 +115,7 @@ The timer environment `/root/.config/financialassistant-backup.env` selects
 `RCLONE_CONFIG=/root/.config/financialassistant-webdav.conf` and
 `BACKUP_REMOTE_DIR=yandex_backup_webdav:ФинАсист/PostgreSQL`. Keep the original
 REST configuration and a private copy of the timer environment for rollback.
-The destination folder, 04:15 Minsk schedule and 30-day retention are unchanged.
+The destination folder and 04:15 Minsk schedule are unchanged. Retention was reduced to seven days on 6 November 2026.
 
 The provider may return 500 or time out before its uploaded object becomes
 visible. Each transfer now requires downloading the encrypted body and comparing

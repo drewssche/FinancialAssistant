@@ -519,3 +519,50 @@ def test_create_product_footer_stays_visible_while_results_scroll(static_server_
     expect(picker).to_be_hidden();expect(row.locator('.scan-match')).to_contain_text('Новый товар')
     expect(name).to_have_value(query)
     expect(row.locator('[data-scan-field=total]')).to_have_value('4.99')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width', [320, 1440])
+def test_apply_catalog_price_is_explicit_and_preserves_missing_quantity_total(
+        static_server_url, page_with_receipt_api_mock, width):
+    from tests.e2e.test_receipt_codes_e2e import respond, FOUND, CODE
+    p = page_with_receipt_api_mock
+    start(p, static_server_url, width)
+    respond(p, items=[{**FOUND, 'catalog_price': {
+        'amount': '3.39', 'currency': 'BYN', 'recorded_at': '2026-03-31'}}])
+    stub(p, f'ООО ГРИНРОЗНИЦА\nКапучино\n{CODE} 2.29 x1.000 2.29\nИТОГО К ОПЛАТЕ 2.29\n24.10.2026 14:31:41')
+    upload(p); p.click('#scanRun')
+    row = p.locator('.scan-row').first
+    price = row.locator('[data-scan-field=price]')
+    quantity = row.locator('[data-scan-field=quantity]')
+    paid = row.locator('[data-scan-field=total]')
+    discount = row.locator('[data-scan-field=discount]')
+    button = row.get_by_role('button', name='Подтянуть цену', exact=True)
+    expect(button).to_be_visible()
+    expect(price).to_have_value('2.29')
+    p.locator('#scanConfirmed').check()
+    button.click()
+    expect(price).to_have_value('3.39')
+    expect(paid).to_have_value('3.39')
+    expect(discount).to_have_value('0.00')
+    expect(p.locator('#scanConfirmed')).not_to_be_checked()
+    quantity.fill('2')
+    discount.fill('0.20')
+    button.click()
+    expect(paid).to_have_value('6.58')
+    expect(discount).to_have_value('0.20')
+    quantity.fill('')
+    paid.fill('3.39')
+    price.fill('')
+    paid.fill('3.39')
+    button.click()
+    expect(price).to_have_value('3.39')
+    expect(quantity).to_have_value('')
+    expect(paid).to_have_value('3.39')
+    p.select_option('#scanCurrency', 'USD')
+    expect(button).to_be_disabled()
+    p.select_option('#scanCurrency', 'BYN')
+    expect(button).to_be_enabled()
+    button.scroll_into_view_if_needed()
+    assert p.locator('#receiptScanDialog').evaluate('e=>e.scrollWidth<=e.clientWidth+1')
+    p.screenshot(path=f'/tmp/fa-catalog-price-button-{width}.png')

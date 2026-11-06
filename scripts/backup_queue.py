@@ -186,7 +186,7 @@ def upload_queue(spool: Path, remote: str, status: dict) -> bool:
 def backup(spool: Path) -> int:
     max_bytes = positive_env("BACKUP_SPOOL_MAX_MB", 512) * 1024 * 1024
     max_age = positive_env("BACKUP_SPOOL_MAX_AGE_DAYS", 7)
-    retention = positive_env("BACKUP_RETENTION_DAYS", 30)
+    retention = positive_env("BACKUP_RETENTION_DAYS", 7)
     remote = os.environ["BACKUP_REMOTE_DIR"]
     if not remote.strip():
         raise ValueError("BACKUP_REMOTE_DIR must not be empty")

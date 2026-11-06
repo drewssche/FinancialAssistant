@@ -177,3 +177,69 @@ def test_edostavka_article_autolinks_unavailable_product_missing_from_search(cli
         assert db.get(CatalogOfferMatch,tid).state=='linked'
         assert not list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events())))
     assert paths==['/search','/product/870666','/product/870666']
+
+
+def test_discovery_batch_skips_unchanged_offers_without_per_offer_queries(client, monkeypatch):
+    from sqlalchemy import event
+    pid, tid = setup(client, monkeypatch)
+    with database() as db:
+        original = db.get(OperationItemTemplate, tid)
+        identity = db.get(CatalogOfferIdentity, tid)
+        uid, sid, vid = original.user_id, original.source_id, identity.variant_id
+        service = CatalogMatchService(db)
+        _, fingerprint = service.context(original)
+        for n in range(80):
+            offer = OperationItemTemplate(user_id=uid, product_id=pid, source_id=sid,
+                shop_name='Green', name=f'Milk {n}', name_ci=f'milk {n}')
+            db.add(offer); db.flush()
+            db.add(CatalogOfferIdentity(template_id=offer.id, user_id=uid, variant_id=vid, retailer_code='123'))
+            db.add(CatalogOfferMatch(template_id=offer.id, user_id=uid, fingerprint=fingerprint,
+                state='not_found', next_check_at=now()+timedelta(hours=6), candidates=[]))
+        db.add(CatalogOfferMatch(template_id=tid, user_id=uid, fingerprint=fingerprint,
+            state='not_found', next_check_at=now()+timedelta(hours=6), candidates=[]))
+        db.commit()
+    with database() as db:
+        queries = []
+        def observe(conn, cursor, statement, *args):
+            queries.append(statement)
+        event.listen(db.bind, 'before_cursor_execute', observe)
+        try:
+            service = CatalogMatchService(db)
+            monkeypatch.setattr(service, 'discover', lambda offer: pytest.fail('Not due: must skip before locking'))
+            assert service.discover_pending() == 0
+            assert len(queries) <= 4
+        finally:
+            event.remove(db.bind, 'before_cursor_execute', observe)
+
+
+def test_batch_discovery_rechecks_changed_codes_before_due_time(client, monkeypatch):
+    pid, tid = setup(client, monkeypatch)
+    monkeypatch.setattr(provider, 'search_products', lambda *args: [])
+    with database() as db:
+        assert CatalogMatchService(db).discover_pending() == 1
+    client.patch(f'/api/v1/operations/catalog-products/{pid}', json={
+        'codes': {'retailers': [{'template_id': tid, 'retailer_code': '456'}]}})
+    seen = []
+    monkeypatch.setattr(provider, 'search_products', lambda *args: seen.append(args) or [])
+    with database() as db:
+        assert CatalogMatchService(db).discover_pending() == 1
+    assert any(args[1] == '456' for args in seen)
+
+
+def test_missing_codes_count_toward_background_batch_limit(client, monkeypatch):
+    pid, tid = setup(client, monkeypatch)
+    with database() as db:
+        original = db.get(OperationItemTemplate, tid)
+        db.query(CatalogVariantCode).delete()
+        db.get(CatalogOfferIdentity, tid).retailer_code = None
+        for n in range(4):
+            db.add(OperationItemTemplate(user_id=original.user_id, product_id=pid,
+                source_id=original.source_id, shop_name='Green', name=f'No code {n}', name_ci=f'no code {n}'))
+        db.commit()
+    monkeypatch.setattr(provider, 'search_products', lambda *args: pytest.fail('No codes: no internet request'))
+    with database() as db:
+        assert CatalogMatchService(db).discover_pending(limit=2) == 2
+        assert len(list(db.scalars(select(CatalogOfferMatch)))) == 2
+        assert CatalogMatchService(db).discover_pending(limit=2) == 2
+        assert len(list(db.scalars(select(CatalogOfferMatch)))) == 4
+        assert CatalogMatchService(db).discover_pending(limit=2) == 1
