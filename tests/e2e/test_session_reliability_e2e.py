@@ -713,3 +713,31 @@ def test_category_icon_picker_stays_above_long_lived_modal_and_aligns_to_toggle(
     page.locator("#editCategoryIconPopover button[data-icon='🚕']").click()
     expect(page.locator("#editCategoryIconToggle")).to_have_text("🚕")
     expect(picker).to_be_hidden()
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("expired", [False, True])
+def test_browser_login_does_not_load_catalog_or_require_mini_app(static_server_url, session_page, expired):
+    page, counters = session_page
+    page.route("https://telegram.org/js/telegram-web-app.js", lambda route: route.fulfill(body=""))
+    page.route("https://telegram.org/js/telegram-widget.js*", lambda route: route.fulfill(body=""))
+    page.route("**/api/v1/auth/public-config", lambda route: route.fulfill(json={
+        "telegram_bot_username": "test_bot", "browser_login_available": True,
+    }))
+    seen = []
+    page.on("request", lambda request: seen.append(urlparse(request.url).path))
+    if expired:
+        page.add_init_script(f"localStorage.setItem('access_token', {json.dumps(_fake_token(-10))});")
+        for path in ["users/me", "auth/refresh"]:
+            page.route(f"**/api/v1/{path}", lambda route: route.fulfill(status=401, json={"detail": "Expired"}))
+    page.goto(f"{static_server_url}/static/index.html")
+    expect(page.locator("#loginContent")).to_be_visible()
+    expect(page.locator("#telegramBrowserLoginWrap")).to_be_visible()
+    expect(page.locator("#appShell")).to_be_hidden()
+    expect(page.locator("#sessionRecoveryOverlay")).to_be_hidden()
+    assert not page.evaluate("localStorage.getItem('access_token')")
+    assert "/api/v1/operations/catalog-products" not in seen
+    assert seen.count("/api/v1/auth/refresh") == int(expired)
+    assert counters["telegram_auth"] == 0
+    assert "Mini App" not in page.locator("#loginAlert").inner_text()
+    expect(page.locator("#toastArea")).to_be_empty()

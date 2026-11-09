@@ -219,7 +219,7 @@
           });
         }
       }
-      throw new Error("Сессия истекла, авторизуйся снова");
+      throw Object.assign(new Error("Сессия истекла. Войдите снова через Telegram."), { status: 401 });
     }
 
     if (!response.ok) {

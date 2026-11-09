@@ -139,16 +139,11 @@
   }
 
   async function requestFreshAccessToken() {
-    const response = await fetch("/api/v1/auth/refresh", {
+    return core.requestJson("/api/v1/auth/refresh", {
       method: "POST",
       headers: core.authHeaders(),
+      skipAuthRecovery: true,
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const detail = typeof data.detail === "string" ? data.detail : "Не удалось продлить сессию";
-      throw new Error(detail);
-    }
-    return data;
   }
 
   async function refreshSession(options = {}) {
@@ -196,11 +191,18 @@
     try {
       await refreshSession();
       return true;
-    } catch {}
+    } catch (err) {
+      if (err.status !== 401) throw err;
+      if (!hasTelegramLaunchContext()) {
+        if (state.currentUserId) showSessionRecovery(err.message);
+        return false;
+      }
+    }
     try {
       await authenticateTelegramInPlace();
       return true;
     } catch (err) {
+      if (!state.currentUserId) throw err;
       showSessionRecovery(err instanceof Error ? err.message : String(err));
       return false;
     }
@@ -212,19 +214,21 @@
         try {
           await refreshSession({ manual: true });
           return true;
-        } catch {}
+        } catch (err) {
+          if (err.status !== 401) throw err;
+        }
+      }
+      if (!hasTelegramLaunchContext()) {
+        hideSessionRecovery();
+        applyTelegramLoginUi();
+        core.showLogin("Сессия истекла. Войдите снова через Telegram.");
+        return false;
       }
       await authenticateTelegramInPlace();
       core.notify?.("Сессия восстановлена", { type: "success" });
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      if (!hasTelegramLaunchContext()) {
-        hideSessionRecovery();
-        applyTelegramLoginUi();
-        core.showLogin(message);
-        return false;
-      }
       showSessionRecovery(message);
       core.notify?.(message, { type: "error" });
       return false;
@@ -232,7 +236,7 @@
   }
 
   async function maybeRefreshSession() {
-    if (document.visibilityState === "hidden") return false;
+    if (document.visibilityState === "hidden" || el.appShell.classList.contains("hidden")) return false;
     if (!state.token || !state.sessionExpiresAt) {
       updateSessionStatus();
       return false;
@@ -240,13 +244,7 @@
     const remainingMs = sessionRemainingMs();
     updateSessionStatus();
     if (remainingMs > AUTO_REFRESH_WINDOW_MS) return false;
-    if (remainingMs <= 0) return recoverUnauthorized();
-    try {
-      await refreshSession();
-      return true;
-    } catch {
-      return recoverUnauthorized();
-    }
+    return recoverUnauthorized();
   }
 
   function bindSessionLifecycle() {
@@ -255,7 +253,7 @@
     const resume = () => {
       if (document.visibilityState === "hidden") return;
       if (state.token) {
-        maybeRefreshSession().catch(() => {});
+        if (state.currentUserId) maybeRefreshSession().catch(() => {});
         return;
       }
       tryAutoTelegramLogin({ waitForReady: true, bootstrap: true }).catch(() => {});
@@ -314,6 +312,7 @@
       body: JSON.stringify(authData),
     });
     storeAccessToken(data);
+    hideSessionRecovery();
     await bootstrapApp();
   }
 

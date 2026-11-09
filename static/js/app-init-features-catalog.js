@@ -49,7 +49,6 @@
         actions.setItemCatalogView?.(button.dataset.itemCatalogView);
       }
     });
-    actions.setItemCatalogView?.(state.itemCatalogView || "products");
 
     if (el.itemTemplateBrandSearch) {
       el.itemTemplateBrandSearch.addEventListener("focus", () => itemCatalogFeature.handleItemTemplateBrandSearchFocus?.());

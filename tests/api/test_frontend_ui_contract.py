@@ -194,7 +194,7 @@ def test_session_refresh_preserves_runtime_ui_and_retries_unauthorized_requests(
     core_actions = (REPO_ROOT / "static" / "js" / "app-core-actions.js").read_text(encoding="utf-8")
     startup = (REPO_ROOT / "static" / "js" / "app-init-startup.js").read_text(encoding="utf-8")
 
-    assert 'fetch("/api/v1/auth/refresh"' in session_auth
+    assert 'core.requestJson("/api/v1/auth/refresh"' in session_auth
     assert "waitForTelegramInitData" in session_auth
     assert 'document.addEventListener("visibilitychange", resume)' in session_auth
     assert 'window.addEventListener("pageshow", resume)' in session_auth

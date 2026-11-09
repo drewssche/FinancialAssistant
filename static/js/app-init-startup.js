@@ -57,11 +57,12 @@
 
     if (state.token) {
       getSessionFeature().bootstrapApp?.().catch((err) => {
-        if (!state.token) {
-          core.showLogin(String(err));
+        const message = err instanceof Error ? err.message : String(err);
+        if (!state.currentUserId || !state.token) {
+          if (err.status === 401 && state.token) getSessionFeature().logout(false);
+          core.showLogin(message);
           return;
         }
-        const message = err instanceof Error ? err.message : String(err);
         core.showApp();
         core.setStatus(`Ошибка загрузки: ${message}`);
       });
