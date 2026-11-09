@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>ФинАсист</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=2" />
-  <link rel="stylesheet" href="/static/styles.css?v=20261109-browser-session" />
+  <link rel="stylesheet" href="/static/styles.css?v=20261109-login-startup" />
   </head>
   <body>
     <div id="loginScreen" class="login-screen">
@@ -32,6 +32,8 @@
             </a>
           </div>
           <div id="loginTelegramHint" class="login-alert is-info hidden" role="status" aria-live="polite"></div>
+          <button id="retryLoginConfig" class="btn btn-secondary hidden" type="button">Повторить запрос</button>
+          <button id="retryBootstrap" class="btn btn-secondary hidden" type="button">Повторить загрузку</button>
           <div id="loginAlert" class="login-alert hidden" role="status" aria-live="polite"></div>
         </div>
       </section>
@@ -43,8 +45,8 @@
 
     <div id="toastArea" class="toast-area"></div>
 
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="/static/js/app-manifest.js?v=20261109-browser-session"></script>
-    <script src="/static/js/app-bootstrap.js?v=20261109-browser-session"></script>
+    <script async id="telegramSdk" src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/static/js/app-manifest.js?v=20261109-login-startup"></script>
+    <script src="/static/js/app-bootstrap.js?v=20261109-login-startup"></script>
   </body>
 </html>

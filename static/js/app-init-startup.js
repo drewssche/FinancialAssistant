@@ -38,9 +38,14 @@
 
   async function startApp() {
     core.showSessionChecking?.();
-    if (getTelegramWebApp()?.init) {
-      getTelegramWebApp().init();
-    }
+    getTelegramWebApp()?.init?.();
+    document.getElementById("telegramSdk")?.addEventListener("load", () => {
+      getTelegramWebApp()?.init?.();
+      getSessionFeature().refreshTelegramLoginUi?.();
+      if (!state.token && !el.loginContent?.classList.contains("hidden")) {
+        getSessionFeature().tryAutoTelegramLogin?.().catch((err) => core.showLogin(err.message));
+      }
+    }, { once: true });
 
     if (getCategoryActions().setupCategoryIconPickers) {
       getCategoryActions().setupCategoryIconPickers();

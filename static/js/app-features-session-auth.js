@@ -11,6 +11,13 @@
   let bootstrapPromise = null;
   let sessionTimerId = null;
   let sessionLifecycleBound = false;
+  let sessionEpoch = 0;
+  let signedOut = false;
+  let loginConfigUnavailable = false;
+
+  function ensureCurrentSession(epoch) {
+    if (epoch !== sessionEpoch) throw new DOMException("Сессия изменилась", "AbortError");
+  }
 
   function parseTokenPayload(token) {
     try {
@@ -32,6 +39,7 @@
     const token = String(data?.access_token || "").trim();
     if (!token) throw new Error("Сервер не вернул токен доступа");
     const claims = parseTokenPayload(token);
+    signedOut = false;
     state.token = token;
     state.sessionExpiresAt = data?.expires_at || (claims.exp ? new Date(Number(claims.exp) * 1000).toISOString() : "");
     state.sessionStartedAt = tokenTimestampIso(claims.session_started_at || claims.iat);
@@ -152,8 +160,10 @@
     if (sessionRefreshPromise) return sessionRefreshPromise;
     state.sessionRefreshPending = true;
     updateSessionStatus();
+    const epoch = sessionEpoch;
     sessionRefreshPromise = requestFreshAccessToken()
       .then((data) => {
+        ensureCurrentSession(epoch);
         storeAccessToken(data, { renewed: true });
         hideSessionRecovery();
         if (manual) core.notify?.("Сессия продлена", { type: "success" });
@@ -169,6 +179,7 @@
 
   function authenticateTelegramInPlace(options = {}) {
     if (telegramAuthPromise) return telegramAuthPromise;
+    const epoch = sessionEpoch;
     telegramAuthPromise = (async () => {
       const initData = options.initData || await waitForTelegramInitData();
       if (!initData) throw new Error("Telegram не передал данные авторизации. Закройте и снова откройте Mini App.");
@@ -178,6 +189,7 @@
         body: JSON.stringify({ init_data: initData }),
         skipAuthRecovery: true,
       });
+      ensureCurrentSession(epoch);
       storeAccessToken(data);
       hideSessionRecovery();
       return true;
@@ -188,10 +200,12 @@
   }
 
   async function recoverUnauthorized() {
+    const epoch = sessionEpoch;
     try {
       await refreshSession();
       return true;
     } catch (err) {
+      ensureCurrentSession(epoch);
       if (err.status !== 401) throw err;
       if (!hasTelegramLaunchContext()) {
         if (state.currentUserId) showSessionRecovery(err.message);
@@ -295,9 +309,11 @@
   async function loadTelegramLoginConfig() {
     try {
       const data = await core.requestJson("/api/v1/auth/public-config");
+      loginConfigUnavailable = false;
       state.telegramBotUsername = String(data.telegram_bot_username || "").trim();
       state.browserTelegramLoginAvailable = data.browser_login_available === true;
     } catch {
+      loginConfigUnavailable = true;
       state.telegramBotUsername = "";
       state.browserTelegramLoginAvailable = false;
     }
@@ -306,11 +322,13 @@
   }
 
   async function telegramBrowserLogin(authData) {
+    const epoch = sessionEpoch;
     const data = await core.requestJson("/api/v1/auth/telegram/browser", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(authData),
     });
+    ensureCurrentSession(epoch);
     storeAccessToken(data);
     hideSessionRecovery();
     await bootstrapApp();
@@ -384,6 +402,12 @@
       && String(el.loginAlert.textContent || "").trim(),
     );
     el.loginTelegramHint.classList.toggle("hidden", hasLoginError);
+    const retry = document.getElementById("retryLoginConfig");
+    retry?.classList.toggle("hidden", !loginConfigUnavailable || hasInitData);
+    if (loginConfigUnavailable && !hasInitData) {
+      el.loginTelegramHint.textContent = "Не удалось загрузить настройки входа.";
+      return;
+    }
     el.loginTelegramHint.textContent = hasInitData
       ? "Mini App обнаружен — вход выполнится автоматически или по кнопке выше."
       : state.browserTelegramLoginAvailable === true
@@ -421,7 +445,9 @@
   }
 
   async function loadMe() {
+    const epoch = sessionEpoch;
     const me = await core.requestJson("/api/v1/users/me", { headers: core.authHeaders() });
+    ensureCurrentSession(epoch);
     state.currentUserId = Number(me.id || 0) || null;
     state.isAdmin = me.is_admin === true;
     state.accessStatus = me.status || "pending";
@@ -444,6 +470,8 @@
   }
 
   function logout(showMessage = true, options = {}) {
+    sessionEpoch++;
+    signedOut = true;
     const preserveLoginAlert = options?.preserveLoginAlert === true;
     sessionPreferences.cancelDebouncedPreferencesSave?.();
     localStorage.removeItem("access_token");
@@ -506,9 +534,11 @@
 
   async function bootstrapApp() {
     if (bootstrapPromise) return bootstrapPromise;
+    const epoch = sessionEpoch;
     bootstrapPromise = (async () => {
       await loadMe();
       await sessionPreferences.loadPreferences?.();
+      ensureCurrentSession(epoch);
       const navigation = getNavigationActions();
       if (navigation.applySectionUi) {
         navigation.applySectionUi();
@@ -531,12 +561,17 @@
 
   async function telegramLogin() {
     core.showSessionChecking?.("Входим через Telegram...");
-    await authenticateTelegramInPlace();
-    await bootstrapApp();
+    try {
+      await authenticateTelegramInPlace();
+      await bootstrapApp();
+    } catch (err) {
+      core.showLogin(err.message);
+      throw err;
+    }
   }
 
   function tryAutoTelegramLogin(options = {}) {
-    if (state.token) {
+    if (state.token || signedOut) {
       return Promise.resolve(false);
     }
     if (autoTelegramLoginPromise) return autoTelegramLoginPromise;
@@ -544,7 +579,7 @@
       const initData = options.waitForReady === false
         ? telegramInitData()
         : await waitForTelegramInitData();
-      if (!initData) {
+      if (!initData || state.token || signedOut) {
         return false;
       }
       core.showSessionChecking?.("Входим через Telegram...");
@@ -557,6 +592,15 @@
     return autoTelegramLoginPromise;
   }
 
+  document.getElementById("retryLoginConfig")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      await loadTelegramLoginConfig();
+    } finally {
+      button.disabled = false;
+    }
+  });
   hydrateStoredTokenMetadata();
   applyTelegramLoginUi();
   bindSessionLifecycle();

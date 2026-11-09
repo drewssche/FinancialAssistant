@@ -1,12 +1,17 @@
 (() => {
+  const bundle = document.currentScript?.dataset.bundle;
   const manifest = Array.isArray(window.__APP_SCRIPT_MANIFEST__) ? window.__APP_SCRIPT_MANIFEST__ : [];
-  const assetVersion = "20261109-browser-session";
+  const assetVersion = "20261109-login-startup";
 
   function showBootstrapError(message) {
     const text = String(message || "Не удалось загрузить приложение.");
     document.getElementById("loginLoading")?.classList.add("hidden");
     document.getElementById("loginContent")?.classList.remove("hidden");
     const loginAlert = document.getElementById("loginAlert");
+    document.getElementById("telegramLoginBtn")?.classList.add("hidden");
+    const retry = document.getElementById("retryBootstrap");
+    retry?.classList.remove("hidden");
+    retry?.addEventListener("click", () => window.location.reload(), { once: true });
     if (loginAlert) {
       loginAlert.textContent = text;
       loginAlert.classList.remove("hidden", "is-success", "is-info");
@@ -28,6 +33,17 @@
   }
 
   async function bootstrapApp() {
+    if (bundle) {
+      try {
+        await loadScript(bundle);
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        await loadScript(bundle).catch(() => {
+          throw new Error("Не удалось загрузить приложение. Проверьте соединение и повторите загрузку.");
+        });
+      }
+      return;
+    }
     if (!manifest.length) {
       showBootstrapError("Не найден manifest фронтенд-скриптов.");
       return;

@@ -56,3 +56,14 @@ def test_verify_and_extract_rejects_expired_auth_date():
 
     with pytest.raises(ValueError, match="expired"):
         verify_and_extract_telegram_user(init_data, TEST_BOT_TOKEN, max_age_seconds=300)
+
+
+def test_malformed_unicode_hash_is_rejected_for_both_login_methods():
+    from app.core.telegram_auth import verify_and_extract_telegram_login_widget_user
+
+    with pytest.raises(ValueError, match="hash mismatch"):
+        verify_and_extract_telegram_user("hash=ошибка", TEST_BOT_TOKEN, 3600)
+    with pytest.raises(ValueError, match="hash mismatch"):
+        verify_and_extract_telegram_login_widget_user(
+            {"id": 42, "auth_date": int(time.time()), "hash": "ошибка"}, TEST_BOT_TOKEN, 3600
+        )

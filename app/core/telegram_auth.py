@@ -27,7 +27,7 @@ def verify_and_extract_telegram_user(
     secret_key = hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
     expected_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
 
-    if not hmac.compare_digest(expected_hash, provided_hash):
+    if not provided_hash.isascii() or not hmac.compare_digest(expected_hash, provided_hash):
         raise ValueError("Invalid Telegram payload: hash mismatch")
 
     auth_date_raw = payload.get("auth_date")
@@ -107,7 +107,7 @@ def verify_and_extract_telegram_login_widget_user(
     secret_key = hashlib.sha256(bot_token.encode("utf-8")).digest()
     expected_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
 
-    if not hmac.compare_digest(expected_hash, provided_hash):
+    if not provided_hash.isascii() or not hmac.compare_digest(expected_hash, provided_hash):
         raise ValueError("Invalid Telegram login payload: hash mismatch")
 
     first_name = str(auth_data.get("first_name") or "").strip()

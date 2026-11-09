@@ -4,6 +4,7 @@ from uuid import uuid4
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from starlette.datastructures import Headers
 from fastapi import Depends
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -63,7 +64,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(api_router)
-app.mount("/static", StaticFiles(directory=str(static_dir), check_dir=False), name="static")
+
+
+class FrontendStaticFiles(StaticFiles):
+    async def get_response(self, path, scope):
+        if not (path.startswith("js/app-runtime-") and path.endswith(".js")):
+            return await super().get_response(path, scope)
+        accepted = Headers(scope=scope).get("accept-encoding", "").lower().split(",")
+        use_gzip = any(item.strip() == "gzip" for item in accepted)
+        response = await super().get_response(path + ".gz" if use_gzip else path, scope)
+        response.headers["Vary"] = "Accept-Encoding"
+        if use_gzip:
+            response.headers["Content-Encoding"] = "gzip"
+            response.headers["Content-Type"] = "application/javascript"
+        return response
+
+
+app.mount("/static", FrontendStaticFiles(directory=str(static_dir), check_dir=False), name="static")
 
 
 @app.middleware("http")
@@ -103,6 +120,8 @@ async def http_metrics_middleware(request, call_next):
             path = request.url.path
             if path == "/" or path == "/static/index.html":
                 response.headers["Cache-Control"] = "no-cache"
+            elif path.startswith("/static/") and response.status_code >= 400:
+                response.headers["Cache-Control"] = "no-store"
             elif path.startswith("/static/") and request.query_params.get("v"):
                 response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
             elif path.startswith("/static/"):

@@ -16,7 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN chown -R appuser:appuser /app \
+RUN python scripts/build_frontend.py \
+    && chown -R appuser:appuser /app \
     && mkdir -p /var/log/financialassistant \
     && chown appuser:appuser /var/log/financialassistant \
     && chmod 700 /var/log/financialassistant

@@ -741,3 +741,71 @@ def test_browser_login_does_not_load_catalog_or_require_mini_app(static_server_u
     assert counters["telegram_auth"] == 0
     assert "Mini App" not in page.locator("#loginAlert").inner_text()
     expect(page.locator("#toastArea")).to_be_empty()
+
+
+@pytest.mark.e2e
+def test_production_bundle_recovers_before_login(static_server_url, session_page, tmp_path):
+    import shutil
+    from scripts.build_frontend import build
+
+    page, _ = session_page
+    static = tmp_path / "static"
+    shutil.copytree(Path(__file__).resolve().parents[2] / "static", static)
+    bundle = build(static)
+    attempts = []
+    page_errors = []
+    page.on("pageerror", lambda error: page_errors.append(str(error)))
+    page.route("**/static/index.html", lambda route: route.fulfill(path=static / "index.html"))
+    page.route("https://telegram.org/js/telegram-web-app.js", lambda route: route.abort())
+    page.route("**/api/v1/auth/public-config", lambda route: route.fulfill(json={
+        "telegram_bot_username": None, "browser_login_available": False,
+    }))
+
+    def serve_bundle(route):
+        attempts.append(route.request.url)
+        if len(attempts) in {1, 2, 3}:
+            return route.abort()
+        return route.fulfill(path=bundle, content_type="application/javascript")
+
+    page.route(f"**/{bundle.name}?*", serve_bundle)
+    page.goto(f"{static_server_url}/static/index.html")
+    expect(page.locator("#retryBootstrap")).to_be_visible()
+    assert len(attempts) == 2
+    page.locator("#retryBootstrap").click()
+    expect(page.locator("#loginTelegramHint")).to_contain_text("Откройте приложение внутри Telegram")
+    assert len(attempts) == 4
+    assert page_errors == []
+
+
+@pytest.mark.e2e
+def test_explicit_logout_survives_late_refresh_and_resume(static_server_url, session_page):
+    page, counts = session_page
+    page.goto(f"{static_server_url}/static/index.html")
+    expect(page.locator("#appShell")).to_be_visible()
+    pending = []
+    page.route("**/api/v1/auth/refresh", lambda route: pending.append(route))
+    with page.expect_request("**/api/v1/auth/refresh"):
+        page.evaluate("() => { window.refreshResult = App.getRuntimeModule('session').refreshSession(); window.refreshResult.catch(() => {}); }")
+    page.evaluate("() => App.getRuntimeModule('session').logout()")
+    pending[0].fulfill(json={"access_token": _fake_token(30)})
+    page.evaluate("() => window.refreshResult.catch(() => {})")
+    page.evaluate("() => window.dispatchEvent(new Event('pageshow'))")
+    expect(page.locator("#loginContent")).to_be_visible()
+    assert not page.evaluate("localStorage.getItem('access_token')")
+    assert counts["telegram_auth"] == 1
+
+
+@pytest.mark.e2e
+def test_login_configuration_can_be_retried(static_server_url, session_page):
+    page, _ = session_page
+    responses = iter([503, 200])
+    page.route("https://telegram.org/js/telegram-web-app.js", lambda route: route.abort())
+    page.route("https://telegram.org/js/telegram-widget.js*", lambda route: route.fulfill(body=""))
+    page.route("**/api/v1/auth/public-config", lambda route: route.fulfill(
+        status=next(responses), json={"telegram_bot_username": "test_bot", "browser_login_available": True}
+    ))
+    page.goto(f"{static_server_url}/static/index.html")
+    expect(page.locator("#loginTelegramHint")).to_contain_text("Не удалось загрузить настройки входа")
+    page.locator("#retryLoginConfig").click()
+    expect(page.locator("#telegramBrowserLoginWrap")).to_be_visible()
+    expect(page.locator("#retryLoginConfig")).to_be_hidden()
