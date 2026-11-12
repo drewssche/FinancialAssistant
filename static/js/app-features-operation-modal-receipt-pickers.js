@@ -848,68 +848,59 @@
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "category_id", mode };
     }
 
-    async function loadReceiptTemplates(query = "", options = {}) {
+    async function loadReceiptCatalogPages(resource, cachePrefix, query, allPages) {
       const normalized = String(query || "").trim().toLowerCase();
-      const allPages = options.allPages === true && !normalized;
-      const cacheKey = `op:receipt:templates:q=${normalized}:all=${allPages ? "1" : "0"}`;
-      const cached = core.getUiRequestCache ? core.getUiRequestCache(cacheKey, RECEIPT_TEMPLATES_CACHE_TTL_MS) : null;
-      if (cached) {
-        return cached.items || [];
-      }
-      const params = new URLSearchParams({
-        page: "1",
-        page_size: "100",
-      });
-      if (normalized) {
-        params.set("q", normalized);
-      }
-      const payload = await core.requestJson(`/api/v1/operations/item-templates?${params.toString()}`, {
-        headers: core.authHeaders(),
-      });
-      const items = Array.isArray(payload.items) ? payload.items.slice() : [];
-      const total = Number(payload.total || items.length || 0);
-      if (allPages && total > items.length) {
-        const pageSize = Number(payload.page_size || 100) || 100;
-        const pageCount = Math.ceil(total / pageSize);
-        for (let page = 2; page <= pageCount; page += 1) {
-          const pageParams = new URLSearchParams(params);
-          pageParams.set("page", String(page));
-          const pagePayload = await core.requestJson(`/api/v1/operations/item-templates?${pageParams.toString()}`, {
-            headers: core.authHeaders(),
-          });
-          items.push(...(Array.isArray(pagePayload.items) ? pagePayload.items : []));
+      const fullCatalog = allPages && !normalized;
+      const cacheKey = `op:receipt:${cachePrefix}:q=${normalized}:all=${fullCatalog ? "1" : "0"}`;
+      const cached = core.getUiRequestCache?.(cacheKey, RECEIPT_TEMPLATES_CACHE_TTL_MS);
+      if (cached) return cached.items;
+      const ownerId = state.currentUserId;
+      const params = new URLSearchParams({ page_size: "100" });
+      if (normalized) params.set("q", normalized);
+      let complete = true;
+      let pages = 1;
+      const items = [];
+      const checkOwner = () => {
+        if (ownerId !== state.currentUserId) throw new DOMException("Session changed", "AbortError");
+      };
+      async function fetchPage(page) {
+        params.set("page", String(page));
+        for (let attempt = 0; ; attempt++) {
+          checkOwner();
+          try {
+            const payload = await core.requestJson(`/api/v1/operations/${resource}?${params}`, { headers: core.authHeaders() });
+            checkOwner();
+            if (Array.isArray(payload)) return payload;
+            const pageSize = Number(payload?.page_size) || 100;
+            const expected = Math.min(pageSize, Math.max(0, Number(payload?.total) - (page - 1) * pageSize));
+            if (!Array.isArray(payload?.items) || (fullCatalog && payload.items.length < expected)) {
+              throw new Error("Не удалось прочитать страницу каталога");
+            }
+            if (fullCatalog && page === 1) pages = Math.ceil(Number(payload.total) / pageSize) || 1;
+            return payload.items;
+          } catch (error) {
+            const temporary = !error.status || error.status === 408 || error.status === 429 || error.status >= 500;
+            if (!fullCatalog || !temporary || error.name === "AbortError") throw error;
+            if (attempt === 2) {
+              complete = false;
+              receiptUiState.hintsLoadFailed = true;
+              return [];
+            }
+            await new Promise(resolve => setTimeout(resolve, 400 * (attempt + 1)));
+          }
         }
       }
-      const result = { ...payload, items };
-      if (core.setUiRequestCache) {
-        core.setUiRequestCache(cacheKey, result);
+      for (let page = 1; page <= pages; page++) {
+        items.push(...await fetchPage(page));
       }
+      if (complete) core.setUiRequestCache?.(cacheKey, { items });
       return items;
     }
 
-    async function loadReceiptProducts(query = "", options = {}) {
-      const normalized = String(query || "").trim().toLowerCase();
-      const allPages = options.allPages === true && !normalized;
-      const cacheKey = `op:receipt:products:q=${normalized}:all=${allPages ? "1" : "0"}`;
-      const cached = core.getUiRequestCache?.(cacheKey, RECEIPT_TEMPLATES_CACHE_TTL_MS);
-      if (cached) return cached.items || [];
-      const params = new URLSearchParams({ page: "1", page_size: "100" });
-      if (normalized) params.set("q", normalized);
-      const payload = await core.requestJson(`/api/v1/operations/catalog-products?${params.toString()}`, { headers: core.authHeaders() });
-      const items = (Array.isArray(payload) ? payload : (payload.items || [])).slice();
-      const total = Number(payload?.total || items.length);
-      const pageSize = Number(payload?.page_size || 100) || 100;
-      if (allPages && total > items.length) {
-        for (let page = 2; page <= Math.ceil(total / pageSize); page += 1) {
-          const next = new URLSearchParams(params);
-          next.set("page", String(page));
-          const part = await core.requestJson(`/api/v1/operations/catalog-products?${next.toString()}`, { headers: core.authHeaders() });
-          items.push(...(Array.isArray(part) ? part : (part.items || [])));
-        }
-      }
-      core.setUiRequestCache?.(cacheKey, { ...payload, items });
-      return items;
-    }
+    const loadReceiptTemplates = (query = "", options = {}) =>
+      loadReceiptCatalogPages("item-templates", "templates", query, options.allPages === true);
+    const loadReceiptProducts = (query = "", options = {}) =>
+      loadReceiptCatalogPages("catalog-products", "products", query, options.allPages === true);
 
     async function loadReceiptBrands(options = {}) {
       const force = options.force === true;
@@ -976,17 +967,18 @@
         return;
       }
       receiptUiState.hintsPromise = (async () => {
-        let templates = [];
-        let products = [];
+        const ownerId = state.currentUserId;
         receiptUiState.hintsLoadFailed = false;
-        await Promise.all([
-          loadReceiptTemplates("", { allPages: true }).then((items) => { templates = items; }).catch(() => { receiptUiState.hintsLoadFailed = true; }),
-          loadReceiptProducts("", { allPages: true }).then((items) => { products = items; }).catch(() => { receiptUiState.hintsLoadFailed = true; }),
-          loadReceiptBrands().catch(() => {}),
-          Promise.resolve(window.App.getRuntimeModule?.("item-catalog")?.loadItemSources?.()).catch(() => {}),
-        ]);
-        mergeReceiptTemplateHints(templates);
+        const markIncomplete = () => { receiptUiState.hintsLoadFailed = true; return []; };
+        const products = await loadReceiptProducts("", { allPages: true }).catch(markIncomplete);
+        if (ownerId !== state.currentUserId) return;
         rebuildReceiptProductHints(products);
+        const templates = await loadReceiptTemplates("", { allPages: true }).catch(markIncomplete);
+        if (ownerId !== state.currentUserId) return;
+        mergeReceiptTemplateHints(templates);
+        await loadReceiptBrands().catch(markIncomplete);
+        if (ownerId !== state.currentUserId) return;
+        await window.App.getRuntimeModule?.("item-catalog")?.loadItemSources?.().catch(markIncomplete);
         receiptUiState.hintsLoadedAt = Date.now();
       })();
       try {

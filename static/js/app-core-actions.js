@@ -236,7 +236,7 @@
         error.detail = data.detail; error.status = response.status;
         throw error;
       }
-      throw new Error(`Ошибка запроса [${response.status}] ${path}`);
+      throw Object.assign(new Error(`Ошибка запроса [${response.status}] ${path}`), { status: response.status });
     }
 
     const method = String(fetchOptions.method || "GET").toUpperCase();

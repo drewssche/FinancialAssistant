@@ -1,5 +1,6 @@
 """Catalog selection must preserve receipt money and require an explicit identity choice."""
 import base64
+from urllib.parse import parse_qs, urlparse
 import pytest
 from playwright.sync_api import expect
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, page_with_receipt_api_mock
@@ -185,6 +186,30 @@ def test_catalog_failure_is_not_reported_as_no_matches(static_server_url,page_wi
     expect(p.locator('.scan-catalog-list')).to_contain_text('Каталог загружен не полностью')
     expect(p.locator('.scan-match')).not_to_contain_text('нет совпадений')
     expect(p.locator('[data-scan-field=price]')).to_have_value('4.99')
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("recovers", [True, False])
+def test_scan_retries_only_missing_product_page(static_server_url, page_with_receipt_api_mock, recovers):
+    page = page_with_receipt_api_mock
+    requests = []
+
+    def product_page(route):
+        number = int(parse_qs(urlparse(route.request.url).query)["page"][0])
+        requests.append(number)
+        if number == 2 and (not recovers or requests.count(2) == 1):
+            return route.fulfill(status=503, json={"detail": "Unavailable"})
+        item = {"id": 8200 + number, "name": f"Тестовый товар {number}", "offers": []}
+        route.fulfill(json={"page": number, "page_size": 1, "total": 3, "items": [item]})
+
+    page.route("**/catalog-products?**", product_page)
+    start(page, static_server_url)
+    page.wait_for_function("""() => window.App.state.receiptProductHints?.some(p => p.id === 8203)
+        && !window.App.getRuntimeModule('operation-modal').receiptCatalog.status().loading""")
+    assert requests == ([1, 2, 2, 3] if recovers else [1, 2, 2, 2, 3])
+    ids = page.evaluate("window.App.state.receiptProductHints.map(p => p.id)")
+    assert 8201 in ids and 8203 in ids and (8202 in ids) == recovers
+    assert page.evaluate("window.App.getRuntimeModule('operation-modal').receiptCatalog.status().incomplete") != recovers
+
 
 WEIGHTED='''ООО ГРИНРОЗНИЦА
 № ДОК 179487

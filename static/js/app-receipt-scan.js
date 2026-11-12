@@ -154,7 +154,7 @@
       transferred=false;if(draft)validate();
       if(!dialog.open)dialog.showModal();
       (draft?node('scanDate'):node('scanDropzone')).focus();
-      Promise.all([catalog().load(),window.App.getRuntimeModule('item-brands').ensureItemBrandsLoaded()]).then(()=>{if(draft)refreshCatalog();storePicker.refresh();}).catch(()=>{});
+      catalog().load().then(()=>{if(token!==openGeneration||!dialog.open)return;if(draft)refreshCatalog();storePicker.refresh();}).catch(()=>{});
     }catch(error){if(token!==openGeneration)return;if(mode==='edit')context='';core.notify(error.message||'Не удалось открыть чек',{type:'error'});}
   }
   node('scanClose').onclick=()=>dialog.close();
