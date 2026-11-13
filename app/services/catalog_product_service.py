@@ -17,6 +17,7 @@ from app.core.cache import (
 )
 from app.db.models import CatalogProduct, Category, ItemBrand, CatalogPackageReplacement, CatalogVariant, CatalogOfferIdentity
 from app.db.models.catalog_watch import CatalogWatch, CatalogOfferWatch, CatalogPriceEvent
+from app.repositories.catalog_price_reference_repo import last_purchase_prices, offer_price_references
 from app.repositories.catalog_product_repo import CatalogProductRepository
 from app.repositories.catalog_measurement_repo import offer_measurements
 from app.repositories.operation_item_template_repo import (
@@ -860,10 +861,10 @@ class CatalogProductService:
             offer_ids=[int(offer.id) for offer in offers],
         )
 
-        from app.repositories.catalog_measurement_repo import offer_measurements
-        measurements = offer_measurements(self.db, user_id=user_id, template_ids=[int(o.id) for o in offers])
-        from app.repositories.catalog_price_reference_repo import offer_price_references
-        price_references = offer_price_references(self.db, user_id=user_id, template_ids=[int(o.id) for o in offers])
+        template_ids = [offer.id for offer in offers]
+        measurements = offer_measurements(self.db, user_id=user_id, template_ids=template_ids)
+        purchases = last_purchase_prices(self.db, user_id=user_id, template_ids=template_ids)
+        price_references = offer_price_references(self.db, user_id=user_id, template_ids=template_ids)
         result: list[dict] = []
         for product in products:
             product_offers = offers_by_product.get(int(product.id), [])
@@ -881,6 +882,7 @@ class CatalogProductService:
             for payload in offer_payloads:
                 payload.update(measurements.get(payload['id'], {}))
                 payload['catalog_price'] = price_references.get(payload['id'])
+                payload['last_purchase_price'] = purchases.get(payload['id'])
             current_prices = [
                 item["latest_unit_price"]
                 for item in offer_payloads

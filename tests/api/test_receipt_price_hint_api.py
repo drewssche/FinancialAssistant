@@ -82,3 +82,25 @@ def test_plans_and_unknown_currency_are_not_purchase_history(client):
     assert res.status_code==201,res.text
     assert hint(client,p,offer).json()['previous']['operation_id']==a['id']
     assert hint(client,p,offer,currency='USD').json()['status']=='no_history'
+
+
+def test_picker_uses_currency_from_latest_purchase_of_same_offer(client):
+    product, source = setup_product(client)
+    earlier = buy(client, product, source, 23, 1)
+    latest = buy(client, product, source, 23, 2, currency='EUR', fx_rate='3.2')
+    buy(client, product, _source(client, 'Другой магазин'), 5, 3, currency='USD', fx_rate='3')
+    offer_id = earlier['receipt_items'][0]['template_id']
+
+    def prices():
+        product_data = client.get(f'/api/v1/operations/catalog-products/{product}').json()
+        templates = client.get('/api/v1/operations/item-templates').json()
+        for offers in [product_data['offers'], templates['items']]:
+            yield next(row for row in offers if row['id'] == offer_id)['last_purchase_price']
+        yield client.get(f'/api/v1/operations/item-templates/{offer_id}').json()['last_purchase_price']
+
+    for price in prices():
+        assert Decimal(price['amount']) == 23
+        assert (price['currency'], price['recorded_at']) == ('EUR', '2026-10-02')
+    assert client.delete(f"/api/v1/operations/{latest['id']}").status_code == 204
+    for price in prices():
+        assert (price['currency'], price['recorded_at']) == ('BYN', '2026-10-01')

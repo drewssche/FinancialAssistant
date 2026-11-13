@@ -114,7 +114,7 @@
       if (!operationDate) {
         throw new Error("Проверь дату операции");
       }
-      const receiptItems = receiptPayloadGetter ? receiptPayloadGetter() : [];
+      const receiptItems = receiptPayloadGetter ? receiptPayloadGetter({validate: true}) : [];
       for (const [index,item] of receiptItems.entries()) {
         const reason=window.App.receiptCodes.validationError(item.catalog_codes||[],item.shop_name);
         if(reason){

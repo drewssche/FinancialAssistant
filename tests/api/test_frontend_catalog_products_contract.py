@@ -64,7 +64,8 @@ def test_receipt_picker_uses_one_product_and_resolves_source_offer_without_overw
     assert "Number(right.sourceMatch) - Number(left.sourceMatch)" in pickers
     assert "rowItem.product_id = productId" in interactions
     assert "rowItem.name = normalizeReceiptName(offer?.name" in interactions
-    assert "if (!rowItem.price_touched)" in interactions
+    assert "applyOfferPrice(rowItem, offer, mode)" in interactions
+    assert "if (item.price_touched) return;" in receipt
     assert "price_touched:" in receipt
     assert "category_touched: Boolean(seed.category_touched)" in receipt
     assert receipt.count("category_touched: Boolean(item.category_touched)") == 2

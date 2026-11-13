@@ -117,7 +117,7 @@
       if (!scheduledDate) {
         throw new Error("Проверь дату плана");
       }
-      const receiptItems = operationModal.getCreateReceiptPayload ? operationModal.getCreateReceiptPayload() : [];
+      const receiptItems = operationModal.getCreateReceiptPayload ? operationModal.getCreateReceiptPayload({validate: true}) : [];
       const amount = core.resolveMoneyInput(document.getElementById("opAmount").value);
       const hasReceiptItems = receiptItems.length > 0;
       const canDeriveAmountFromReceipt = hasReceiptItems && amount.empty;

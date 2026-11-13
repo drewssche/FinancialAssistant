@@ -189,6 +189,7 @@ def page_with_receipt_api_mock():
     ]
     source_by_name = {source["name"]: source for source in sources}
     for item in templates:
+        item["catalog_price"] = {"amount": item["latest_unit_price"], "currency": "BYN", "recorded_at": "2026-08-01"}
         source = source_by_name.get(item.get("shop_name"))
         if source:
             item["source_id"] = source["id"]
@@ -1966,6 +1967,7 @@ def test_catalog_products_default_view_offers_merge_labels_and_source_matched_pi
             "source_name": source_name,
             "shop_name": source_name,
             "latest_unit_price": price,
+            "catalog_price": {"amount": price, "currency": "BYN", "recorded_at": "2026-09-04"},
             "latest_price_date": "2026-09-04",
             "use_count": 2,
         }

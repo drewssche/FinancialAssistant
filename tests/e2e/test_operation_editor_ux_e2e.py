@@ -102,8 +102,19 @@ def test_long_receipt_has_natural_height_and_preserves_saved_data(static_server_
     assert page.locator('[data-receipt-store="edit"]').input_value() == 'Соседи'
     first = page.locator('#editReceiptItemsList .receipt-item-row').first
     page.locator('#editModal .modal-card').evaluate('n=>n.scrollTop=0')
-    assert first.bounding_box()['y'] < 380
-    assert first.bounding_box()['height'] < (170 if width < 900 else 110)
+    # The date and kind stack on small screens. The receipt starts directly
+    # below the store, and each card grows with its accessible category and prices.
+    store = page.locator('[data-receipt-store="edit"]').bounding_box()
+    card = first.bounding_box()
+    assert 0 <= card['y'] - (store['y'] + store['height']) < 24
+    money = first.locator('.receipt-item-money').bounding_box()
+    heading = first.locator('.receipt-compact-heading').bounding_box()
+    if width < 900:
+        assert money['y'] >= heading['y'] + heading['height']
+    else:
+        assert money['x'] >= heading['x'] + heading['width']
+    content_bottom = max(box['y'] + box['height'] for box in (money, heading))
+    assert 0 <= card['y'] + card['height'] - content_bottom <= 24
     before = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getEditReceiptPayload()")
     first.locator('[data-receipt-details-toggle]').click()
     first.locator('[data-receipt-details-toggle]').click()
@@ -382,3 +393,58 @@ def test_known_receipt_details_stays_anchored_and_preserves_money(static_server_
         assert page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()") == payload
     assert page.locator('#createModal .modal-card').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
     page.screenshot(path=f'/tmp/fa-receipt-toggle-{width}.png')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width', [320, 1440])
+def test_receipt_price_and_currency_selected_together(static_server_url, page_with_receipt_api_mock, width):
+    from playwright.sync_api import expect
+    page = page_with_receipt_api_mock
+    products = []
+    for product_id, name, currency in [(907, 'ChatGPT Plus', 'EUR'), (908, 'Второй тариф', 'USD')]:
+        offer = {'id': product_id, 'template_id': product_id, 'product_id': product_id, 'name': name,
+                 'source_name': 'OpenAI', 'shop_name': 'OpenAI', 'source_id': 555,
+                 'latest_unit_price': '19', 'catalog_price': {'amount': '19', 'currency': 'BYN'},
+                 'last_purchase_price': {'amount': '23.000000', 'currency': currency, 'recorded_at': '2026-09-18'}}
+        products.append({'id': product_id, 'name': name, 'offers': [offer]})
+    page.route('**/api/v1/operations/catalog-products?**', lambda route: route.fulfill(
+        json={'items': products, 'total': 2, 'page': 1, 'page_size': 100}))
+    open_editor(page, static_server_url, width)
+    page.locator('#createOperationModeSwitch [data-operation-mode="receipt"]').click()
+    rows = page.locator('#receiptItemsList .receipt-item-row')
+    first = rows.nth(0)
+    first.locator('[data-receipt-field="name"]').fill('ChatG')
+    first.locator('[data-receipt-product-id="907"]').click()
+    select = first.locator('[data-receipt-currency-slot] #opCurrency')
+    price = first.locator('[data-receipt-field="unit_price"]')
+    expect(select).to_be_visible()
+    expect(select).to_have_value('EUR')
+    assert float(price.input_value().replace(',', '.')) == 23
+    bounds = select.bounding_box()
+    assert bounds['x'] >= 0 and bounds['x'] + bounds['width'] <= width
+    second = rows.nth(1)
+    second.locator('[data-receipt-field="name"]').fill('Второй')
+    second.locator('[data-receipt-product-id="908"]').click()
+    expect(select).to_have_value('EUR')
+    expect(second.locator('.receipt-foreign-price')).to_contain_text('USD')
+    expect(second.locator('[data-receipt-field="unit_price"]')).to_have_value('')
+    page.click('#submitCreateOperationBtn')
+    expect(page.locator('#toastArea')).to_contain_text('Укажите цену «Второй тариф» в EUR')
+    expect(second.locator('[data-receipt-field="unit_price"]')).to_be_focused()
+    select.click()
+    page.locator('#appChoiceDialog .choice-option').filter(has_text='BYN').click()
+    expect(price).to_have_value('')
+    expect(first.locator('.receipt-foreign-price')).to_contain_text('EUR')
+    assert page.locator('#createModal .modal-card').evaluate('n=>n.scrollWidth <= n.clientWidth + 1')
+
+    # An explicit choice on an empty receipt takes precedence over purchase history.
+    page.click('#closeCreateModalBtn')
+    page.click('#addOperationCta')
+    page.locator('#createOperationModeSwitch [data-operation-mode="receipt"]').click()
+    page.locator('#opCurrency').click()
+    page.locator('#appChoiceDialog .choice-option').filter(has_text='BYN').click()
+    first.locator('[data-receipt-field="name"]').fill('ChatG')
+    first.locator('[data-receipt-product-id="907"]').click()
+    expect(select).to_have_value('BYN')
+    expect(price).to_have_value('')
+    expect(first.locator('.receipt-foreign-price')).to_contain_text('EUR')

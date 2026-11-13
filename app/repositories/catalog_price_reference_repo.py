@@ -1,7 +1,29 @@
 """Read-only catalog prices for the selected offer, never receipt defaults."""
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 
-from app.db.models import Operation, OperationItemPrice, OperationItemTemplate
+from app.db.models import Operation, OperationItemPrice, OperationItemTemplate, OperationReceiptItem
+
+
+def last_purchase_prices(db, *, user_id, template_ids):
+    """Return amount and currency from the same actual purchase at this source."""
+    if not template_ids:
+        return {}
+    line = OperationReceiptItem
+    ranked = select(
+        line.template_id, line.unit_price, Operation.currency, Operation.operation_date,
+        func.row_number().over(
+            partition_by=line.template_id,
+            order_by=(Operation.operation_date.desc(), Operation.id.desc(), line.id.desc()),
+        ).label("rank"),
+    ).join(Operation, Operation.id == line.operation_id).where(
+        Operation.user_id == user_id, line.user_id == user_id, Operation.kind == "expense",
+        line.template_id.in_(template_ids), line.unit_price > 0,
+    ).subquery()
+    return {
+        row.template_id: {"amount": str(row.unit_price), "currency": row.currency,
+                          "recorded_at": row.operation_date.isoformat()}
+        for row in db.execute(select(ranked).where(ranked.c.rank == 1))
+    }
 
 
 def offer_price_references(db, *, user_id, template_ids):

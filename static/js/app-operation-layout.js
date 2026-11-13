@@ -69,10 +69,9 @@
     window.App.getRuntimeModule('operation-store-picker').bind(store, mode);
     const currency = byId(`${prefix}Currency`), currencyAnchor = document.createComment('operation currency');
     currency.before(currencyAnchor);
-    const receiptCurrency = document.createElement('label');
-    receiptCurrency.className = 'receipt-currency';
-    receiptCurrency.innerHTML = '<span>Валюта</span>';
-    store.after(receiptCurrency);
+    const receiptCurrency = document.createElement('span');
+    receiptCurrency.className = 'receipt-currency-fallback';
+    storeRow.append(receiptCurrency);
     byId(`${prefix}Amount`).setAttribute('inputmode', 'decimal');
     const sidebar = document.createElement('aside');
     sidebar.className = 'operation-summary-column';
@@ -86,10 +85,21 @@
     layouts.set(mode, layout);
     return layout;
   }
+  function placeReceiptCurrency(mode) {
+    const view = layouts.get(mode);
+    if (!view?.modal.classList.contains('is-receipt-editor')) return;
+    const first = view.receipt.querySelector('.receipt-item-row');
+    const slot = first?.matches('.receipt-item-empty.is-compact') ? null : first?.querySelector('[data-receipt-currency-slot]');
+    const host = slot || view.receiptCurrency;
+    for (const option of view.currency.options) option.label = option.value;
+    if (view.currency.parentElement !== host) host.append(view.currency);
+    view.currency.setAttribute('aria-label', 'Валюта всего чека');
+    view.currency.title = 'Валюта всего чека';
+  }
   function sync(mode = 'create', reset = false) {
     const view = layouts.get(mode) || setup(mode);
     if (!view) return;
-    const {modal, extra, entry, check, amount, amountAnchor, category, categoryAnchor, currency, currencyAnchor, receiptCurrency, prefix} = view;
+    const {modal, extra, entry, check, amount, amountAnchor, category, categoryAnchor, currency, currencyAnchor, prefix} = view;
     const operation = mode === 'edit' || byId('opEntryMode').value === 'operation';
     const store = modal.querySelector('[data-receipt-store]');
     if (store && document.activeElement !== store) store.value = window.App.state[mode === 'create' ? 'createReceiptItems' : 'editReceiptItems']?.[0]?.shop_name || '';
@@ -100,11 +110,14 @@
     modal.classList.toggle('is-other-entry', !operation);
     if (receipt) {
       check.append(amount);
-      receiptCurrency.append(currency);
+      placeReceiptCurrency(mode);
       extra.prepend(category);
     } else {
       amountAnchor.after(amount);
       currencyAnchor.after(currency);
+      for (const option of currency.options) option.removeAttribute('label');
+      currency.setAttribute('aria-label', 'Валюта суммы');
+      if (currency.title === 'Валюта всего чека') currency.title = '';
       categoryAnchor.after(category);
     }
     byId(`${prefix}Amount`).placeholder = receipt ? (desktop.matches ? 'Необязательно' : 'Сумма в бумажном чеке (необязательно)') : 'Сумма';
@@ -143,5 +156,5 @@
       sync(mode);
     }
   });
-  window.App.registerRuntimeModule('operation-layout', {sync});
+  window.App.registerRuntimeModule('operation-layout', {sync, placeReceiptCurrency});
 })();

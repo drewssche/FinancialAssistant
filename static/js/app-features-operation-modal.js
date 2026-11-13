@@ -470,6 +470,7 @@
       el.opFxSettlementNote.value = "";
     }
     if (el.opCurrency) {
+      delete el.opCurrency.dataset.receiptCurrencyChosen;
       el.opCurrency.value = core.getCurrencyConfig?.().code || "BYN";
       el.opCurrency.disabled = false;
       el.opCurrency.title = "";
@@ -558,8 +559,10 @@
       shop_name: item.shop_name || "",
       name: item.name || "",
       quantity: item.base_quantity || item.quantity || 1,
-      unit_price: item.latest_unit_price || item.unit_price || 0,
+      unit_price: item.unit_price,
     }, "create")];
+    const offer = item.offers ? (item.offers.length === 1 ? item.offers[0] : null) : item;
+    receipt.applyOfferPrice(state.createReceiptItems[0], offer, "create");
     setCreateOperationMode("receipt");
     renderReceiptItems("create");
     renderReceiptSummary("create");
@@ -881,6 +884,7 @@
     selectDebtCounterparty,
     selectEditCategory,
     receiptCatalog: receipt.receiptCatalog,
+    reconcileReceiptPrices: receipt.reconcileReceiptPrices,
     createReceiptDraft,
     clearReceiptItems,
     renderReceiptItems,

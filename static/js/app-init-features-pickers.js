@@ -32,11 +32,14 @@
           node.addEventListener("change", actions.syncCreateFxSettlementFieldUi);
         }
         if (id === "opCurrency" && actions.syncOperationCurrencyFields) {
-          node.addEventListener("change", async () => {
+          node.addEventListener("change", async (event) => {
+            if (!event.detail?.receiptPrice) node.dataset.receiptCurrencyChosen = "1";
+            window.App.getRuntimeModule("operation-modal")?.reconcileReceiptPrices?.("create");
+            if (!event.detail?.receiptPrice) actions.renderReceiptItems?.("create");
             actions.resetCreateOperationFxRateAutofill?.();
             await actions.syncOperationCurrencyFields("create");
             actions.syncCreateFxSettlementFieldUi?.();
-            actions.renderReceiptItems?.("create");
+            if (event.detail?.receiptPrice) actions.renderReceiptItems?.("create");
             actions.renderReceiptSummary?.("create");
             actions.updateCreatePreview?.();
           });
@@ -158,10 +161,11 @@
         }
         if (id === "editCurrency" && actions.syncOperationCurrencyFields) {
           node.addEventListener("change", async () => {
+            window.App.getRuntimeModule("operation-modal")?.reconcileReceiptPrices?.("edit");
+            actions.renderReceiptItems?.("edit");
             actions.resetEditOperationFxRateAutofill?.();
             await actions.syncOperationCurrencyFields("edit");
             actions.syncEditFxSettlementFieldUi?.();
-            actions.renderReceiptItems?.("edit");
             actions.renderReceiptSummary?.("edit");
             actions.updateEditPreview?.();
           });

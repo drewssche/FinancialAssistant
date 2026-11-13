@@ -25,11 +25,11 @@
 /* A receipt must grow naturally. A capped height with visible overflow overlapped later fields. */
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields):not(.hidden) {
   max-height: none; overflow: visible; transform: none; transition: none; z-index: auto;
-  display: grid; grid-template-columns: minmax(0, 1fr) 100px; gap: 10px; margin-top: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 0;
 }
-.receipt-store, .receipt-currency { display: grid; gap: 4px; min-width: 0; }
-.receipt-store > span, .receipt-currency > span { font-size: .75rem; color: var(--muted); }
-.receipt-store input, .receipt-currency select { width: 100%; min-width: 0; }
+.receipt-store { display: grid; gap: 4px; min-width: 0; }
+.receipt-store > span { font-size: .75rem; color: var(--muted); }
+.receipt-store input { width: 100%; min-width: 0; }
 :is(#createModal, #editModal).operation-editor .receipt-items-list,
 :is(#createModal, #editModal).operation-editor .receipt-summary { grid-column: 1 / -1; margin: 0; }
 :is(#createModal, #editModal).operation-editor .receipt-summary { display: flex; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--border); }
@@ -307,4 +307,25 @@
   .receipt-preview-body{display:contents;}
   .receipt-preview-body>strong{grid-column:2;grid-row:1;align-self:center;}
   .receipt-preview-body>small,.receipt-preview-body>.receipt-preview-actions,.receipt-preview-body>.receipt-preview-price{grid-column:1/-1;}
+}
+
+.receipt-currency-fallback:empty {display:none;}
+:is(#createModal, #editModal).operation-editor.is-receipt-editor .inline-currency-select {
+  width:65px;min-width:0;max-width:100%;height:26px;min-height:26px;
+  padding:2px 3px;font-size:.78rem;line-height:1.15;
+}
+:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-price-caption {
+  display:flex;align-items:center;gap:4px 6px;flex-wrap:wrap;min-width:0;
+}
+/* Keep quantity and total aligned with the first price selector. */
+:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-money:has([data-receipt-currency-slot] select) {
+  --price-caption-height:26px;
+}
+:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-money :is(.receipt-quantity-cell, .receipt-line-total) > span {
+  min-height:var(--price-caption-height,16px);
+}
+.receipt-foreign-price {grid-column:1/-1;overflow-wrap:anywhere;font-size:.75rem;color:var(--muted);}
+@media(pointer:coarse) {
+  :is(#createModal, #editModal).operation-editor.is-receipt-editor .inline-currency-select {min-height:36px;}
+  :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-money:has([data-receipt-currency-slot] select) {--price-caption-height:36px;}
 }

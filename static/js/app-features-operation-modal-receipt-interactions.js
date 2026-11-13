@@ -19,6 +19,9 @@
       receiptDiscountToggleLabel,
       receiptPricingExplanation,
       formatReceiptMoney,
+      applyOfferPrice,
+      getReceiptCurrency,
+      referenceHint,
       resizeReceiptNameTextarea,
       removeReceiptItem,
       updateCreatePreview,
@@ -81,7 +84,7 @@
       };
     }
 
-    function applyReceiptTemplateToItem(rowItem, template) {
+    function applyReceiptTemplateToItem(rowItem, template, mode) {
       if (!rowItem || !template) {
         return;
       }
@@ -128,9 +131,7 @@
         rowItem.category_id = Number(template.category_id || template.last_category_id);
         rowItem.category_touched = false;
       }
-      if (!rowItem.price_touched) {
-        rowItem.unit_price = offer?.latest_unit_price || template.latest_unit_price || 0;
-      }
+      if (mode) applyOfferPrice(rowItem, offer, mode);
     }
     function commitReceiptRowMutation(mode) {
       hideAllReceiptPickers();
@@ -179,7 +180,7 @@
         if (derivedPrice) derivedPrice.value = core.formatAmount(updated.item.is_discounted ? receiptLineTotal(updated.item) / (updated.item.quantity || 1) : updated.item.unit_price);
       }
       if (window.App.measurements.fields.includes(field)) {
-        row.querySelector('.receipt-known-price-label').textContent = window.App.measurements.priceLabel(updated.item, Boolean(updated.item.is_discounted));
+        row.querySelector('[data-receipt-price-label]').textContent = window.App.measurements.priceLabel(updated.item, Boolean(updated.item.is_discounted));
         row.querySelector('.receipt-quantity-cell > span').textContent = window.App.measurements.quantityLabel(updated.item);
         const summary = row.querySelector(".receipt-measurements summary");
         if (summary) summary.textContent = window.App.measurements.summary(updated.item);
@@ -203,20 +204,14 @@
         if (updated.item.catalog_editable && updated.item.product_id) {
           updated.item.catalog_name_touched=true;updated.item.site_selection=null;
         } else if (matched) {
-          applyReceiptTemplateToItem(updated.item, matched);
+          applyReceiptTemplateToItem(updated.item, matched, mode);
           // Typing an exact name must keep its picker/editor open until selection.
           updated.item.details_expanded = true;
           if (event.target.value !== updated.item.name) {
             event.target.value = updated.item.name;
             event.target.title = updated.item.name || "Позиция";
           }
-          if (Number(updated.item.unit_price) > 0) {
-            const rowPriceInput = row.querySelector('[data-receipt-field="unit_price"]');
-            if (rowPriceInput) {
-              rowPriceInput.value = core.formatAmount(updated.item.unit_price);
-            }
-          }
-          upsertLocalReceiptTemplate(updated.item.name, updated.item.unit_price, updated.item.shop_name || "", getDraftBrandPayload(updated.item));
+          upsertLocalReceiptTemplate(updated.item.name, updated.item.unit_price, updated.item.shop_name || "", getDraftBrandPayload(updated.item), getReceiptCurrency(mode));
         } else {
           updated.item.template_id = null;
           updated.item.product_id = null;
@@ -236,9 +231,9 @@
         }
         resizeReceiptNameTextarea?.(event.target);
       }
-      if (field === "shop_name" && !updated.item.price_touched) {
+      if ((field === "shop_name" || field === "name") && !updated.item.price_touched) {
         const rowPriceInput = row.querySelector('[data-receipt-field="unit_price"]');
-        if (rowPriceInput) rowPriceInput.value = core.formatAmount(updated.item.unit_price || 0) || "";
+        if (rowPriceInput) rowPriceInput.value = updated.item.unit_price ? core.formatAmount(updated.item.unit_price) : "";
       }
       if (field === "shop_name" && updated.item.product_id) {
         const rowNameInput = row.querySelector('[data-receipt-field="name"]');
@@ -257,6 +252,11 @@
         commitReceiptRowMutation(mode);
         structureChanged = true;
       } else {
+        if (field === "shop_name" || field === "name") {
+          const hint = row.querySelector(".receipt-foreign-price");
+          hint.textContent = referenceHint(updated.item, mode);
+          hint.hidden = !hint.textContent;
+        }
         const totalCell = row.querySelector(".receipt-line-total");
         if (totalCell) {
           totalCell.querySelector("strong").innerHTML = formatReceiptMoney(receiptLineTotal(updated.item), mode);
@@ -266,7 +266,7 @@
           discountToggle.classList.toggle("is-active", Boolean(updated.item.is_discounted));
           discountToggle.setAttribute("aria-pressed", String(Boolean(updated.item.is_discounted)));
           row.classList.toggle("receipt-item-row-discounted", Boolean(updated.item.is_discounted));
-          row.querySelector('.receipt-known-price-label').textContent = window.App.measurements.priceLabel(updated.item, Boolean(updated.item.is_discounted));
+          row.querySelector('[data-receipt-price-label]').textContent = window.App.measurements.priceLabel(updated.item, Boolean(updated.item.is_discounted));
           discountToggle.title = receiptDiscountToggleLabel(updated.item);
           discountToggle.setAttribute("aria-label", discountToggle.title);
         }
@@ -465,7 +465,7 @@
       const exact = getReceiptTemplateMatch(query, rowItem.shop_name || "", rowItem.brand_id, rowItem.source_id);
       const first = exact || getReceiptTemplateSuggestions(query, rowItem.shop_name || "", 1, rowItem.brand_id, rowItem.source_id)[0] || null;
       if (first) {
-        applyReceiptTemplateToItem(rowItem, first);
+        applyReceiptTemplateToItem(rowItem, first, mode);
       } else {
         rowItem.name = query;
         rowItem.template_id = null;
@@ -612,12 +612,12 @@
         const rowItem = getReceiptItemByDraftId(draftId, mode);
         const template = (state.receiptTemplateHints || []).find((item) => Number(item.id) === templateId);
         if (rowItem && template) {
-          applyReceiptTemplateToItem(rowItem, template);
+          applyReceiptTemplateToItem(rowItem, template, mode);
           if (!rowItem.quantity || Number(rowItem.quantity) <= 0) {
             rowItem.quantity = 1;
           }
           inheritReceiptShopFromFirstRow(draftId, mode);
-          upsertLocalReceiptTemplate(rowItem.name, rowItem.unit_price, rowItem.shop_name || "", getDraftBrandPayload(rowItem));
+          upsertLocalReceiptTemplate(rowItem.name, rowItem.unit_price, rowItem.shop_name || "", getDraftBrandPayload(rowItem), getReceiptCurrency(mode));
           receiptUiState.activePicker = null;
           commitReceiptRowMutation(mode);
         }
@@ -631,7 +631,7 @@
         const rowItem = getReceiptItemByDraftId(draftId, mode);
         const product = (state.receiptProductHints || []).find((item) => Number(item.id) === Number(productBtn.dataset.receiptProductId));
         if (rowItem && product) {
-          applyReceiptTemplateToItem(rowItem, { ...product, product_id: product.id, product_name: product.name, product_image_id: product.image_id });
+          applyReceiptTemplateToItem(rowItem, { ...product, product_id: product.id, product_name: product.name, product_image_id: product.image_id }, mode);
           if (!rowItem.quantity || Number(rowItem.quantity) <= 0) rowItem.quantity = 1;
           inheritReceiptShopFromFirstRow(draftId, mode);
           receiptUiState.activePicker = null;
@@ -647,7 +647,7 @@
         const rowItem = getReceiptItemByDraftId(draftId, mode);
         if (rowItem) {
           rowItem.name = normalizeReceiptName(createBtn.dataset.receiptCreateName || "");
-          const createdTemplate = upsertLocalReceiptTemplate(rowItem.name, rowItem.unit_price, rowItem.shop_name || "", getDraftBrandPayload(rowItem));
+          const createdTemplate = upsertLocalReceiptTemplate(rowItem.name, rowItem.unit_price, rowItem.shop_name || "", getDraftBrandPayload(rowItem), getReceiptCurrency(mode));
           rowItem.template_id = createdTemplate?.id || null;
           rowItem.product_id = null;
           if (!rowItem.quantity || Number(rowItem.quantity) <= 0) {

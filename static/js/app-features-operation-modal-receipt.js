@@ -83,6 +83,43 @@
       return core.formatCurrencyLabel?.(getReceiptCurrency(mode)) || getReceiptCurrency(mode);
     }
 
+    function applyOfferPrice(item, offer, mode) {
+      const purchase = offer?.last_purchase_price;
+      item.price_reference = purchase || offer?.catalog_price || null;
+      item.price_reference_is_purchase = Boolean(purchase);
+      if (item.price_touched) return;
+      const price = item.price_reference;
+      const rows = getReceiptItems(mode);
+      const select = mode === "edit" ? el.editCurrency : el.opCurrency;
+      const canChoose = mode === "create" && !state.editPlanId && !select.disabled
+        && !select.dataset.receiptCurrencyChosen && rows[0] === item
+        && !rows.slice(1).some(hasReceiptRowContent) && !getReceiptContext(mode).amountNode?.value
+        && !item.is_discounted && !item.regular_unit_price;
+      if (canChoose && /^[A-Z]{3}$/.test(price?.currency || "") && price.currency !== select.value) {
+        if (!Array.from(select.options).some(option => option.value === price.currency)) {
+          select.add(new Option(core.formatCurrencyLabel(price.currency), price.currency));
+        }
+        select.value = price.currency;
+        select.dispatchEvent(new CustomEvent("change", {bubbles: true, detail: {receiptPrice: true}}));
+      }
+      item.unit_price = price?.currency === select.value ? asMoney(price.amount) : 0;
+    }
+
+    function reconcileReceiptPrices(mode) {
+      for (const item of getReceiptItems(mode)) {
+        if (!item.price_touched && item.price_reference && !item.is_discounted) {
+          item.unit_price = item.price_reference.currency === getReceiptCurrency(mode) ? asMoney(item.price_reference.amount) : 0;
+        }
+      }
+    }
+
+    function referenceHint(item, mode) {
+      const price = item.price_reference;
+      if (!price?.currency || price.currency === getReceiptCurrency(mode)) return "";
+      const label = item.price_reference_is_purchase ? "В прошлый раз" : "В каталоге";
+      return `${label} — ${core.formatMoney(price.amount, {withCurrency: false})} ${price.currency}`;
+    }
+
     function formatReceiptMoney(value, mode = "create", options = {}) {
       return core.formatMoney(value, {
         currency: getReceiptCurrency(mode),
@@ -210,6 +247,7 @@
     }
 
     function unlinkReceiptTemplateIdentity(item, options = {}) {
+      item.price_reference = null;
       item.catalog_name_touched=false;item.catalog_measurement_touched=false;item.catalog_edit_variant_id=null;
       item.site_selection=null;item.site_name="";
       item.code_match_label="";item.code_errors=[];
@@ -407,7 +445,7 @@
             item.template_id = Number(offer?.template_id || offer?.id || 0) || null;
             item.name = normalizeReceiptName(offer?.name || item.product_name || item.name || "");
             item.item_image_id = item.product_image_id || offer?.image_id || null;
-            if (!item.price_touched) item.unit_price = offer?.latest_unit_price || 0;
+            applyOfferPrice(item, offer, mode);
           }
         }
       } else if (key === "name") {
@@ -509,7 +547,7 @@
             item.template_id = Number(offer?.template_id || offer?.id || 0) || null;
             item.name = normalizeReceiptName(offer?.name || item.product_name || item.name || "");
             item.item_image_id = item.product_image_id || offer?.image_id || null;
-            if (!item.price_touched) item.unit_price = offer?.latest_unit_price || 0;
+            applyOfferPrice(item, offer, mode);
             changed = true;
           }
           item.shop_name_inherited = true;
@@ -604,6 +642,7 @@
         .replaceAll("'", "&#39;");
       ctx.listNode.innerHTML = rows.map((item, idx) => {
         const total = receiptLineTotal(item);
+        const foreignPrice = referenceHint(item, mode);
         const isLast = idx === rows.length - 1;
         const removeHidden = isLast && isReceiptRowEmpty(item);
         const pickerMode = receiptUiState.activePicker?.mode || "create";
@@ -718,7 +757,7 @@
             </section>` : ""}
             <div class="receipt-item-money">
               <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
-                <span class="receipt-known-price-label">${esc(window.App.measurements.priceLabel(item, Boolean(item.is_discounted)))}</span>
+                <div class="receipt-known-price-label receipt-price-caption"><span data-receipt-price-label>${esc(window.App.measurements.priceLabel(item, Boolean(item.is_discounted)))}</span>${idx ? esc(getReceiptCurrency(mode)) : '<span data-receipt-currency-slot></span>'}</div>
                 <div class="receipt-price-field">
                   <input type="text" inputmode="decimal" data-receipt-field="unit_price" ${item.discount_mode ? "readonly" : ""} value="${formatReceiptInputAmount(item.discount_mode && item.is_discounted ? total / (item.quantity || 1) : item.unit_price)}" placeholder="Цена" title="${item.discount_mode ? "Эффективная цена после скидки; итог рассчитывается отдельно" : "Цена покупки в " + esc(getReceiptCurrencyLabel(mode))}" aria-label="Цена позиции" />
                 </div>
@@ -726,6 +765,7 @@
                 <div class="receipt-price-field receipt-regular-price-field ${item.is_discounted || item.discount_expanded ? "" : "hidden"}">
                   <input class="receipt-regular-price" type="text" inputmode="decimal" data-receipt-field="regular_unit_price" value="${formatReceiptInputAmount(item.regular_unit_price)}" placeholder="До скидки" title="Обычная цена для истории" aria-label="Цена до скидки" />
                 </div>
+                <small class="receipt-foreign-price" ${foreignPrice ? "" : "hidden"}>${esc(foreignPrice)}</small>
               </div>
               <div class="receipt-quantity-cell">
                 <span>${esc(window.App.measurements.quantityLabel(item))}</span>
@@ -737,6 +777,7 @@
           </div>
         `;
       }).join("");
+      window.App.getRuntimeModule?.("operation-layout")?.placeReceiptCurrency?.(mode);
       ctx.listNode.querySelectorAll('.receipt-codes-host').forEach(host => {
         const id=Number(host.closest('[data-receipt-item-id]').dataset.receiptItemId);
         const item=getReceiptItems(mode).find(item=>item.draft_id===id);
@@ -910,6 +951,9 @@
         receiptDiscountToggleLabel,
         receiptPricingExplanation,
         formatReceiptMoney,
+        applyOfferPrice,
+        getReceiptCurrency,
+        referenceHint,
         resizeReceiptNameTextarea,
         removeReceiptItem,
         updateCreatePreview,
@@ -1015,10 +1059,21 @@
       return defaultCategoryId;
     }
 
-    function getCreateReceiptPayload() {
+    function validateForeignPrices(mode) {
+      const currency = getReceiptCurrency(mode);
+      const missing = getReceiptItems(mode).find(item => item.name && item.price_reference?.currency
+        && item.price_reference.currency !== currency && !item.discount_mode && !(item.unit_price > 0));
+      if (missing) {
+        getReceiptContext(mode).listNode?.querySelector(`[data-receipt-item-id="${missing.draft_id}"] [data-receipt-field="unit_price"]`)?.focus();
+        throw new Error(`Укажите цену «${missing.name}» в ${currency}`);
+      }
+    }
+
+    function getCreateReceiptPayload({validate = false} = {}) {
       if (!isReceiptModeEnabled("create")) {
         return [];
       }
+      if (validate) validateForeignPrices("create");
       const defaultCategoryId = el.opCategory?.value ? Number(el.opCategory.value) : null;
       return getReceiptItems("create")
         .map((item) => ({
@@ -1052,10 +1107,11 @@
         .filter((item) => item.name && (item.discount_mode || (Number(item.quantity) > 0 && Number(item.unit_price) > 0)));
     }
 
-    function getEditReceiptPayload() {
+    function getEditReceiptPayload({validate = false} = {}) {
       if (!isReceiptModeEnabled("edit")) {
         return [];
       }
+      if (validate) validateForeignPrices("edit");
       const defaultCategoryId = el.editCategory?.value ? Number(el.editCategory.value) : null;
       return getReceiptItems("edit")
         .map((item) => ({
@@ -1091,6 +1147,8 @@
 
     return {
       receiptCatalog: interactions.receiptCatalog,
+      applyOfferPrice,
+      reconcileReceiptPrices,
       createReceiptDraft,
       clearReceiptItems,
       setReceiptEnabled,

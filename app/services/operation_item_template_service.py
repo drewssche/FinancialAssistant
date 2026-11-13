@@ -16,6 +16,7 @@ from app.core.cache import (
 )
 from app.core.measurement import normalize_measurement
 from app.db.models import CatalogProduct, Category, OperationReceiptItem, PlanReceiptItem
+from app.repositories.catalog_price_reference_repo import last_purchase_prices, offer_price_references
 from app.repositories.catalog_product_repo import CatalogProductRepository
 from app.repositories.item_brand_repo import ItemBrandRepository
 from app.repositories.operation_repo import OperationRepository
@@ -73,7 +74,7 @@ class OperationItemTemplateService:
     ) -> tuple[list[dict], int]:
         cache_key = build_item_templates_cache_key(
             user_id=user_id,
-            view="list",
+            view="list_with_purchase_currency",
             page=page,
             page_size=page_size,
             q=q,
@@ -89,7 +90,9 @@ class OperationItemTemplateService:
             q=q,
             brand_id=brand_id,
         )
-        latest_prices = self.repo.get_latest_prices_for_templates(template_ids=[int(item.id) for item in templates])
+        template_ids = [item.id for item in templates]
+        latest_prices = offer_price_references(self.db, user_id=user_id, template_ids=template_ids)
+        purchases = last_purchase_prices(self.db, user_id=user_id, template_ids=template_ids)
         brand_meta = self.brand_repo.brand_meta_for_templates(
             user_id=user_id,
             template_ids=[int(item.id) for item in templates],
@@ -123,8 +126,10 @@ class OperationItemTemplateService:
                             "product_image_id": None,
                         },
                     ),
-                    "latest_unit_price": self._money(latest.unit_price) if latest else None,
-                    "latest_price_date": latest.recorded_at if latest else None,
+                    "latest_unit_price": self._money(Decimal(latest["amount"])) if latest else None,
+                    "latest_price_date": latest["recorded_at"] if latest else None,
+                    "catalog_price": latest,
+                    "last_purchase_price": purchases.get(item.id),
                 }
             )
         set_json(
@@ -954,8 +959,8 @@ class OperationItemTemplateService:
         return self._money(item["unit_price"])
 
     def _serialize_item_template(self, item) -> dict:
-        latest_map = self.repo.get_latest_prices_for_templates(template_ids=[int(item.id)])
-        latest = latest_map.get(int(item.id))
+        latest = offer_price_references(self.db, user_id=item.user_id, template_ids=[item.id]).get(item.id)
+        purchase = last_purchase_prices(self.db, user_id=item.user_id, template_ids=[item.id]).get(item.id)
         brand_meta = self.brand_repo.brand_meta_for_templates(
             user_id=int(item.user_id),
             template_ids=[int(item.id)],
@@ -987,8 +992,10 @@ class OperationItemTemplateService:
             "last_used_at": item.last_used_at,
             "last_category_id": item.last_category_id,
             **brand_meta,
-            "latest_unit_price": self._money(latest.unit_price) if latest else None,
-            "latest_price_date": latest.recorded_at if latest else None,
+            "latest_unit_price": self._money(Decimal(latest["amount"])) if latest else None,
+            "latest_price_date": latest["recorded_at"] if latest else None,
+            "catalog_price": latest,
+            "last_purchase_price": purchase,
         }
 
     def get_item_template(self, *, user_id: int, template_id: int) -> dict:

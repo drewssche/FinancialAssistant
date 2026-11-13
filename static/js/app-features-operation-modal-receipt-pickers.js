@@ -265,6 +265,8 @@
         name_ci: normalizeReceiptName(product.name).toLowerCase(),
         image_id: product.image_id || offer?.image_id || null,
         selected_offer: offer || null,
+        last_purchase_price: offer?.last_purchase_price,
+        catalog_price: offer?.catalog_price,
         offers: product.offers || [],
         latest_unit_price: offer?.latest_unit_price || null,
       };
@@ -474,7 +476,7 @@
       return limit > 0 ? matches.slice(0, limit) : matches;
     }
 
-    function upsertLocalReceiptTemplate(name, latestUnitPrice = 0, shopName = "", brand = {}) {
+    function upsertLocalReceiptTemplate(name, latestUnitPrice = 0, shopName = "", brand = {}, currency = null) {
       const normalizedName = normalizeReceiptName(name);
       if (!normalizedName) {
         return null;
@@ -486,7 +488,8 @@
         item.name_ci === nameCi && (item.shop_name_ci || "") === shopNameCi
       ));
       if (existing) {
-        if (Number(latestUnitPrice || 0) > 0) {
+        if (existing.id < 0 && Number(latestUnitPrice || 0) > 0) {
+          existing.catalog_price = {amount: latestUnitPrice, currency};
           existing.latest_unit_price = Number(latestUnitPrice || 0);
         }
         if (Object.prototype.hasOwnProperty.call(brand, "brand_id")) {
@@ -515,6 +518,7 @@
         source_image_id: null,
         last_category_id: null,
         latest_unit_price: Number(latestUnitPrice || 0) || 0,
+        catalog_price: Number(latestUnitPrice) > 0 ? {amount: latestUnitPrice, currency} : null,
       };
       state.receiptTemplateHints = [created, ...(state.receiptTemplateHints || [])];
       return created;
@@ -541,6 +545,8 @@
         source_image_id: item.source_image_id || null,
         last_category_id: item.last_category_id ? Number(item.last_category_id) : null,
         latest_unit_price: Number(item.latest_unit_price || 0) || 0,
+        ...("catalog_price" in item ? {catalog_price: item.catalog_price} : {}),
+        ...("last_purchase_price" in item ? {last_purchase_price: item.last_purchase_price} : {}),
       };
     }
 
@@ -696,20 +702,23 @@
     // Shared product options for manual receipt entry and OCR review.
     // Callers own draft selection; rendering never imports catalog prices or writes data.
     function renderReceiptProductOptions(picker, {suggestions, query = "", draftId = "", allowCreate = false, showPrices = true, emptyText = "Нет совпадений"}) {
-      const suggestionsHtml = suggestions.map((item) => `
+      const suggestionsHtml = suggestions.map((item) => {
+        const price = item.last_purchase_price || item.catalog_price;
+        return `
         <button type="button" class="chip-btn receipt-template-suggestion" ${item.product_id ? `data-receipt-product-id="${item.product_id}"` : `data-receipt-template-id="${item.id}"`} data-receipt-item-id="${draftId}" title="${escHtml(item.name)}">
           ${window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(item.product_image_id || item.image_id, { kind: "item", size: "picker", alt: item.name, fallback: String(item.name || "П").slice(0, 1) }) || ""}
           <span class="receipt-template-suggestion-main">
             <span class="receipt-template-suggestion-name">${core.highlightText?.(item.name, query) || escHtml(item.name)}</span>
             <span class="receipt-template-suggestion-meta">
               ${item.brand_name ? `<span class="receipt-template-suggestion-brand">${renderReceiptBrandChip(item)}</span>` : ""}
-              ${showPrices && Number(item.latest_unit_price || 0) > 0 ? `<span>${core.formatMoney(item.latest_unit_price)}</span>` : ""}
+              ${showPrices && price?.currency && Number(price.amount) > 0 ? `<span>${core.formatMoney(price.amount, {currency: price.currency})}</span>` : ""}
               <span class="receipt-template-suggestion-sources">${escHtml(receiptProductSourcesLabel(item))}</span>
               ${item.scan_match?.sizeConflict ? "<span>Другая фасовка</span>" : ""}
             </span>
           </span>
         </button>
-      `).join("");
+      `;
+      }).join("");
       const createHtml = !query || !allowCreate ? "" : `
         <button type="button" class="chip-btn chip-btn-create" data-receipt-create-name="${escHtml(query)}" data-receipt-item-id="${draftId}" title="Создать позицию «${escHtml(query)}»">
           <span class="receipt-product-create-label">+ Создать позицию «${escHtml(query)}»</span>
