@@ -15,7 +15,7 @@
     }
     return a.map(row=>row[8]);
   }
-  function prepare(source, normalized, {enhance=true}={}) {
+  function prepare(source, normalized, {enhance=true, compact=false}={}) {
     const points = normalized.map(([x,y]) => [x*source.width,y*source.height]);
     const cross = points.map((p,i) => {const q=points[(i+1)%4],r=points[(i+2)%4];return (q[0]-p[0])*(r[1]-q[1])-(q[1]-p[1])*(r[0]-q[0]);});
     if(cross.some(v=>v<=0))throw new Error('Углы должны идти по краям одного чека, без пересечений');
@@ -23,7 +23,9 @@
     const w=(distance(points[0],points[1])+distance(points[2],points[3]))/2;
     const h=(distance(points[0],points[3])+distance(points[1],points[2]))/2;
     if(w<60||h<80)throw new Error('Область слишком мала — выберите весь чек');
-    const scale=Math.min(Math.max(1,1000/w),1600/w,3600/h,Math.sqrt(4000000/(w*h)));
+    // A different text scale and strip layout can recover rows missed on the first local pass.
+    const normalScale=Math.min(Math.max(1,1000/w),1600/w,3600/h,Math.sqrt(4000000/(w*h)));
+    const scale=compact?Math.min(950/w,.95*normalScale):normalScale;
     const out=document.createElement('canvas');out.width=Math.round(w*scale);out.height=Math.round(h*scale);
     const m=transform(points,out.width,out.height), ctx=out.getContext('2d'), data=ctx.createImageData(out.width,out.height);
     const input=source.getContext('2d').getImageData(0,0,source.width,source.height).data;

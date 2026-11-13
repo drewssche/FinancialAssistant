@@ -69,6 +69,70 @@ def test_scan_review_to_unsaved_operation(static_server_url,page_with_receipt_ap
     assert writes==[] and errors==[]
 
 @pytest.mark.e2e
+@pytest.mark.parametrize('engine,width',[('local',320),('rapid',1440)])
+def test_retry_empty_scan_reuses_photo_and_preserves_metadata(static_server_url,page_with_receipt_api_mock,engine,width):
+    page=page_with_receipt_api_mock
+    requests=[]
+    page.route('**/api/v1/receipt-ocr/status',lambda r:r.fulfill(json={'available':True}))
+    def remote(route):
+        requests.append(route.request.post_data_buffer)
+        route.fulfill(json={'text':TEXT if len(requests)>1 else 'ООО Магазин'})
+    page.route('**/api/v1/receipt-ocr/recognize',remote)
+    start(page,static_server_url,width)
+    page.locator('#scanEngine').select_option(engine)
+    page.evaluate("""text=>{
+      window.scanWidths=[];
+      window.App.receiptScanEngine.recognize=canvas=>{
+        scanWidths.push(canvas.width);
+        return {cancel(){},promise:Promise.resolve({text:scanWidths.length===1?'ООО Магазин':text})};
+      };
+    }""",TEXT)
+    upload(page);page.click('#scanRun')
+    retry=page.get_by_role('button',name='Распознать ещё раз')
+    expect(retry).to_be_visible()
+    assert page.locator('#receiptScanDialog').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    page.fill('#scanShop','Мой магазин')
+    page.fill('#scanDate','2026-11-13')
+    page.locator('#scanCurrency').select_option('EUR')
+    retry.click()
+    expect(page.locator('#scanRows .scan-row')).to_have_count(2)
+    expect(retry).to_be_hidden()
+    expect(page.locator('#scanDate')).to_have_value('2026-11-13')
+    expect(page.locator('#scanShop')).to_have_value('Мой магазин')
+    expect(page.locator('#scanTotal')).to_have_value('7.50')
+    expect(page.locator('#scanCurrency')).to_have_value('EUR')
+    expect(page.locator('#scanTransfer')).to_be_disabled()
+    if engine=='rapid':
+        assert len(requests)==2 and requests[0]!=requests[1]
+    else:
+        widths=page.evaluate('window.scanWidths')
+        assert len(widths)==2 and widths[0]>widths[1] and not requests
+
+
+@pytest.mark.e2e
+def test_failed_and_cancelled_empty_scan_retry_keeps_draft(static_server_url,page_with_receipt_api_mock):
+    page=page_with_receipt_api_mock
+    start(page,static_server_url,390);stub(page,'ООО Магазин');upload(page);page.click('#scanRun')
+    page.fill('#scanTotal','10.90')
+    page.click('#scanRetry')
+    expect(page.locator('#scanRetryStatus')).to_contain_text('снова не найдены')
+    page.evaluate("""window.App.receiptScanEngine.recognize=()=>({cancel(){},promise:Promise.reject(new Error('Ошибка OCR'))})""")
+    page.click('#scanRetry');expect(page.locator('#scanRetryStatus')).to_contain_text('Ошибка OCR')
+    page.evaluate("""window.App.receiptScanEngine.recognize=()=>({cancel(){},promise:new Promise(r=>window.lateRetry=r)})""")
+    page.click('#scanRetry')
+    page.wait_for_function("typeof window.lateRetry==='function'")
+    expect(page.locator('#scanAddRow')).to_be_disabled()
+    page.click('#scanRetryCancel');page.evaluate('text=>window.lateRetry({text})',TEXT)
+    expect(page.locator('#scanRows .scan-row')).to_have_count(0)
+    expect(page.locator('#scanTotal')).to_have_value('10.90')
+    expect(page.locator('#scanText')).to_have_value('ООО Магазин')
+    expect(page.locator('#scanRetry')).to_be_enabled()
+    page.click('#scanAddRow')
+    expect(page.locator('#scanEmptyRows')).to_be_hidden()
+    expect(page.locator('#scanRows .scan-row')).to_have_count(1)
+
+
+@pytest.mark.e2e
 def test_scan_arithmetic_correction_text_and_cancel(static_server_url,page_with_receipt_api_mock):
     page=page_with_receipt_api_mock;start(page,static_server_url,390);stub(page,TEXT.replace('7.50','7.00'));upload(page);page.click('#scanRun')
     page.locator('#scanConfirmed').check();expect(page.locator('#scanTransfer')).to_be_disabled()

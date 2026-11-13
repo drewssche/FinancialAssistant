@@ -17,6 +17,10 @@
 .scan-meta,.scan-row-numbers {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
 .scan-review-toolbar {margin:18px 0 8px;}
 .scan-review-toolbar strong {margin-right:auto;}
+#scanEmptyRows {display:grid;justify-items:start;gap:10px;padding:12px;border:1px solid var(--border);border-radius:10px;}
+#scanEmptyRows p {margin:0;overflow-wrap:anywhere;}
+#scanRetryStatus:empty {display:none;}
+#scanEmptyRows button {display:inline-flex;align-items:center;gap:8px;white-space:normal;max-width:100%;}
 .scan-row {padding:16px 0;border-bottom:1px solid var(--border);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;}
 .scan-row-numbers,.scan-source,.scan-discount-type {grid-column:1/-1;}
 .scan-source {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4;}

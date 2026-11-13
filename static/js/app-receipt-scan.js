@@ -18,7 +18,9 @@
     <div class="scan-toolbar" id="scanPhotoTools">${iconButton('scanBack','back','Изменить фото и распознать заново')}${iconButton('scanUpload','upload','Загрузить фото чека')}${iconButton('scanRotate','refresh','Повернуть фото')}${iconButton('scanReset','expand','Сбросить углы')}<input id="scanFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><span id="scanStep" class="muted-small">Загрузите фото или вставьте Ctrl+V / ⌘V · до 20 МБ</span></div>
     <div id="scanPasteReplace" class="scan-toolbar" hidden><span>Заменить фото и сбросить текущий черновик?</span>${iconButton("scanPasteAccept","save","Заменить фото")}${iconButton("scanPasteDismiss","close","Оставить текущий чек")}</div><div id="scanWorkspace" hidden><div class="scan-image-column"><div id="scanImageFrame"><canvas id="scanCanvas"></canvas><div id="scanNoPhoto" hidden>Фото чека не сохранено или удалено</div><svg id="scanOutline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon fill="#79acff18" stroke="#79acff" stroke-width=".5"/></svg>${[0,1,2,3].map((i)=>`<button type="button" class="scan-corner" data-corner="${i}" aria-label="Угол ${i+1} чека">${i+1}</button>`).join('')}</div><p id="scanCropHint" class="muted-small">Подвиньте углы к краям чека</p></div>
     <form id="scanReview" hidden><div class="scan-meta"><label class="field"><span>Дата покупки</span><input id="scanDate" type="date" required></label><label class="field"><span>Магазин</span><input id="scanShop" maxlength="160" placeholder="Выбрать или ввести магазин" autocomplete="off" required></label><label class="field"><span>Итого по чеку</span><input id="scanTotal" inputmode="decimal" aria-describedby="scanMathHint" required></label><label class="field"><span>Валюта</span><select id="scanCurrency"><option>BYN</option><option>RUB</option><option>USD</option><option>EUR</option></select></label></div>
-    <div class="scan-review-toolbar"><strong>Позиции</strong>${iconButton('scanAddRow','plus','Добавить строку')}${iconButton('scanShowText','receipt','Распознанный текст')}</div><p class="sr-only" id="scanMathHint">Можно вводить вычисления: 7,11 − 0,71 · Enter — получить результат.</p><div id="scanRows"></div>
+    <div class="scan-review-toolbar"><strong>Позиции</strong>${iconButton('scanAddRow','plus','Добавить строку')}${iconButton('scanShowText','receipt','Распознанный текст')}</div>
+    <div id="scanEmptyRows" hidden><p>Позиции не найдены. Их можно добавить вручную кнопкой «+».</p><button type="button" id="scanRetry" class="btn btn-secondary">${icons.svg('refresh')}Распознать ещё раз</button><button type="button" id="scanRetryCancel" class="btn btn-secondary" hidden>Отменить распознавание</button><p id="scanRetryStatus" class="muted-small" role="status"></p></div>
+    <p class="sr-only" id="scanMathHint">Можно вводить вычисления: 7,11 − 0,71 · Enter — получить результат.</p><div id="scanRows"></div>
     <p id="scanArithmetic" role="status"></p><div id="scanReplaceOperation" class="scan-toolbar" hidden><span>Заменить заполненные поля операции данными этого чека?</span>${iconButton('scanReplaceYes','save','Заменить данные операции')}${iconButton('scanReplaceNo','close','Оставить операцию')}</div><label class="scan-confirm"><input id="scanConfirmed" type="checkbox">Проверил дату, магазин, валюту и позиции</label>
     <footer><button type="submit" class="btn btn-primary btn-icon" id="scanTransfer" aria-label="В черновик операции" title="В черновик операции" disabled>${icons.svg("save")}</button></footer></form></div>
     <p id="scanStatus" class="muted-small" role="status"></p><footer id="scanRunBar"><button id="scanCancel" type="button" class="btn btn-secondary btn-icon" aria-label="Отменить распознавание" title="Отменить распознавание" hidden>${icons.svg("close")}</button><button id="scanRun" type="button" class="btn btn-primary btn-icon" aria-label="Распознать чек" title="Распознать чек" disabled>${icons.svg("receipt")}</button></footer>
@@ -129,10 +131,16 @@
     busy=value;
     for(const id of ['scanRun','scanUpload','scanRotate','scanReset','scanEngine'])node(id).disabled=value || (!['scanUpload','scanEngine'].includes(id)&&!source);
     node('scanCancel').hidden=!value;
+    for(const id of ['scanBack','scanAddRow','scanShowText','scanConfirmed'])node(id).disabled=value;
+    node('scanRetry').hidden=value||!source;
+    node('scanRetryCancel').hidden=!value;
     dialog.querySelectorAll('[data-corner]').forEach(b=>b.disabled=value);
   }
-  function invalidateReview(){storedImage=null;dialog.dataset.stage=source?'crop':'upload';node('scanStep').textContent='Границы чека';draft=null;node('scanReview').hidden=true;node('scanConfirmed').checked=false;transferred=false;}
-  function cancel(){generation++;job?.cancel();job=null;setBusy(false);status('Распознавание отменено');}
+  function invalidateReview(){storedImage=null;dialog.dataset.stage=source?'crop':'upload';node('scanStep').textContent='Границы чека';draft=null;node('scanReview').hidden=true;node('scanRetryStatus').textContent='';node('scanConfirmed').checked=false;transferred=false;}
+  function cancel(){
+    if(busy&&draft)node('scanRetryStatus').textContent='Повтор отменён.';
+    generation++;job?.cancel();job=null;setBusy(false);status('Распознавание отменено');
+  }
   function cleanup(){storePicker.close();originalTextMode=false;editedText='';node('scanText').readOnly=false;node('scanReparse').hidden=false;node('scanTextModes').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.textMode==='edited'));dialog.classList.remove('scan-drag-over');pendingPaste=null;node('scanPasteReplace').hidden=true;cancel();node('scanTextDialog').close();source=null;canvas.width=canvas.height=1;canvas.hidden=false;node('scanNoPhoto').hidden=true;node('scanBack').hidden=false;node('scanFile').value='';node('scanText').value='';node('scanRows').replaceChildren();originalText='';invalidateReview();node('scanWorkspace').hidden=true;setBusy(false);status('');}
   async function open(mode='create'){
     refreshEngines();
@@ -228,30 +236,47 @@
     button.onkeydown=e=>{if(!e.key.startsWith('Arrow'))return;e.preventDefault();const axis=['ArrowLeft','ArrowRight'].includes(e.key)?0:1;const delta=['ArrowLeft','ArrowUp'].includes(e.key)?-.005:.005;points[index][axis]=Math.max(0,Math.min(1,points[index][axis]+delta));invalidateReview();draw();};
   });
   node('scanCancel').onclick=cancel;
-  node('scanRun').onclick=async()=>{
-    if(!source||busy)return;invalidateReview();const token=++generation;setBusy(true);status('Подготовка фото…');
+  node('scanRetryCancel').onclick=()=>{cancel();node('scanRetry').focus();};
+  node('scanRun').onclick=()=>runRecognition(false);
+  node('scanRetry').onclick=()=>runRecognition(true);
+  async function runRecognition(retry){
+    if(!source||busy||(retry&&draft?.rows.length!==0))return;
+    if(!retry)invalidateReview();
+    const report=retry?message=>{node('scanRetryStatus').textContent=message;}:status;
+    const token=++generation;
+    setBusy(true);report('Подготовка фото…');
     let prepared;
     try{
       await new Promise(resolve=>requestAnimationFrame(resolve));
+      if(token!==generation)return;
       const remote=node('scanEngine').value==='rapid';
-      prepared=window.App.receiptScanImage.prepare(source,points,{enhance:!remote});
+      prepared=window.App.receiptScanImage.prepare(source,points,{enhance:!remote||retry,compact:retry&&!remote});
       const started=performance.now();
-      job=window.App.receiptScanEngine[remote?'recognizeRemote':'recognize'](prepared,p=>{if(token===generation)status(remote?'Распознавание на сервере… Это может занять до 90 секунд.':p===null?'Загрузка движка… В первый раз потребуется несколько мегабайт.':`Распознавание: ${p}%`);});
+      job=window.App.receiptScanEngine[remote?'recognizeRemote':'recognize'](prepared,p=>{if(token===generation)report(remote?'Распознавание на сервере… Это может занять до 90 секунд.':p===null?'Загрузка движка… В первый раз потребуется несколько мегабайт.':`Распознавание: ${p}%`);});
       const result=await job.promise;if(token!==generation||!result)return;
-      originalText=result.text;node('scanText').value=originalText;showDraft(parser.parse(originalText));
-      canvas.width=prepared.width;canvas.height=prepared.height;canvas.getContext('2d').drawImage(prepared,0,0);
+      if(!retry||result.text.trim()){
+        if(!retry||node('scanText').value===originalText)node('scanText').value=result.text;
+        originalText=result.text;
+        showDraft(parser.parse(originalText),retry);
+      }
+      // Keep the higher-resolution review photo when retrying at a different OCR scale.
+      if(!retry){canvas.width=prepared.width;canvas.height=prepared.height;canvas.getContext('2d').drawImage(prepared,0,0);}
+      if(retry)report(draft.rows.length?'':'Позиции снова не найдены. Попробуйте изменить границы фото или выбрать другой способ распознавания.');
       status(`Черновик за ${((performance.now()-started)/1000).toFixed(1)} с. Проверьте каждую строку: OCR может ошибаться.`);
-    }catch(e){if(token===generation)status(e.message||'Не удалось распознать. Повторите попытку или введите чек вручную.');}
+    }catch(e){if(token===generation)report(e.message||'Не удалось распознать. Повторите попытку или введите чек вручную.');}
     finally{if(prepared){prepared.width=prepared.height=1;}if(token===generation){job=null;setBusy(false);}}
-  };
+  }
   const decimal=cents=>cents==null?'':(cents/100).toFixed(2);
   const codeLookupKey=row=>JSON.stringify([node('scanShop').value,(row.code_entries||[]).map(e=>[e.code,e.manual_kind?e.kind:'auto'])]);
-  function showDraft(value){
+  function showDraft(value,keepFilledMeta=false){
     draft=value;
     for(const row of draft.rows){if(row.total==null)parser.recalculateRow(row,'price');}
     draft.rows.forEach((row,index)=>row.scan_order=index);
     draft.rows=parser.mergeDuplicates(draft.rows,window.App.receiptCodes.validBarcode);
-    dialog.dataset.stage='review';node('scanStep').textContent='Проверьте поля по фото';node('scanDate').value=draft.date;node('scanShop').value=draft.shop;node('scanTotal').value=decimal(draft.total);
+    dialog.dataset.stage='review';node('scanStep').textContent='Проверьте поля по фото';
+    for(const [id,field] of [['scanDate',draft.date],['scanShop',draft.shop],['scanTotal',decimal(draft.total)]]){
+      if(!keepFilledMeta||!node(id).value)node(id).value=field;
+    }
     node('scanReview').hidden=false;node('scanConfirmed').checked=false;renderRows();validate();
   }
   function setCatalogOpen(list, open){
@@ -509,8 +534,9 @@
       el.querySelector('.scan-codes-host').refreshCodeState?.();
     });
     const summary=node('scanArithmetic');
+    node('scanEmptyRows').hidden=draft.rows.length>0;
     summary.textContent=globalErrors.length?globalErrors.join(' · '):errors.length?'':'Суммы сходятся. Сверьте названия и цифры с фото.';
-    summary.hidden=!summary.textContent;summary.classList.toggle('scan-error',!!globalErrors.length);
+    summary.hidden=!summary.textContent||(!draft.rows.length&&!draft.unsupported);summary.classList.toggle('scan-error',!!globalErrors.length);
     node('scanTransfer').disabled=errors.length>0||!node('scanConfirmed').checked||transferred;return errors;
   }
 
@@ -596,7 +622,7 @@
     photosDeleted(){
       // Never re-upload a removed saved photo from the open editor's cached attachment.
       if(pending.edit)pending.edit.value.image=null;
-      if(context!=='create'){storedImage=null;source=null;canvas.width=canvas.height=1;canvas.hidden=true;node('scanNoPhoto').hidden=false;node('scanBack').hidden=true;}
+      if(context!=='create'){if(busy)cancel();storedImage=null;source=null;canvas.width=canvas.height=1;canvas.hidden=true;node('scanNoPhoto').hidden=false;node('scanBack').hidden=true;node('scanRetry').hidden=true;}
     },
     reset(){openGeneration++;if(dialog.open)dialog.close();cleanup();createRecovery=null;pending.create=pending.edit=null;context='create';},
   });

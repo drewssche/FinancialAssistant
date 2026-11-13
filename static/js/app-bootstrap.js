@@ -1,7 +1,7 @@
 (() => {
   const bundle = document.currentScript?.dataset.bundle;
   const manifest = Array.isArray(window.__APP_SCRIPT_MANIFEST__) ? window.__APP_SCRIPT_MANIFEST__ : [];
-  const assetVersion = "20261109-login-startup";
+  const assetVersion = "20261113-scan-retry";
 
   function showBootstrapError(message) {
     const text = String(message || "Не удалось загрузить приложение.");

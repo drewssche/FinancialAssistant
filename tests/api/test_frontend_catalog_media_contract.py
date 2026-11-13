@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -23,7 +24,7 @@ def test_catalog_media_runtime_uses_authenticated_bounded_blob_cache():
     assert "URL.createObjectURL(blob)" in media
     assert "URL.revokeObjectURL" in media
     assert 'cache: "force-cache"' in media
-    assert '@import url("/static/css/components-catalog-media.css?v=20260907c");' in styles
+    assert re.search(r'@import url\("/static/css/components-catalog-media\.css\?v=[^"]+"\);', styles)
 
 
 def test_all_catalog_entities_offer_image_picker_and_media_mutations():

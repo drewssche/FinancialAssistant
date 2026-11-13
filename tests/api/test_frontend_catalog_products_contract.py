@@ -57,7 +57,8 @@ def test_receipt_picker_uses_one_product_and_resolves_source_offer_without_overw
 
     assert "rebuildReceiptProductHints" in pickers
     assert 'data-receipt-product-id="${item.product_id}"' in pickers
-    assert '`/api/v1/operations/catalog-products?${params.toString()}`' in pickers
+    assert 'loadReceiptCatalogPages("catalog-products", "products", query' in pickers
+    assert '`/api/v1/operations/${resource}?${params}`' in pickers
     assert "selectedSourceId ? null" in pickers
     assert "matchingProducts.find((item) => receiptProductOfferForSource(item, shopName, sourceId))" in pickers
     assert "Number(right.sourceMatch) - Number(left.sourceMatch)" in pickers
