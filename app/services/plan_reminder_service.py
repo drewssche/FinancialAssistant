@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
 from app.core.logging import log_background_job_event
+from app.core.user_timezone import local_date, timezone_from_preferences
 from app.repositories.plan_repo import PlanRepository
 from app.services.activity_service import ActivityService
 from app.services.bank_currency_rate_registry import BANK_RATE_PROVIDERS, display_scale
@@ -394,16 +394,12 @@ class PlanReminderService:
 
     def _get_user_reminder_config_from_prefs(self, *, user_id: int, prefs: dict) -> dict:
         plans_prefs = prefs.get("plans") if isinstance(prefs.get("plans"), dict) else {}
-        ui_prefs = prefs.get("ui") if isinstance(prefs.get("ui"), dict) else {}
         enabled = plans_prefs.get("reminders_enabled", True) is not False
-        timezone_name = ui_prefs.get("timezone", "auto")
-        browser_timezone = ui_prefs.get("browser_timezone")
-        user_tz = self._resolve_timezone(timezone_name, browser_timezone)
         reminder_time = self._parse_reminder_time(plans_prefs.get("reminder_time"))
         return {
             "user_id": user_id,
             "enabled": enabled,
-            "timezone": user_tz,
+            "timezone": timezone_from_preferences(prefs),
             "time": reminder_time,
         }
 
@@ -430,28 +426,7 @@ class PlanReminderService:
     def _already_reminded_today(*, last_reminded_at: datetime | None, user_tz, now_utc: datetime) -> bool:
         if not last_reminded_at:
             return False
-        reminded_at = (
-            last_reminded_at.replace(tzinfo=timezone.utc)
-            if last_reminded_at.tzinfo is None
-            else last_reminded_at.astimezone(timezone.utc)
-        )
-        return reminded_at.astimezone(user_tz).date() == now_utc.astimezone(user_tz).date()
-
-    @staticmethod
-    def _resolve_timezone(timezone_name: str | None, browser_timezone: str | None = None):
-        normalized = str(timezone_name or "auto").strip()
-        if not normalized or normalized == "auto":
-            browser_normalized = str(browser_timezone or "").strip()
-            if browser_normalized:
-                try:
-                    return ZoneInfo(browser_normalized)
-                except Exception:
-                    return timezone.utc
-            return timezone.utc
-        try:
-            return ZoneInfo(normalized)
-        except Exception:
-            return timezone.utc
+        return local_date(last_reminded_at, user_tz) == local_date(now_utc, user_tz)
 
     @staticmethod
     def _parse_reminder_time(value: str | None) -> time:

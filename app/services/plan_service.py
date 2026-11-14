@@ -18,6 +18,7 @@ from app.core.cache import (
     set_json,
 )
 from app.core.logging import log_background_job_event
+from app.core.user_timezone import local_date, timezone_from_preferences
 from app.db.models import WorkDayOverride, WorkProfile
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.plan_repo import PlanRepository
@@ -564,24 +565,27 @@ class PlanService:
             raise
 
     def _confirm_plan_transaction(self, *, user_id: int, plan_id: int) -> dict:
+        confirmed_at = datetime.now(timezone.utc)
         row = self.repo.get_by_id_for_update(user_id=user_id, plan_id=plan_id)
         if not row:
             raise LookupError("Plan not found")
         item = row.PlanOperation
         category_name = row.Category.name if row.Category else self.repo.get_category_name(category_id=item.category_id)
-        effective_date = date.today()
         if item.status in {"confirmed", "skipped"}:
             raise ValueError("Plan is already completed")
+        preference = self.repo.get_user_preferences(user_id=user_id)
+        user_timezone = timezone_from_preferences(preference.data if preference else None)
+        effective_date = local_date(confirmed_at, user_timezone)
         if (
             item.recurrence_enabled
             and item.last_confirmed_at is not None
-            and item.last_confirmed_at.date() == datetime.now(timezone.utc).date()
+            and local_date(item.last_confirmed_at, user_timezone) >= effective_date
         ):
             raise ValueError("This recurring plan occurrence is already confirmed today")
         receipt_map = self.repo.list_receipt_items_for_plans(user_id=user_id, plan_ids=[plan_id])
         receipt_items = receipt_map.get(plan_id, [])
         original_amount = self._get_plan_original_amount(item)
-        resolution = self._resolve_plan_current_resolution(item=item, strict=True)
+        resolution = self._resolve_plan_current_resolution(item=item, as_of=effective_date)
         if resolution is None:  # pragma: no cover - strict resolver either returns or raises
             raise ValueError("Unable to resolve plan FX rate")
         payment_mode = FxRatePolicyService(self.db).normalize_payment_mode(
@@ -627,7 +631,7 @@ class PlanService:
         )
         item.confirmed_operation_id = int(operation["id"])
         item.confirm_count = int(item.confirm_count or 0) + 1
-        item.last_confirmed_at = datetime.now(timezone.utc)
+        item.last_confirmed_at = confirmed_at
         item.last_skipped_at = None
         self.repo.create_event(
             user_id=user_id,
@@ -1062,6 +1066,7 @@ class PlanService:
         *,
         item,
         strict: bool = True,
+        as_of: date | None = None,
     ) -> FxRateResolution | None:
         currency = str(getattr(item, "currency", "BYN") or "BYN").upper()
         base_currency = str(getattr(item, "base_currency", "BYN") or "BYN").upper()
@@ -1075,6 +1080,7 @@ class PlanService:
                 bank_channel=getattr(item, "fx_bank_channel", None),
                 rate_kind=getattr(item, "fx_rate_kind", None),
                 manual_rate=getattr(item, "fx_manual_rate", None),
+                as_of=as_of,
             )
         except ValueError:
             if strict:
