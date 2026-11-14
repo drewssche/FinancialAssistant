@@ -8,12 +8,14 @@ from app.schemas.operation import (
     FxRateKind,
     FxRateSource,
     OperationOut,
+    TagNames,
     OperationReceiptItemIn,
     OperationReceiptItemOut,
 )
 
 
 class PlanCreate(BaseModel):
+    tags: TagNames = Field(default_factory=list)
     kind: str
     amount: Decimal | None = None
     currency: str = Field(default="BYN", min_length=3, max_length=3)
@@ -37,6 +39,7 @@ class PlanCreate(BaseModel):
 
 
 class PlanUpdate(BaseModel):
+    tags: TagNames = Field(default_factory=list)
     resume: bool = False
     kind: str | None = None
     amount: Decimal | None = None
@@ -75,6 +78,7 @@ class PlanResumePreviewOut(BaseModel):
 
 
 class PlanOut(BaseModel):
+    tags: TagNames = Field(default_factory=list)
     id: int
     kind: str
     amount: Decimal
@@ -137,6 +141,7 @@ class PlanConfirmOut(BaseModel):
 
 
 class PlanEventOut(BaseModel):
+    tags: TagNames = Field(default_factory=list)
     id: int
     plan_id: int
     operation_id: int | None = None

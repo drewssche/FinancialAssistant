@@ -662,6 +662,7 @@ class OperationItemTemplateService:
                     brand_id=matched_item.get("brand_id"),
                     category_id=matched_item.get("category_id") or category_id,
                     measurement=self._new_product_measurement(normalized_items, key),
+                    tags=matched_item.get("tags"),
                 )
             template = self.repo.create_item_template(
                 user_id=user_id,
@@ -722,7 +723,7 @@ class OperationItemTemplateService:
                 item=item,
                 fallback_category_id=category_id,
             )
-            template.is_archived = False
+            template.is_archived = bool(item.get("source_archived"))
             if template.name != name and not item.get("template_id"):
                 template.name = name
                 template.name_ci = name.casefold()
@@ -762,6 +763,7 @@ class OperationItemTemplateService:
             storage_items.append(
                 {
                     **item,
+                    "tags": item.get("tags", product.tags),
                     "template_id": template_id,
                     "product_id": int(product.id),
                 }
@@ -841,6 +843,7 @@ class OperationItemTemplateService:
                     brand_id=matched_item.get("brand_id"),
                     category_id=matched_item.get("category_id") or category_id,
                     measurement=self._new_product_measurement(normalized_items, key),
+                    tags=matched_item.get("tags"),
                 )
             template = self.repo.create_item_template(
                 user_id=user_id,
@@ -895,7 +898,7 @@ class OperationItemTemplateService:
                 item=item,
                 fallback_category_id=category_id,
             )
-            template.is_archived = False
+            template.is_archived = bool(item.get("source_archived"))
             if "source_id" in item:
                 template.source_id = item.get("source_id")
             self._sync_product_compatibility(product=product)
@@ -909,6 +912,7 @@ class OperationItemTemplateService:
             resolved_items.append(
                 {
                     **item,
+                    "tags": item.get("tags", product.tags),
                     "template_id": template_id,
                     "product_id": int(product.id),
                 }
@@ -1051,6 +1055,7 @@ class OperationItemTemplateService:
                 continue
             item["source_id"] = int(source.id)
             item["shop_name"] = source.name
+            item["source_archived"] = source.is_archived
 
     def _validate_brand_id(
         self,

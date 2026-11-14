@@ -130,6 +130,8 @@
         return true;
       }
       const haystack = [
+        window.App.purchaseTags.text(window.App.purchaseTags.all(item)),
+        ...(item.receipt_items || []).map(row => row.name || ""),
         item.category_name || "",
         item.note || "",
         item.title || "",
@@ -154,6 +156,8 @@
         return true;
       }
       const haystack = [
+        window.App.purchaseTags.text(window.App.purchaseTags.all(item)),
+        ...(item.receipt_items || []).map(row => row.name || ""),
         item.category_name || "",
         item.note || "",
         item.event_type || "",

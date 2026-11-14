@@ -82,3 +82,25 @@ def test_korona_source_link_in_catalogue_and_scan(static_server_url,page_with_re
     p.click('#scanClose')
     p.evaluate("window.App.getRuntimeModule('item-catalog').openEditSourceGroupModal('Корона')")
     expect(p.locator('#sourceGroupModal').get_by_role('link',name='Каталог продукции')).to_have_attribute('href',source['website_url'])
+
+
+@pytest.mark.e2e
+def test_category_from_tag_and_receipt_line_input(static_server_url, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    start(page, static_server_url, 390)
+    page.click("#scanClose")
+    page.evaluate("""async () => {
+        await window.App.getRuntimeModule('operation-modal').receiptCatalog.load();
+        window.App.state.receiptProductHints = [{id:999, name:'Барный коврик', category_id:101, tags:['кофемашина']}];
+    }""")
+    row = page.locator(".receipt-item-row").first
+    row.locator("[data-receipt-field=name]").fill("Нок-бокс")
+    row.locator("[data-receipt-create-name]").click()
+    _expand_receipt_row(row)
+    row.locator("[data-receipt-field=category_search]").fill("кофемашина")
+    expect(row.locator(".receipt-category-picker")).to_contain_text("По тегу #кофемашина")
+    row.locator('[data-receipt-category-id="101"]').click()
+    row.locator("[data-receipt-field=tags_input]").fill("Кофемашина, кухня")
+    row.locator("[data-receipt-field=unit_price]").fill("33.12")
+    payload = page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert payload[0]["tags"] == ["кофемашина", "кухня"]

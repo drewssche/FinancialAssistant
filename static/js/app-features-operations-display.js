@@ -112,6 +112,7 @@
             </div>
             ${shopChip}
             ${categoryChip}
+            ${window.App.purchaseTags.chips(row.tags)}
             <div class="operation-receipt-meta muted-small">
               ${esc(core.formatAmount(qty))} × ${core.formatMoney(price, { currency: receiptCurrency })}${regularPrice}
             </div>

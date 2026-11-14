@@ -79,15 +79,13 @@ class CategoryService:
             view="list",
         )
         cached = get_json(cache_key)
-        if cached is not None:
-            return cached["items"]
-        rows = [self._serialize_category_row(row) for row in self.repo.list_for_user(user_id)]
-        set_json(
-            cache_key,
-            {"items": rows},
-            ttl_seconds=get_namespace_ttl_seconds("categories"),
-        )
-        return rows
+        if cached is None:
+            rows = [self._serialize_category_row(row) for row in self.repo.list_for_user(user_id)]
+            set_json(cache_key, {"items": rows}, ttl_seconds=get_namespace_ttl_seconds("categories"))
+        else:
+            rows = cached["items"]
+        used = self.repo.used_tags(user_id)
+        return [{**row, "used_tags": used.get(row["id"], [])} for row in rows]
 
     def list_categories_paginated(
         self,

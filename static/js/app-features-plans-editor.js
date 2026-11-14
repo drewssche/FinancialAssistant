@@ -41,6 +41,7 @@
         shop_name: row.shop_name || "",
         name: row.name || "",
         ...window.App.measurements.snapshot(row),
+        tags: row.tags,
         variant_snapshot: row.variant_snapshot || null,
         measurement_touched: true,
         discount_mode: row.discount_mode || null,
@@ -67,6 +68,7 @@
       }
       core.syncDateFieldValue(document.getElementById("opDate"), plan?.scheduled_date || core.getTodayIso());
       document.getElementById("opAmount").value = plan?.original_amount || plan?.amount || "";
+      document.getElementById("opTags").value = (plan?.tags || []).join(", ");
       document.getElementById("opNote").value = plan?.note || "";
       if (el.opCurrency) {
         el.opCurrency.value = plan?.currency || (core.getCurrencyConfig?.().code || "BYN");
@@ -134,6 +136,7 @@
         scheduled_date: scheduledDate,
         ...(isResuming() ? { resume: true } : {}),
         note: String(document.getElementById("opNote").value || "").trim() || null,
+        tags: window.App.purchaseTags.parse(document.getElementById("opTags").value),
         receipt_items: receiptItems,
         recurrence_enabled: recurrenceEnabled,
         recurrence_frequency: recurrenceEnabled ? (el.planRecurrenceFrequency?.value || "monthly") : null,

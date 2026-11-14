@@ -329,3 +329,19 @@
   :is(#createModal, #editModal).operation-editor.is-receipt-editor .inline-currency-select {min-height:36px;}
   :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-money:has([data-receipt-currency-slot] select) {--price-caption-height:36px;}
 }
+
+.purchase-tags-dialog {
+  inline-size: min(30rem, calc(100vw - 2rem));
+  max-block-size: 80dvh;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  color: var(--text);
+  background: var(--surface);
+}
+#opTagsField, #editTagsField { min-width: 0; grid-column: 1 / -1; }
+.purchase-tags-dialog .modal-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.purchase-tags-dialog::backdrop { background: #0008; }
+button[data-purchase-tag] { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }

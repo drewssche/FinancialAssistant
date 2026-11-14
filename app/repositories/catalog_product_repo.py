@@ -123,6 +123,7 @@ class CatalogProductRepository:
             return (
                 or_(
                     search_match(CatalogProduct.name, q, original_only=original_only),
+                    search_match(CatalogProduct.tags, q, original_only=original_only),
                     (or_(
                         exists(select(CatalogVariantCode.id).join(CatalogVariant, CatalogVariant.id == CatalogVariantCode.variant_id).where(
                             CatalogVariant.product_id == CatalogProduct.id, CatalogVariant.user_id == user_id,

@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.receipt_pricing import calculate_line_pricing, guard_pricing_replacement, pricing_snapshot
+from app.core.tags import preserve_receipt_tags
 from app.core.receipt_variant import guard_receipt_code_replacement, receipt_code_snapshot, guard_variant_replacement, variant_snapshot
 from app.core.measurement import guard_measurement_replacement, measurement_snapshot, normalize_measurement
 from app.core.cache import (
@@ -42,6 +43,7 @@ _CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
 class OperationService:
     LARGE_OPERATION_THRESHOLD = Decimal("100")
     ACTIVITY_FIELDS = [
+        "tags",
         "kind",
         "original_amount",
         "currency",
@@ -56,6 +58,7 @@ class OperationService:
         "note",
     ]
     ACTIVITY_LABELS = {
+        "tags": "Теги",
         "kind": "Тип",
         "original_amount": "Сумма",
         "currency": "Валюта",
@@ -123,6 +126,7 @@ class OperationService:
         fx_rate_kind: str | None = None,
         fx_manual_rate: Decimal | None = None,
         fx_payment_mode: str | None = None,
+        tags: list[str] | None = None,
         receipt_items: list[dict] | None = None,
         fx_settlement: dict | None = None,
         receipt_scan: dict | None = None,
@@ -225,6 +229,7 @@ class OperationService:
             operation_date=operation_date,
             category_id=category_id,
             note=note,
+            tags=tags,
         )
         if explicit_payment_mode and effective_payment_mode != "foreign_balance" and fx_settlement:
             raise ValueError(f"{effective_payment_mode} must not create a separate currency trade")
@@ -637,6 +642,7 @@ class OperationService:
             ).get(int(item.id), [])
             guard_receipt_code_replacement(receipt_items_input, before_receipt_items)
             guard_variant_replacement(receipt_items_input, before_receipt_items)
+            preserve_receipt_tags(receipt_items_input, before_receipt_items)
             guard_measurement_replacement(receipt_items_input, before_receipt_items)
             guard_pricing_replacement(receipt_items_input, before_receipt_items)
             normalized_items, receipt_total = self._normalize_receipt_items(receipt_items_input)
@@ -1048,6 +1054,7 @@ class OperationService:
             "fx_payment_mode": getattr(item, "fx_payment_mode", "valuation") or "valuation",
             "operation_date": iso(item.operation_date),
             "category_id": item.category_id,
+            "tags": item.tags,
             "note": item.note,
             "created_at": iso(item.created_at),
         }
@@ -1061,6 +1068,7 @@ class OperationService:
                 **measurement_snapshot(row, json_safe=True),
                 **receipt_code_snapshot(row),
                 **variant_snapshot(row),
+                "tags": row.tags,
                 **pricing_snapshot(row, json_safe=True),
                 "quantity": str(row.quantity),
                 "unit_price": str(row.unit_price),
@@ -1376,6 +1384,7 @@ class OperationService:
                     **measurement_snapshot(row),
                     **receipt_code_snapshot(row),
                     **variant_snapshot(row),
+                    "tags": row.tags,
                     **pricing_snapshot(row),
                     "quantity": self._qty(row.quantity),
                     "unit_price": row.unit_price if getattr(row, "discount_mode", None) else self._money(row.unit_price),
@@ -1444,6 +1453,7 @@ class OperationService:
             "category_name": operation_category_meta.get("name"),
             "category_icon": operation_category_meta.get("icon"),
             "category_accent_color": operation_category_meta.get("accent_color"),
+            "tags": operation.tags,
             "note": operation.note,
             "has_receipt_scan": bool(getattr(operation, "has_receipt_scan", False)),
             "receipt_items": receipt_payload,
@@ -1557,6 +1567,7 @@ class OperationService:
                     "catalog_codes": item.get("catalog_codes") or [],
                     "site_selection": item.get("site_selection"),
                     **normalize_measurement(item),
+                    **({"tags": item["tags"]} if "tags" in item else {}),
                     "receipt_codes": item.get("receipt_codes") if "receipt_codes" in item else item.get("catalog_codes") or [],
                     **variant_snapshot(item),
                     **({"variant_id": int(item["variant_id"])} if item.get("variant_id") is not None else {}),

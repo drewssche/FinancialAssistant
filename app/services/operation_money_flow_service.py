@@ -34,6 +34,8 @@ class OperationMoneyFlowService:
     def _query_text(item: dict) -> str:
         return " ".join(
             [
+                " ".join("#" + t for t in item.get("tags", [])),
+                " ".join("#" + t for row in item.get("receipt_items", []) for t in row.get("tags", [])),
                 str(item.get("title") or ""),
                 str(item.get("subtitle") or ""),
                 str(item.get("note") or ""),
@@ -354,6 +356,7 @@ class OperationMoneyFlowService:
             "fx_rate": payload["fx_rate"],
             "title": payload.get("category_name") or "Без категории",
             "subtitle": "Обычная операция",
+            "tags": payload["tags"],
             "note": payload.get("note"),
             "category_id": payload.get("category_id"),
             "category_name": payload.get("category_name"),

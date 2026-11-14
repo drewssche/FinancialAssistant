@@ -48,6 +48,7 @@ def db_session():
                 amount=Decimal("12.50"),
                 scheduled_date=date(2026, 3, 22),
                 note="Купить кофе",
+                tags=["кофемашина"],
                 status="active",
                 recurrence_enabled=False,
             )
@@ -67,6 +68,7 @@ def test_confirm_plan_from_telegram_confirms_operation(db_session: Session):
     assert "Купить кофе" in result.message_text
     operations = db_session.query(Operation).all()
     assert len(operations) == 1
+    assert operations[0].tags == ["кофемашина"]
 
 
 def test_update_retry_after_response_failure_does_not_repeat_financial_write(db_session, monkeypatch):

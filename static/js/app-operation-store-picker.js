@@ -45,7 +45,7 @@
     function render(query = '') {
       currentQuery = query;
       query = canonical(query);
-      const names = [...new Set((config.getNames?.() || (window.App.state.itemSources || []).map(item => item.name)).filter(Boolean))];
+      const names = [...new Set((config.getNames?.() || (window.App.state.itemSources || []).filter(item => !item.is_archived).map(item => item.name)).filter(Boolean))];
       const matches = names.filter(name => window.App.search.matches(name, query))
         .sort((a, b) => window.App.search.compare(query, [a], [b]) || a.localeCompare(b, 'ru'));
       const custom = query.trim();

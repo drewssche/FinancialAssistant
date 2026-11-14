@@ -16,7 +16,7 @@ router = APIRouter(prefix="/plans", tags=["plans"])
 def _dump_receipt_item(item) -> dict:
     data = item.model_dump()
     fields_set = getattr(item, "model_fields_set", set())
-    for optional_link in ("receipt_codes", "variant_id", "variant_snapshot", "template_id", "product_id", "brand_id", "source_id", "sale_unit", "package_quantity", "package_unit", "discount_mode", "discount_value"):
+    for optional_link in ("tags", "receipt_codes", "variant_id", "variant_snapshot", "template_id", "product_id", "brand_id", "source_id", "sale_unit", "package_quantity", "package_unit", "discount_mode", "discount_value"):
         if optional_link not in fields_set:
             data.pop(optional_link, None)
     return data
@@ -74,6 +74,7 @@ def create_plan(
             scheduled_date=payload.scheduled_date,
             category_id=payload.category_id,
             note=payload.note,
+            tags=payload.tags,
             receipt_items=[_dump_receipt_item(item) for item in payload.receipt_items],
             recurrence_enabled=payload.recurrence_enabled,
             recurrence_frequency=payload.recurrence_frequency,

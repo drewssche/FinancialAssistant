@@ -7,6 +7,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.receipt_pricing import PRICING_INPUT_FIELDS, guard_pricing_replacement, pricing_snapshot
+from app.core.tags import preserve_receipt_tags
 from app.core.receipt_variant import guard_receipt_code_replacement, receipt_code_snapshot, guard_variant_replacement, variant_snapshot
 from app.core.measurement import MEASUREMENT_FIELDS, guard_measurement_replacement, measurement_snapshot
 from app.core.cache import (
@@ -32,6 +33,7 @@ from app.services.work_service import WorkService
 
 class PlanService:
     ACTIVITY_FIELDS = [
+        "tags",
         "kind",
         "original_amount",
         "currency",
@@ -53,6 +55,7 @@ class PlanService:
         "recurrence_end_date",
     ]
     ACTIVITY_LABELS = {
+        "tags": "Теги",
         "kind": "Тип",
         "original_amount": "Сумма",
         "currency": "Валюта",
@@ -208,6 +211,7 @@ class PlanService:
         scheduled_date: date,
         category_id: int | None,
         note: str | None,
+        tags: list[str] | None = None,
         receipt_items: list[dict] | None = None,
         recurrence_enabled: bool = False,
         recurrence_frequency: str | None = None,
@@ -254,6 +258,7 @@ class PlanService:
             scheduled_date=scheduled_date,
             category_id=category_id,
             note=note,
+            tags=tags,
             recurrence_enabled=recurrence_enabled,
             recurrence_frequency=recurrence_frequency,
             recurrence_interval=recurrence_interval,
@@ -327,12 +332,13 @@ class PlanService:
         normalized_items = None
         receipt_total = None
         if receipt_items_input is not None:
-            if any(not all(key in row for key in ("receipt_codes", "variant_snapshot", *MEASUREMENT_FIELDS, *PRICING_INPUT_FIELDS)) for row in receipt_items_input):
+            if any(not all(key in row for key in ("tags", "receipt_codes", "variant_snapshot", *MEASUREMENT_FIELDS, *PRICING_INPUT_FIELDS)) for row in receipt_items_input):
                 existing = self.repo.list_receipt_items_for_plans(
                     user_id=user_id, plan_ids=[plan_id],
                 ).get(plan_id, [])
                 guard_receipt_code_replacement(receipt_items_input, existing)
                 guard_variant_replacement(receipt_items_input, existing)
+                preserve_receipt_tags(receipt_items_input, existing)
                 guard_measurement_replacement(receipt_items_input, existing)
                 guard_pricing_replacement(receipt_items_input, existing)
             normalized_items, receipt_total = self.operation_service._normalize_receipt_items(receipt_items_input)
@@ -596,6 +602,7 @@ class PlanService:
             operation_date=effective_date,
             category_id=item.category_id,
             note=item.note,
+            tags=item.tags,
             receipt_items=[
                 {
                     "template_id": row_item.template_id,
@@ -605,6 +612,7 @@ class PlanService:
                     **measurement_snapshot(row_item),
                     **receipt_code_snapshot(row_item),
                     **variant_snapshot(row_item),
+                    "tags": row_item.tags,
                     **pricing_snapshot(row_item),
                     "quantity": row_item.quantity,
                     "unit_price": row_item.unit_price,
@@ -645,6 +653,7 @@ class PlanService:
             fx_payment_mode=operation.get("fx_payment_mode"),
             effective_date=effective_date,
             note=item.note,
+            tags=item.tags,
             category_name=category_name,
         )
         WorkService(self.db).link_confirmed_plan_payment(
@@ -758,6 +767,7 @@ class PlanService:
             fx_payment_mode=getattr(item, "fx_payment_mode", "valuation"),
             effective_date=effective_date,
             note=item.note,
+            tags=item.tags,
             category_name=category_name,
         )
         self.activity.record(
@@ -860,6 +870,7 @@ class PlanService:
                     **measurement_snapshot(receipt_item),
                     **receipt_code_snapshot(receipt_item),
                     **variant_snapshot(receipt_item),
+                    "tags": receipt_item.tags,
                     **pricing_snapshot(receipt_item),
                     "quantity": self.operation_service._qty(receipt_item.quantity),
                     "unit_price": receipt_item.unit_price if getattr(receipt_item, "discount_mode", None) else self.operation_service._money(receipt_item.unit_price),
@@ -925,6 +936,7 @@ class PlanService:
             "category_name": category.name if category else None,
             "category_icon": (category.icon if category and category.icon else (group.icon if group else None)),
             "category_accent_color": group.accent_color if group else None,
+            "tags": item.tags,
             "note": item.note,
             "receipt_items": receipt_payload,
             "receipt_total": self.operation_service._money(receipt_total) if receipt_payload else None,
@@ -1122,6 +1134,7 @@ class PlanService:
             "fx_rate_stale": getattr(item, "fx_rate_stale", None),
             "fx_payment_mode": getattr(item, "fx_payment_mode", None),
             "effective_date": item.effective_date,
+            "tags": item.tags,
             "note": item.note,
             "category_name": item.category_name,
             "created_at": item.created_at,

@@ -1,14 +1,30 @@
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, literal, or_, select, union_all
 from sqlalchemy.orm import Session
 
 from app.repositories.search import search_any, search_order
 
-from app.db.models import Category, CategoryGroup
+from app.db.models import (CatalogProduct, Category, CategoryGroup, Operation, OperationReceiptItem,
+                           PlanOperation, PlanReceiptItem)
 
 
 class CategoryRepository:
     def __init__(self, db: Session):
         self.db = db
+
+    def used_tags(self, user_id: int) -> dict[int, list[str]]:
+        sources = (CatalogProduct, OperationReceiptItem, PlanReceiptItem, Operation, PlanOperation)
+        reads = []
+        for model in sources:
+            stmt = select(model.category_id, model.tags).where(
+                model.user_id == user_id, model.category_id.is_not(None), model.tags != literal("")
+            )
+            if model is CatalogProduct:
+                stmt = stmt.where(CatalogProduct.is_archived.is_(False))
+            reads.append(stmt)
+        used = {}
+        for category_id, tags in self.db.execute(union_all(*reads)):
+            used.setdefault(category_id, set()).update(tags)
+        return {key: sorted(tags) for key, tags in used.items()}
 
     def list_for_user(self, user_id: int):
         stmt = (

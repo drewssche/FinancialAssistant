@@ -157,6 +157,11 @@ class OperationRepository:
         search_clauses.extend(
             [
                 search_match(Operation.note, q, original_only=original_only),
+                search_match(Operation.tags, q, original_only=original_only),
+                Operation.id.in_(select(OperationReceiptItem.operation_id).where(
+                    OperationReceiptItem.user_id == user_id,
+                    search_match(OperationReceiptItem.tags, q, original_only=original_only),
+                )),
                 search_match(Category.name, q, original_only=original_only),
                 search_match(Operation.kind, q, original_only=original_only),
                 Operation.id.in_(
@@ -234,6 +239,7 @@ class OperationRepository:
         operation_date: date,
         category_id: int | None,
         note: str | None,
+        tags: list[str] | None = None,
     ) -> Operation:
         operation = Operation(
             user_id=user_id,
@@ -257,6 +263,7 @@ class OperationRepository:
             operation_date=operation_date,
             category_id=category_id,
             note=note,
+            tags=tags or [],
         )
         self.db.add(operation)
         self.db.flush()
@@ -286,6 +293,7 @@ class OperationRepository:
             operation_date=date.fromisoformat(snapshot["operation_date"]),
             category_id=snapshot.get("category_id"),
             note=snapshot.get("note"),
+            tags=snapshot.get("tags", []),
         )
         if snapshot.get("created_at"):
             operation.created_at = datetime.fromisoformat(snapshot["created_at"])
@@ -567,6 +575,7 @@ class OperationRepository:
                 **normalize_measurement(payload),
                 **receipt_code_snapshot(payload),
                 **variant_snapshot(payload),
+                tags=payload.get("tags", []),
                 **pricing_snapshot(payload),
                 name=payload["name"],
                 quantity=payload["quantity"],
@@ -601,6 +610,7 @@ class OperationRepository:
                 **normalize_measurement(payload),
                 **receipt_code_snapshot(payload),
                 **variant_snapshot(payload),
+                tags=payload.get("tags", []),
                 **pricing_snapshot(payload),
                 name=payload["name"],
                 quantity=Decimal(payload["quantity"]),

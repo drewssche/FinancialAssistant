@@ -28,6 +28,7 @@ from app.services.activity_service import ActivityService
 
 class CatalogProductService:
     ACTIVITY_FIELDS = [
+        "tags",
         *MEASUREMENT_FIELDS,
         "name",
         "brand_id",
@@ -36,6 +37,7 @@ class CatalogProductService:
         "is_archived",
     ]
     ACTIVITY_LABELS = {
+        "tags": "Теги",
         "sale_unit": "Единица продажи",
         "package_quantity": "Содержимое упаковки",
         "package_unit": "Единица содержимого",
@@ -149,6 +151,7 @@ class CatalogProductService:
         *,
         user_id: int,
         name: str,
+        tags: list[str] | None = None,
         codes: dict | None = None,
         brand_id: int | None,
         category_id: int | None,
@@ -167,6 +170,7 @@ class CatalogProductService:
             brand_id=brand_id,
             category_id=category_id,
             measurement=measurement,
+            tags=tags,
         )
         if codes:
             from app.services.catalog_identity_service import CatalogIdentityService
@@ -185,6 +189,7 @@ class CatalogProductService:
         image_id: int | None = None,
         record_activity: bool = True,
         measurement: dict | None = None,
+        tags: list[str] | None = None,
     ) -> CatalogProduct:
         normalized_name, name_ci = self._normalize_name(name)
         product = self.repo.create(
@@ -198,6 +203,7 @@ class CatalogProductService:
             ),
             image_id=image_id,
         )
+        product.tags = list(tags or [])
         for key, value in normalize_measurement(measurement or {}).items():
             setattr(product, key, value)
         if record_activity:
@@ -346,6 +352,8 @@ class CatalogProductService:
         previous_categories = {
             int(offer.id): offer.last_category_id for offer in offers
         }
+        if "tags" in updates:
+            product.tags = updates["tags"]
         if "name" in updates:
             product.name, product.name_ci = self._normalize_name(updates["name"])
         if "brand_id" in updates:
@@ -530,6 +538,7 @@ class CatalogProductService:
             }
             if len(source_category_ids) == 1:
                 target.category_id = source_category_ids.pop()
+        target.tags = list(dict.fromkeys(tag for p in [target, *ordered_sources] for tag in p.tags))
         if target.image_id is None:
             image_source = next(
                 (product for product in ordered_sources if product.image_id is not None),
@@ -655,6 +664,7 @@ class CatalogProductService:
             category_id=category_id,
             image_id=source.image_id,
             measurement=measurement_snapshot(source),
+            tags=source.tags,
         )
         if not self.repo.move_offer(
             user_id=user_id,
@@ -908,6 +918,7 @@ class CatalogProductService:
                     "category_name": meta.get("category_name"),
                     "category_icon": meta.get("category_icon"),
                     "category_accent_color": meta.get("category_accent_color"),
+                    "tags": product.tags,
                     "is_archived": bool(product.is_archived),
                     "offers_count": len(product_offers),
                     "sources_count": len(source_keys),

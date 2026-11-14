@@ -144,6 +144,7 @@
         currency,
         fx_rate: currency === baseCurrency ? null : fxRate.formatted,
         operation_date: operationDate,
+        tags: window.App.purchaseTags.parse(document.getElementById(mode === "edit" ? "editTags" : "opTags").value),
         note: document.getElementById(noteInputId).value,
         receipt_items: receiptItems,
         _mode: mode,
@@ -326,6 +327,7 @@
       invalidateAllTimeAnchor();
       trackCategoryUsage(payload.category_id);
       document.getElementById("opAmount").value = "";
+      document.getElementById("opTags").value = "";
       document.getElementById("opNote").value = "";
       el.opCategory.value = "";
       el.opCategorySearch.value = "";

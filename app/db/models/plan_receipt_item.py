@@ -3,12 +3,14 @@ from decimal import Decimal
 from sqlalchemy import JSON, Boolean, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.tags import TagList
 from app.db.base import Base
 
 
 class PlanReceiptItem(Base):
     __tablename__ = "plan_receipt_items"
 
+    tags: Mapped[list[str]] = mapped_column(TagList(), nullable=False, default=list, server_default="")
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     plan_id: Mapped[int] = mapped_column(ForeignKey("plan_operations.id", ondelete="CASCADE"), index=True)

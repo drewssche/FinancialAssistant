@@ -222,6 +222,7 @@ class PlanReminderService:
             plan_id=int(plan.id),
             operation_id=None,
             event_type="reminded",
+            tags=plan.tags,
             kind=plan.kind,
             amount=base_amount,
             original_amount=original_amount,

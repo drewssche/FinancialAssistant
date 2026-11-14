@@ -111,6 +111,8 @@ class ActivityService:
     def _display(cls, value: Any, field: str | None = None) -> str:
         if value is None:
             return "Не задано"
+        if field == "tags" and isinstance(value, list):
+            return ", ".join(value) or "Без тегов"
         if field in cls.ENUM_LABELS:
             normalized = str(value)
             return cls.ENUM_LABELS[field].get(normalized, normalized)
@@ -586,6 +588,7 @@ class ActivityService:
             **measurement_snapshot(row, json_safe=True),
             **receipt_code_snapshot(row),
             **variant_snapshot(row),
+            "tags": get("tags") or [],
             **pricing_snapshot(row, json_safe=True),
             "quantity": str(get("quantity") or "0"),
             "unit_price": str(Decimal(str(get("unit_price") or "0")).quantize(Decimal("0.000001") if get("discount_mode") else Decimal("0.01"))),
@@ -604,6 +607,7 @@ class ActivityService:
             payload.get("name"),
             *(payload.get(key) for key in MEASUREMENT_FIELDS),
             payload.get("variant_snapshot"),
+            payload.get("tags", []),
             *(payload.get(key) for key in PRICING_FIELDS),
             payload.get("quantity"),
             payload.get("unit_price"),

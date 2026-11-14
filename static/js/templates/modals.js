@@ -132,6 +132,7 @@
             <div id="opFxComputedAmount" class="fx-policy-computed" aria-live="polite"></div>
           </section>
           <input id="opNote" class="create-note-field" type="text" placeholder="Комментарий" />
+          <label class="field" id="opTagsField"><span>Теги</span><input id="opTags" type="text" placeholder="Теги через запятую" /></label>
 
           <div id="opReceiptBlock" class="receipt-block">
             <div id="opReceiptFields" class="hidden">
@@ -610,6 +611,7 @@
             <div id="editFxComputedAmount" class="fx-policy-computed" aria-live="polite"></div>
           </section>
           <input id="editNote" class="create-note-field" type="text" placeholder="Комментарий" />
+          <label class="field" id="editTagsField"><span>Теги</span><input id="editTags" type="text" placeholder="Теги через запятую" /></label>
 
           <div id="editReceiptBlock" class="receipt-block">
             <div id="editReceiptFields" class="hidden">

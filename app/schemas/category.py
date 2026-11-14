@@ -38,6 +38,7 @@ class CategoryGroupOut(BaseModel):
 
 
 class CategoryOut(BaseModel):
+    used_tags: list[str] = Field(default_factory=list)
     id: int
     name: str
     icon: str | None = None

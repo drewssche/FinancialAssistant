@@ -96,6 +96,7 @@
       const product = productId
         ? (state.receiptProductHints || []).find((item) => Number(item.id) === productId) || template
         : null;
+      if (!rowItem.tags_touched && (Number(rowItem.product_id) !== Number(productId) || rowItem.tags_input == null)) rowItem.tags_input = product?.tags?.join(", ") ?? null;
       const offer = product ? (template.selected_offer || resolveOffer(product, rowItem)) : template;
       if (Number(rowItem.product_id) !== Number(productId)) {
         rowItem.variant_id = null;
@@ -160,6 +161,7 @@
       if (!updated?.item) {
         return;
       }
+      if (field === "tags_input") return;
       if (field === "unit_price" || field === "regular_unit_price" || field === "discount_value") updated.item.price_touched = true;
       if (field === "variant_id") {
         updated.item.variant_picker_open = true;
@@ -215,6 +217,7 @@
         } else {
           updated.item.template_id = null;
           updated.item.product_id = null;
+          if (!updated.item.tags_touched) updated.item.tags_input = null;
           updated.item.variant_id = null;
           updated.item.variant_snapshot = null;
           updated.item.variant_options = null;

@@ -15,9 +15,13 @@
     const usage = readUsageMap(storageKey);
     const normalizedQuery = String(query || "").trim().toLowerCase();
     const matches = new Map();
+    const matchedTags = new Map();
     if (normalizedQuery) {
       for (const product of window.App.state.receiptProductHints || []) {
-        if (product.is_archived || !product.category_id || !window.App.search.matches(product.name, normalizedQuery)) continue;
+        if (product.is_archived || !product.category_id) continue;
+        const tag = product.tags?.find(value => window.App.search.matches("#" + value, normalizedQuery));
+        if (!tag && !window.App.search.matches(product.name, normalizedQuery)) continue;
+        if (tag) matchedTags.set(Number(product.category_id), tag);
         const names = matches.get(Number(product.category_id)) || [];
         if (!names.includes(product.name) && names.length < 2) names.push(product.name);
         matches.set(Number(product.category_id), names);
@@ -25,10 +29,11 @@
     }
     return (categories || [])
       .filter(item => !item.is_archived)
-      .map(item => ({...item, matched_products: matches.get(Number(item.id)) || [],
+      .map(item => ({...item, matched_tag: matchedTags.get(Number(item.id)) || (normalizedQuery && item.used_tags?.find(tag => window.App.search.matches("#" + tag, normalizedQuery))),
+        matched_products: matches.get(Number(item.id)) || [],
         direct_match: !normalizedQuery || window.App.search.matches(item.name, normalizedQuery) || window.App.search.matches(item.group_name, normalizedQuery),
         usage: Number(usage[String(item.id)] || 0)}))
-      .filter(item => item.direct_match || item.matched_products.length)
+      .filter(item => item.direct_match || item.matched_tag || item.matched_products.length)
       .sort((a, b) => {
         if (a.direct_match !== b.direct_match) return Number(b.direct_match) - Number(a.direct_match);
         const relevance = window.App.search.compare(query, [a.name, a.group_name], [b.name, b.group_name]);
@@ -52,8 +57,11 @@
 
   function categorySearchHtml(category, query = "") {
     const chip = window.App.core.renderCategoryChip({...category, accent_color: category.group_accent_color || null}, query);
-    if (!category.matched_products?.length) return chip;
-    return chip + '<small class="category-product-match">Есть товары: ' + category.matched_products.map(name => window.App.core.escapeHtml(name)).join(' · ') + '</small>';
+    if (!category.matched_products?.length) {
+      return category.matched_tag ? chip + '<small class="category-product-match">По тегу #' + window.App.core.escapeHtml(category.matched_tag) + '</small>' : chip;
+    }
+    const reason = category.matched_tag ? "По тегу #" + window.App.core.escapeHtml(category.matched_tag) + " · " : "Есть товары: ";
+    return chip + '<small class="category-product-match">' + reason + category.matched_products.map(name => window.App.core.escapeHtml(name)).join(' · ') + '</small>';
   }
 
   function createChipButton({ datasetName, datasetValue = "", selected = false, html = "", className = "chip-btn" } = {}) {

@@ -4,12 +4,14 @@ from decimal import Decimal
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.tags import TagList
 from app.db.base import Base
 
 
 class PlanOperation(Base):
     __tablename__ = "plan_operations"
 
+    tags: Mapped[list[str]] = mapped_column(TagList(), nullable=False, default=list, server_default="")
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)

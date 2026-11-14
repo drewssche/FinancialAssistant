@@ -341,7 +341,7 @@
         return limit > 0 ? scopedTemplates.slice(0, limit) : scopedTemplates;
       }
       const matches = scopedTemplates
-        .filter((item) => window.App.search.matches(item.name_ci, normalized))
+        .filter((item) => (window.App.search.matches(item.name_ci, normalized) || item.tags?.some(tag => window.App.search.matches("#" + tag, normalized))))
         .sort((a, b) => window.App.search.compare(query, a.name_ci, b.name_ci)
           || Number(window.App.search.normalize(b.name_ci).startsWith(window.App.search.normalize(query)))
           - Number(window.App.search.normalize(a.name_ci).startsWith(window.App.search.normalize(query))));
@@ -460,6 +460,7 @@
         if (!byShop.has(shopNameCi)) byShop.set(shopNameCi, shopName);
       }
       for (const item of state.receiptTemplateHints || []) {
+        if (item.is_archived) continue;
         const shopName = normalizeReceiptName(item.shop_name || "");
         if (!shopName) {
           continue;

@@ -265,6 +265,7 @@
                     <span class="kind-pill kind-pill-${kindClass}">${kindLabel}</span>
                     <div class="plan-card-category-list">${categoryChips}</div>
                     ${positionsMeta}
+                    ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}
                   </div>
                   ${noteMeta ? `<div class="plan-card-meta">${noteMeta}</div>` : ""}
                 </div>
@@ -316,6 +317,7 @@
               <strong class="plan-card-amount amount-${kindClass}">${formatPlanAmountHtml(item)}</strong>
             </div>
             <div class="plan-card-meta">
+              ${window.App.purchaseTags.chips(item.tags)}
               ${item.note ? `<strong>${core.highlightText(item.note, "")}</strong>` : ""}
               <span class="muted-small">Дата плана: ${effectiveDate}</span>
               ${createdAt ? `<span class="muted-small">Событие: ${createdAt}</span>` : ""}

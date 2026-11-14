@@ -485,6 +485,8 @@
     window.App.getRuntimeModule?.("activity")?.configureActivityButton?.(el.catalogProductActivityBtn, product ? "catalog_product" : null, product?.id);
     if (el.catalogProductModalTitle) el.catalogProductModalTitle.textContent = product ? product.name : "Новый товар";
     if (el.catalogProductName) el.catalogProductName.value = product?.name || "";
+    document.getElementById("catalogProductTags").value = (product?.tags || []).join(", ");
+    document.getElementById("catalogProductTagLinks").innerHTML = window.App.purchaseTags.chips(product?.tags);
     el.catalogProductSaleUnit.value = product?.sale_unit || "";
     el.catalogProductPackageQuantity.value = product?.package_quantity || "";
     el.catalogProductPackageUnit.value = product?.package_unit || "";
@@ -571,6 +573,7 @@
     if (!name) return;
     const payload = {
       name,
+      tags: window.App.purchaseTags.parse(document.getElementById("catalogProductTags").value),
       codes: window.App.getRuntimeModule("catalog-product-codes").payload(),
       brand_id: asId(el.catalogProductBrand?.value),
       category_id: asId(el.catalogProductCategory?.value),

@@ -2,7 +2,11 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field
+
+from app.core.tags import normalize_tags
+
+TagNames = Annotated[list[str], AfterValidator(normalize_tags)]
 
 DiscountType = Literal["promo", "coupon", "loyalty_points"]
 FxRateSource = Literal["nbrb", "bank", "manual"]
@@ -38,6 +42,7 @@ class ReceiptCodeIn(BaseModel):
 
 
 class OperationReceiptItemIn(MeasurementFields):
+    tags: TagNames = Field(default_factory=list)
     receipt_codes: list[ReceiptCodeIn] = Field(default_factory=list, max_length=10)
     catalog_name_touched: bool = False
     catalog_measurement_touched: bool = False
@@ -65,6 +70,7 @@ class OperationReceiptItemIn(MeasurementFields):
 
 
 class OperationReceiptItemOut(MeasurementFields):
+    tags: TagNames = Field(default_factory=list)
     receipt_codes: list[ReceiptCodeIn] = Field(default_factory=list, max_length=10)
     variant_snapshot: ReceiptVariantSnapshot | None = None
     id: int
@@ -126,6 +132,7 @@ class ReceiptScanIn(BaseModel):
 
 
 class OperationCreate(BaseModel):
+    tags: TagNames = Field(default_factory=list)
     kind: str
     amount: Decimal | None = None
     currency: str = Field(default="BYN", min_length=3, max_length=3)
@@ -145,6 +152,7 @@ class OperationCreate(BaseModel):
 
 
 class OperationUpdate(BaseModel):
+    tags: TagNames = Field(default_factory=list)
     kind: str | None = None
     amount: Decimal | None = None
     currency: str | None = Field(default=None, min_length=3, max_length=3)
@@ -165,6 +173,7 @@ class OperationUpdate(BaseModel):
 
 
 class OperationOut(BaseModel):
+    tags: TagNames = Field(default_factory=list)
     has_receipt_scan: bool = False
     id: int
     kind: str
@@ -214,6 +223,7 @@ class OperationSummaryOut(BaseModel):
 
 
 class MoneyFlowItemOut(BaseModel):
+    tags: TagNames = Field(default_factory=list)
     id: str
     source_kind: str
     source_id: int | None = None
@@ -351,6 +361,7 @@ class ProductCodesEdit(BaseModel):
 
 
 class CatalogProductCreate(MeasurementFields):
+    tags: TagNames = Field(default_factory=list)
     codes: ProductCodesEdit | None = None
     name: str = Field(min_length=1, max_length=160)
     brand_id: int | None = Field(default=None, ge=1)
@@ -365,6 +376,7 @@ class CatalogProductSourceCreate(BaseModel):
 
 
 class CatalogProductUpdate(MeasurementFields):
+    tags: TagNames = Field(default_factory=list)
     codes: ProductCodesEdit | None = None
     name: str | None = Field(default=None, min_length=1, max_length=160)
     brand_id: int | None = Field(default=None, ge=1)
@@ -372,6 +384,7 @@ class CatalogProductUpdate(MeasurementFields):
 
 
 class CatalogProductOut(MeasurementFields):
+    tags: TagNames = Field(default_factory=list)
     id: int
     name: str
     image_id: int | None = None

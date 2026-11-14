@@ -136,6 +136,8 @@
             <span>Название товара</span>
             <input id="catalogProductName" type="text" maxlength="160" placeholder="Например, Сырок с печеньем клубника 40 г" required />
           </label>
+          <label class="field"><span>Теги товара</span><input id="catalogProductTags" placeholder="Теги через запятую" /></label>
+          <div id="catalogProductTagLinks"></div>
           <section class="catalog-product-measurements" aria-label="Единицы и фасовка">
             <div class="form-grid">
               <label class="field"><span>Единица продажи</span><select id="catalogProductSaleUnit"><option value="">Не указана</option><option value="piece">шт.</option><option value="pack">упак.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>

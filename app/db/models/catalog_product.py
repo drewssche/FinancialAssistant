@@ -4,6 +4,7 @@ from decimal import Decimal
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.tags import TagList
 from app.db.base import Base
 
 
@@ -13,6 +14,7 @@ class CatalogProduct(Base):
         Index("ix_catalog_products_user_name_ci", "user_id", "name_ci"),
     )
 
+    tags: Mapped[list[str]] = mapped_column(TagList(), nullable=False, default=list, server_default="")
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True

@@ -426,6 +426,7 @@
     const dateInput = document.getElementById("opDate");
     core.syncDateFieldValue(dateInput, core.getTodayIso());
     document.getElementById("opAmount").value = "";
+    document.getElementById("opTags").value = "";
     document.getElementById("opNote").value = "";
     window.App.getRuntimeModule?.("receipt-scan")?.beginOperation?.();
     setOperationKind("create", "expense");
@@ -649,6 +650,7 @@
       el.editCurrency.value = item.currency || "BYN";
     }
     core.syncDateFieldValue(document.getElementById("editDate"), item.operation_date);
+    document.getElementById("editTags").value = (item.tags || []).join(", ");
     document.getElementById("editNote").value = item.note || "";
     clearReceiptItems("edit");
     if (typeof createReceiptDraft === "function") {
@@ -669,6 +671,7 @@
         shop_name: row.shop_name || "",
         name: row.name || "",
         ...window.App.measurements.snapshot(row),
+        tags: row.tags,
         variant_snapshot: row.variant_snapshot || null,
         measurement_touched: true,
         discount_mode: row.discount_mode || null,

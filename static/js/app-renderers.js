@@ -395,7 +395,7 @@
         <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
         <td data-label="Категория">${categoryCellHtml}</td>
         <td data-label="Сумма">${formatOperationAmountHtml(item, kindClass)}</td>
-        <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
+        <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)} ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}</td>
       `;
       row.dataset.item = JSON.stringify(item);
       row.dataset.operationRowId = String(item.id);
@@ -415,7 +415,7 @@
         <td><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
         <td>${previewCategoryCellHtml}</td>
         <td>${formatOperationAmountHtml(item, kindClass)}</td>
-        <td>${highlightText(noteText, searchQuery)}</td>
+        <td>${highlightText(noteText, searchQuery)} ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}</td>
         <td><span class="muted-small">—</span></td>
       `;
       row.classList.add("preview-row");
@@ -441,7 +441,7 @@
       <td data-label="Категория">${contextChipsHtml ? `<div class="operation-category-stack">${categoryHtml}${contextChipsHtml}</div>` : categoryHtml}</td>
       <td data-label="Чек" class="operation-receipt-chip-cell">${receiptCellHtml}</td>
       <td data-label="Сумма">${formatOperationAmountHtml(item, kindClass)}</td>
-      <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
+      <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)} ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}</td>
       <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
         <div class="record-icon-actions">${menuItems}</div>
       </td>
@@ -571,7 +571,7 @@
       <td data-label="Контекст">${categoryCellHtml}</td>
       <td data-label="Источник">${sourceCellHtml}</td>
       <td data-label="Сумма">${formatFlowAmountHtml(item)}</td>
-      <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
+      <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)} ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}</td>
       <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
         ${menuItems ? `<div class="record-icon-actions">${menuItems}</div>` : "<span class='muted-small'>—</span>"}
       </td>

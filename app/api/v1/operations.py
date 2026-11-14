@@ -67,7 +67,7 @@ router = APIRouter(prefix="/operations", tags=["operations"])
 def _dump_receipt_item(item) -> dict:
     data = item.model_dump()
     fields_set = getattr(item, "model_fields_set", set())
-    for optional_link in ("receipt_codes", "variant_id", "variant_snapshot", "template_id", "product_id", "brand_id", "source_id", "sale_unit", "package_quantity", "package_unit", "discount_mode", "discount_value"):
+    for optional_link in ("tags", "receipt_codes", "variant_id", "variant_snapshot", "template_id", "product_id", "brand_id", "source_id", "sale_unit", "package_quantity", "package_unit", "discount_mode", "discount_value"):
         if optional_link not in fields_set:
             data.pop(optional_link, None)
     return data
@@ -290,6 +290,7 @@ def create_operation(
             operation_date=payload.operation_date,
             category_id=payload.category_id,
             note=payload.note,
+            tags=payload.tags,
             receipt_scan=payload.receipt_scan.model_dump() if payload.receipt_scan else None,
             receipt_items=[_dump_receipt_item(item) for item in payload.receipt_items],
             fx_settlement=payload.fx_settlement.model_dump() if payload.fx_settlement else None,
@@ -344,6 +345,7 @@ def create_catalog_product(
         return CatalogProductService(db).create(
             user_id=user_id,
             name=payload.name,
+            tags=payload.tags,
             codes=payload.codes.model_dump() if payload.codes else None,
             brand_id=payload.brand_id,
             category_id=payload.category_id,
@@ -356,6 +358,16 @@ def create_catalog_product(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+
+
+@router.get("/purpose-tags/summary")
+def get_tag_summary(tag: str = Query(min_length=1, max_length=49),
+                    user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    from app.services.purchase_tag_service import purchase_tag_summary
+    try:
+        return purchase_tag_summary(db, user_id, tag)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get(

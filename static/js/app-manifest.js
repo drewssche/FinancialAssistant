@@ -14,6 +14,7 @@
     "/static/js/app-core.js",
     "/static/js/app-telegram-webapp.js",
     "/static/js/app-search-utils.js",
+    "/static/js/app-purchase-tags.js",
     "/static/js/app-measurement-utils.js",
     "/static/js/app-receipt-pricing.js",
     "/static/js/app-purchase-metrics.js",

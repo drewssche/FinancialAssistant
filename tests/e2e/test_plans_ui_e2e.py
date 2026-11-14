@@ -154,6 +154,7 @@ def _recurrence_label(payload: dict) -> str:
 def _make_plan_item(plan: dict) -> dict:
     return {
         "id": plan["id"],
+        "tags": plan.get("tags", []),
         "kind": plan["kind"],
         "amount": plan["amount"],
         "original_amount": plan.get("original_amount", plan["amount"]),
@@ -418,6 +419,7 @@ def page_with_plans_api_mock(page):
                 "fx_payment_mode": payload.get("fx_payment_mode", "valuation"),
                 "scheduled_date": payload["scheduled_date"],
                 "note": payload.get("note"),
+                "tags": payload.get("tags", []),
                 "recurrence_enabled": bool(payload.get("recurrence_enabled")),
                 "recurrence_frequency": payload.get("recurrence_frequency"),
                 "recurrence_interval": int(payload.get("recurrence_interval") or 1),
@@ -1768,3 +1770,34 @@ def test_plan_history_restores_category_icon_from_catalog(static_server_url,page
     page.click('button[data-plan-tab="history"]')
     sync_api.expect(page.locator('#plansList .category-chip-icon')).to_have_text('🚌')
     sync_api.expect(page.locator('#plansList .category-chip-text')).to_have_text('Транспорт')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("width", [390, 1440])
+def test_plan_tags_mobile_desktop(static_server_url, page_with_plans_api_mock, width):
+    page, state = page_with_plans_api_mock
+    from playwright.sync_api import expect
+
+    _login_and_open_plans(page, static_server_url)
+    page.set_viewport_size({"width":width, "height":900})
+    page.click("#addPlanCta")
+    page.fill("#opTags", " Кофемашина, #кофемашина ")
+    page.fill("#opAmount", "26.90")
+    page.fill("#opNote", "Барный коврик")
+    page.click("#submitCreateOperationBtn")
+    expect(page.locator("#createModal")).to_be_hidden()
+    assert state["last_create_payload"]["tags"] == ["кофемашина"]
+    page.fill("#plansSearchQ", "#кофемашина")
+    chip = page.locator("#plansList button[data-purchase-tag]").first
+    expect(chip).to_be_visible()
+    group = {"entries":[], "count":0, "totals":{}}
+    page.route("**/purpose-tags/summary?*", lambda r: r.fulfill(json={
+        "tag":"кофемашина", "paid":group, "planned":{**group, "totals":{"BYN": "26.90"}}
+    }))
+    chip.click()
+    dialog = page.get_by_role("dialog", name="Расходы и планы по тегу")
+    expect(dialog).to_contain_text("Запланировано")
+    expect(dialog).to_contain_text("26,90")
+    box = dialog.bounding_box()
+    assert 0 <= box["x"] and box["x"] + box["width"] <= width + 1
+    dialog.locator(".modal-head button").click()

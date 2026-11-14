@@ -4,7 +4,7 @@
   function mount(host, {select, ownerDialog, onCreated}) {
     const utils = window.App.getRuntimeModule('picker-utils');
     const input = document.createElement('input');
-    input.type = 'search'; input.autocomplete = 'off'; input.placeholder = 'Категория или название товара';
+    input.type = 'search'; input.autocomplete = 'off'; input.placeholder = 'Категория, товар или тег';
     input.setAttribute('aria-label', 'Категория позиции'); input.setAttribute('role', 'combobox');
     input.setAttribute('aria-autocomplete', 'list'); input.setAttribute('aria-expanded', 'false');
     const list = document.createElement('div');

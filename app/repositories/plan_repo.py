@@ -52,6 +52,7 @@ class PlanRepository:
         scheduled_date: date,
         category_id: int | None,
         note: str | None,
+        tags: list[str] | None = None,
         recurrence_enabled: bool,
         recurrence_frequency: str | None,
         recurrence_interval: int,
@@ -76,6 +77,7 @@ class PlanRepository:
             scheduled_date=scheduled_date,
             category_id=category_id,
             note=note,
+            tags=tags or [],
             recurrence_enabled=recurrence_enabled,
             recurrence_frequency=recurrence_frequency,
             recurrence_interval=recurrence_interval,
@@ -105,7 +107,12 @@ class PlanRepository:
         if kind:
             stmt = stmt.where(PlanOperation.kind == kind)
         if q:
-            stmt = stmt.where(search_any(q, PlanOperation.note, Category.name))
+            stmt = stmt.where(or_(
+                search_any(q, PlanOperation.note, Category.name, PlanOperation.tags),
+                PlanOperation.id.in_(select(PlanReceiptItem.plan_id).where(
+                    PlanReceiptItem.user_id == user_id, search_any(q, PlanReceiptItem.tags, PlanReceiptItem.name)
+                )),
+            ))
         stmt = stmt.order_by(
             *search_order(q, PlanOperation.note, Category.name),
             PlanOperation.status.asc(),
@@ -147,6 +154,7 @@ class PlanRepository:
                 **normalize_measurement(item),
                 **receipt_code_snapshot(item),
                 **variant_snapshot(item),
+                tags=item.get("tags", []),
                 **pricing_snapshot(item),
                 name=item["name"],
                 quantity=item["quantity"],
@@ -307,6 +315,7 @@ class PlanRepository:
         plan_id: int,
         operation_id: int | None,
         event_type: str,
+        tags: list[str] | None = None,
         kind: str,
         amount: Decimal,
         effective_date: date,
@@ -328,11 +337,14 @@ class PlanRepository:
         fx_rate_stale: bool | None = None,
         fx_payment_mode: str | None = None,
     ) -> PlanOperationEvent:
+        receipt = self.list_receipt_items_for_plans(user_id=user_id, plan_ids=[plan_id]).get(plan_id, [])
+        event_tags = list(dict.fromkeys([*(tags or []), *(tag for line in receipt for tag in line.tags)]))
         row = PlanOperationEvent(
             user_id=user_id,
             plan_id=plan_id,
             operation_id=operation_id,
             event_type=event_type,
+            tags=event_tags,
             kind=kind,
             amount=amount,
             original_amount=original_amount,
@@ -363,7 +375,7 @@ class PlanRepository:
         if kind:
             stmt = stmt.where(PlanOperationEvent.kind == kind)
         if q:
-            stmt = stmt.where(search_any(q, PlanOperationEvent.note, PlanOperationEvent.category_name))
+            stmt = stmt.where(search_any(q, PlanOperationEvent.note, PlanOperationEvent.category_name, PlanOperationEvent.tags))
         stmt = stmt.order_by(*search_order(q, PlanOperationEvent.note, PlanOperationEvent.category_name), PlanOperationEvent.created_at.desc(), PlanOperationEvent.id.desc())
         return list(self.db.scalars(stmt))
 

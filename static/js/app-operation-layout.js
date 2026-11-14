@@ -124,6 +124,8 @@
     if (reset) {view.previewDetails.hidden=true;view.syncPreview();}
     const plan = mode === 'create' && window.App.state.createFlowMode === 'plan';
     if (mode === 'create' && byId('openReceiptScan')) byId('openReceiptScan').hidden = !operation || plan;
+    const tagsField = byId(`${prefix}TagsField`);
+    tagsField.hidden = !operation || modal.classList.contains("editing-debt-movement");
     const note = byId(`${prefix}Note`);
     if (plan && note.parentElement !== view.form) extra.before(note);
     if (!plan && note.parentElement !== extra) extra.prepend(note);
@@ -137,6 +139,7 @@
       if (entry) view.form.prepend(entry);
       view.form.insertBefore(view.sidebar, extra);
       view.noteLabel.append(note);
+      view.sidebar.append(tagsField);
       view.sidebar.classList.toggle('hidden', !operation);
       if (receipt) {
         view.sidebar.prepend(view.receiptSummary, check);
@@ -148,7 +151,7 @@
       if (entry) view.form.prepend(entry);
       view.receipt.append(view.receiptSummary, check);
       view.sidebar.remove();
-      if (plan) extra.before(note); else extra.prepend(note);
+      if (plan) extra.before(note, tagsField); else extra.prepend(note, tagsField);
     }
   }
   desktop.addEventListener('change', () => {

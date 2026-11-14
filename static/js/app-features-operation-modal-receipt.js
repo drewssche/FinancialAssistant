@@ -238,6 +238,8 @@
         discount_type: seed.discount_type || (seed.is_discounted ? "promo" : null),
         discount_mode: seed.discount_mode || null,
         discount_value: seed.discount_value == null ? null : Number(seed.discount_value),
+        tags_input: seed.tags?.join(", ") ?? null,
+        tags_touched: false,
         note: seed.note || "",
       };
     }
@@ -254,6 +256,7 @@
       item.code_entries=(item.code_entries||[]).filter(e=>!e.from_catalog||e.from_receipt).map(e=>e.from_receipt?{...e,from_catalog:false}:e);item.codes_loaded_entity=null;
       item.template_id = null;
       if (!options.preserveProduct) {
+        if (!item.tags_touched) item.tags_input = null;
         item.product_id = null;
         item.variant_id = null;
         item.variant_snapshot = null;
@@ -378,6 +381,11 @@
       const item = items.find((entry) => Number(entry.draft_id) === Number(draftId));
       if (!item) {
         return null;
+      }
+      if (key === "tags_input") {
+        item.tags_input = value;
+        item.tags_touched = true;
+        return {item};
       }
       const hadName = hasReceiptRowName(item);
       if (window.App.measurements.fields.includes(key)) {
@@ -729,6 +737,7 @@
               ${!known ? categoryControl : ""}
             </div>
             <section class="receipt-measurements">
+              <label class="field"><span>Теги позиции</span><input data-receipt-field="tags_input" value="${esc(item.tags_input || "")}" placeholder="Теги через запятую" /></label>
               <div class="receipt-variant-controls">
                 <small data-receipt-variant-snapshot>${esc(item.variant_snapshot ? `Фасовка: ${item.variant_snapshot.name}${item.variant_snapshot.codes?.length ? " · " + item.variant_snapshot.codes.join(", ") : ""}` : "")}</small>
                 ${item.product_id ? `<button class="btn btn-secondary btn-xs" type="button" data-receipt-variants-load ${item.variant_loading ? "disabled" : ""}>${item.variant_loading ? "Загрузка…" : item.variant_options ? "Другие размеры" : "Другие размеры"}</button>` : ""}
@@ -1094,6 +1103,7 @@
           receipt_codes: window.App.receiptCodes.receiptPayload(item),
           site_selection: item.site_selection || null,
           variant_id: item.variant_id || null,
+          ...(item.tags_input != null ? {tags: window.App.purchaseTags.parse(item.tags_input)} : {}),
           variant_snapshot: item.variant_snapshot || null,
           quantity: String(asQty(item.quantity || 0)),
           unit_price: core.formatAmount(item.unit_price || 0),
@@ -1132,6 +1142,7 @@
           receipt_codes: window.App.receiptCodes.receiptPayload(item),
           site_selection: item.site_selection || null,
           variant_id: item.variant_id || null,
+          ...(item.tags_input != null ? {tags: window.App.purchaseTags.parse(item.tags_input)} : {}),
           variant_snapshot: item.variant_snapshot || null,
           quantity: String(asQty(item.quantity || 0)),
           unit_price: core.formatAmount(item.unit_price || 0),
