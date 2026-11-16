@@ -6,6 +6,7 @@
   paths.repay = "M4 5h16v14H4V5Zm4 7h8m-3-3 3 3-3 3";
   paths.forgive = "M9 4H5v16h14V4h-4M9 4v4h6V4H9Zm-1 10 3 3 5-6";
   paths.calendar = "M5 5h14v16H5V5Zm3-2v4m8-4v4M5 10h14m-9 5h4";
+  paths.calendarToday = "M4 5h16v16H4V5Zm4-2v4m8-4v4M4 10h16m-12 5 3 3 5-5";
   paths.link = "m9 15 6-6M7 14l-2 2a3 3 0 0 0 4 4l4-4M11 8l4-4a3 3 0 0 1 4 4l-2 2";
   paths.search = "M21 21l-6-6M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0";
   paths.forward = "M4 12h16m-6-6 6 6-6 6";

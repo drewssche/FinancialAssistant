@@ -1,10 +1,12 @@
 import ast
 import base64
 import json
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 from playwright.sync_api import expect
+from tests.e2e.test_modal_date_layout_e2e import DATE_METRICS
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, page_with_receipt_api_mock, _login, _ensure_categories_loaded
 
 TEXT='''ООО Тестовый магазин
@@ -33,6 +35,44 @@ def upload(page):
 
 def stub(page,text=TEXT):
     page.evaluate('''text=>{window.App.receiptScanEngine.recognize=()=>({cancel(){},promise:Promise.resolve({text,blocks:[]})});}''',text)
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width', [320, 800, 1280])
+def test_missing_scan_date_shortcuts(static_server_url, page_with_receipt_api_mock, width):
+    page = page_with_receipt_api_mock
+    page.clock.set_fixed_time(datetime.fromisoformat('2026-11-30T21:05:00+00:00'))
+    start(page, static_server_url, width)
+    page.evaluate("window.App.state.preferences.data.ui.timezone = 'Europe/Minsk'")
+    stub(page, TEXT.rsplit('\n', 1)[0])
+    upload(page)
+    page.click('#scanRun')
+    review = page.locator('#scanReview')
+    field = review.get_by_label('Дата покупки', exact=True)
+    today = review.get_by_role('button', name='Сегодня')
+    expect(field).to_have_value('')
+    expect(today).to_have_attribute('title', 'Сегодня')
+    today.click()
+    expect(field).to_have_value('2026-12-01')
+    assert field.evaluate(DATE_METRICS)['fits']
+    field.fill('')
+    previous = review.get_by_role('button', name='Предыдущий день')
+    following = review.get_by_role('button', name='Следующий день')
+    previous.click()
+    expect(field).to_have_value('2026-11-30')
+    following.click()
+    expect(field).to_have_value('2026-12-01')
+    field.fill('2026-10-15')
+    page.locator('#scanConfirmed').check()
+    today.focus()
+    today.press('Enter')
+    expect(field).to_have_value('2026-12-01')
+    expect(page.locator('#scanConfirmed')).not_to_be_checked()
+    expect(page.locator('#scanTransfer')).to_be_disabled()
+    expect(review.get_by_role('button', name='Открыть календарь')).to_be_visible()
+    assert page.locator('#receiptScanDialog').evaluate('n => n.scrollWidth <= n.clientWidth + 1')
+    page.locator('#scanConfirmed').check()
+    page.click('#scanTransfer')
+    expect(page.locator('#opDate')).to_have_value('2026-12-01')
 
 @pytest.mark.e2e
 @pytest.mark.parametrize('width',[320,390,1024,1100,1440])

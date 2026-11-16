@@ -15,6 +15,16 @@
 .scan-corner {position:absolute;transform:translate(-50%,-50%);width:36px;height:36px;border-radius:50%;border:2px solid #b4d2ff;background:#244878;color:white;cursor:grab;touch-action:none;z-index:1;}
 #scanReview {min-width:0;}
 .scan-meta,.scan-row-numbers {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.scan-date-and-shop {grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%, 285px),1fr));gap:10px;}
+.scan-date-field {container:scan-date / inline-size;}
+.scan-date-controls {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--space-2) 6px;}
+.scan-date-controls label {grid-column:1/-1;}
+.scan-date-controls input[type=date]::-webkit-calendar-picker-indicator {display:none;}
+@container scan-date (max-width:280px) {
+  .scan-date-controls label {grid-column:1;}
+  .scan-date-controls .btn-icon {grid-column:2;grid-row:1;}
+  .scan-date-controls .date-input-wrap {grid-column:1/-1;}
+}
 .scan-review-toolbar {margin:18px 0 8px;}
 .scan-review-toolbar strong {margin-right:auto;}
 #scanEmptyRows {display:grid;justify-items:start;gap:10px;padding:12px;border:1px solid var(--border);border-radius:10px;}
@@ -44,7 +54,6 @@
 .receipt-scan-dialog :is(input:not([type=checkbox]),select,textarea) {min-width:0;width:100%;box-sizing:border-box;}
 .receipt-scan-dialog .field {min-width:0;}
 #scanCropHint {margin-top:28px;}
-@media(max-width:450px){.scan-meta > .field:nth-child(-n+2) {grid-column:1/-1;}}
 .receipt-store-input-row {display:flex;align-items:center;gap:8px;min-width:0;}
 .receipt-store-input-row input {flex:1;min-width:0;}
 #openReceiptScan {flex:none;width:42px;height:42px;padding:0;}

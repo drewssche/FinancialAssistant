@@ -164,6 +164,11 @@ def test_create_operation_allows_receipt_only_amount(static_server_url: str):
             assert created_payloads[0]["receipt_items"] == [
                 {
                     "catalog_codes": [],
+                    "receipt_codes": [],
+                    "site_selection": None,
+                    "catalog_name_touched": False,
+                    "catalog_measurement_touched": False,
+                    "catalog_edit_variant_id": None,
                     "variant_id": None,
                     "variant_snapshot": None,
                     "category_id": None,

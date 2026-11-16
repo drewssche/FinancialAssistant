@@ -54,7 +54,7 @@
   }
 
   function addDaysIso(isoDate, deltaDays) {
-    const normalized = getCore().parseDateInputValue?.(isoDate || "") || getCore().getTodayIso?.() || "";
+    const normalized = getCore().parseDateInputValue(isoDate) || getCore().getPeriodBounds("day").dateFrom;
     const [year, month, day] = String(normalized || "").split("-").map((value) => Number(value || 0));
     const parsed = year && month && day
       ? new Date(Date.UTC(year, month - 1, day))
@@ -111,9 +111,9 @@
         if (!(input instanceof HTMLInputElement) || input.disabled || input.readOnly) {
           return;
         }
-        const delta = Number(stepButton.dataset.dateStep || 0);
-        input.value = addDaysIso(input.value, delta);
-        getCore().syncDateFieldValue?.(input, input.value);
+        const step = stepButton.dataset.dateStep;
+        const value = step === "today" ? getCore().getPeriodBounds("day").dateFrom : addDaysIso(input.value, Number(step));
+        getCore().syncDateFieldValue(input, value);
         input.dispatchEvent(new Event("input", { bubbles: true }));
         input.dispatchEvent(new Event("change", { bubbles: true }));
         return;
