@@ -59,6 +59,7 @@
     "/static/js/app-features-operation-modal.js",
     "/static/js/app-receipt-scan-parser.js",
     "/static/js/app-receipt-scan-image.js",
+    "/static/js/app-receipt-photo-viewer.js",
     "/static/js/app-receipt-scan-engine.js",
     "/static/js/app-receipt-categories.js",
     "/static/js/app-scan-category-picker.js",

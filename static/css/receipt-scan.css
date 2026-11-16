@@ -64,6 +64,15 @@
 /* Review uses compact receipt rows and the same searchable catalog as operations. */
 .receipt-scan-dialog[data-stage=review] {width:min(1360px,calc(100vw - 24px));}
 .receipt-scan-dialog[data-stage=review] .scan-image-column {padding:0;top:12px;}
+.receipt-scan-dialog[data-stage=review] #scanImageFrame {width:100%;overflow:clip;text-align:center;}
+.receipt-scan-dialog[data-stage=review] #scanCanvas {margin-inline:auto;user-select:none;cursor:zoom-in;}
+.receipt-scan-dialog[data-stage=review] #scanCanvas.is-zoomed {cursor:grab;touch-action:none;}
+.receipt-scan-dialog[data-stage=review] #scanCanvas.is-dragging {cursor:grabbing;}
+.scan-zoom-tools {display:none;}
+.receipt-scan-dialog[data-stage=review] #scanImageFrame:has(canvas:not([hidden])) + .scan-zoom-tools {
+  display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;
+}
+#scanZoomLevel {min-width:4ch;text-align:center;color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums;}
 .scan-row {padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2, #111b2b);margin-bottom:10px;gap:10px;}
 .scan-name {position:relative;min-width:0;}
 .scan-name .field {margin:0;}

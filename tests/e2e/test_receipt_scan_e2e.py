@@ -25,8 +25,8 @@ def start(page,url,width=1440):
     page.click('#addOperationCta');page.click('#createOperationModeSwitch [data-operation-mode=receipt]');page.click('#openReceiptScan')
     expect(page.locator('#receiptScanDialog')).to_be_visible()
 
-def image(page):
-    value=page.evaluate('''() => {const c=document.createElement('canvas');c.width=1200;c.height=1600;const x=c.getContext('2d');x.fillStyle='white';x.fillRect(0,0,1200,1600);x.fillStyle='black';x.font='36px Arial';const lines=['ООО ТЕСТОВЫЙ МАГАЗИН','№ ДОК 123','МОЛОКО','3.00 x2.000 6.00','ХЛЕБ','2.00 x1.000 2.00','ИТОГО К ОПЛАТЕ 8.00','12.10.2026 18:24:04'];lines.forEach((s,i)=>x.fillText(s,80,120+i*90));return c.toDataURL('image/png').split(',')[1];}''')
+def image(page, height=1600):
+    value=page.evaluate('''height => {const c=document.createElement('canvas');c.width=1200;c.height=height;const x=c.getContext('2d');x.fillStyle='white';x.fillRect(0,0,1200,height);x.fillStyle='black';x.font='36px Arial';const lines=['ООО ТЕСТОВЫЙ МАГАЗИН','№ ДОК 123','МОЛОКО','3.00 x2.000 6.00','ХЛЕБ','2.00 x1.000 2.00','ИТОГО К ОПЛАТЕ 8.00','12.10.2026 18:24:04'];lines.forEach((s,i)=>x.fillText(s,80,120+i*90));return c.toDataURL('image/png').split(',')[1];}''',height)
     return {'name':'receipt.png','mimeType':'image/png','buffer':base64.b64decode(value)}
 
 def upload(page):
@@ -35,6 +35,80 @@ def upload(page):
 
 def stub(page,text=TEXT):
     page.evaluate('''text=>{window.App.receiptScanEngine.recognize=()=>({cancel(){},promise:Promise.resolve({text,blocks:[]})});}''',text)
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width', [320, 1440])
+def test_long_receipt_zoom_and_pan(static_server_url, page_with_receipt_api_mock, width):
+    page = page_with_receipt_api_mock
+    start(page, static_server_url, width)
+    stub(page)
+    page.locator('#scanFile').set_input_files(image(page, height=5600))
+    expect(page.locator('#scanRun')).to_be_enabled()
+    expect(page.locator('#scanZoomIn')).to_be_hidden()
+    page.click('#scanRun')
+    frame = page.locator('#scanImageFrame')
+    photo = page.locator('#scanCanvas')
+    level = page.locator('#scanZoomLevel')
+    fit = page.get_by_role('button', name='Показать чек целиком')
+    expect(level).to_be_visible()
+    expect(level).to_have_text('100%')
+    get_pixels = 'c => c.toDataURL("image/webp", 0.9)'
+    original = photo.evaluate(get_pixels)
+    page.fill('#scanTotal', '7.51')
+    frame.scroll_into_view_if_needed()
+    bounds = frame.bounding_box()
+    x = bounds['x'] + bounds['width'] / 2
+    y = bounds['y'] + bounds['height'] / 3
+    if width == 1440:
+        before = photo.bounding_box()
+        x = round(before['x'] + before['width'] * .75)
+        y = round(y)
+        anchor_x = (x - before['x']) / before['width']
+        anchor_y = (y - before['y']) / before['height']
+        page.mouse.move(x, y)
+        page.mouse.wheel(0, -350)
+        expect(level).to_have_text('201%')
+        box = photo.bounding_box()
+        assert box['x'] + box['width'] * anchor_x == pytest.approx(x, abs=1)
+        assert box['y'] + box['height'] * anchor_y == pytest.approx(y, abs=1)
+        # Drag the bottom edge into view, crossing the frame boundary.
+        page.mouse.down()
+        page.mouse.move(x, 0, steps=6)
+        page.mouse.up()
+        page.mouse.move(x, y)
+        page.mouse.down()
+        page.mouse.move(x, 0, steps=6)
+        page.mouse.up()
+        box = photo.bounding_box()
+        assert box['y'] + box['height'] == pytest.approx(bounds['y'] + bounds['height'], abs=1)
+        page.locator('#scanReview').hover(position={'x': 5, 'y': 5})
+        scroll = page.locator('#receiptScanDialog').evaluate('d => d.scrollTop')
+        page.mouse.wheel(0, 280)
+        page.wait_for_function('previous => document.querySelector("#receiptScanDialog").scrollTop > previous', arg=scroll)
+        expect(level).to_have_text('201%')
+    else:
+        page.get_by_role('button', name='Увеличить фото').click()
+        expect(level).to_have_text('150%')
+        frame.scroll_into_view_if_needed()
+        bounds = frame.bounding_box()
+        y = bounds['y'] + bounds['height'] / 2
+        before = photo.bounding_box()
+        touch = page.context.new_cdp_session(page)
+        for action, points in [('touchStart', [{'x': x, 'y': y}]), ('touchMove', [{'x': x, 'y': y-75}]), ('touchEnd', [])]:
+            touch.send('Input.dispatchTouchEvent', {'type': action, 'touchPoints': points})
+        assert photo.bounding_box()['y'] == pytest.approx(before['y'] - 75, abs=1)
+    fit.click()
+    expect(level).to_have_text('100%')
+    expect(fit).to_be_disabled()
+    assert photo.evaluate(get_pixels) == original
+    expect(page.locator('#scanTotal')).to_have_value('7.51')
+    photo.click()
+    expect(level).to_have_text('200%')
+    page.click('#scanBack')
+    expect(level).to_be_hidden()
+    assert photo.evaluate('c => getComputedStyle(c).transform') == 'none'
+    page.click('#scanRun')
+    expect(level).to_have_text('100%')
 
 @pytest.mark.e2e
 @pytest.mark.parametrize('width', [320, 800, 1280])

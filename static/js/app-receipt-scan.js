@@ -16,7 +16,11 @@
     <p class="muted-small" id="scanPrivacy">Фото обрабатывается на устройстве.</p>
     <button type="button" id="scanDropzone" class="scan-dropzone">${icons.svg('upload')}<strong>Выберите или перетащите фото чека</strong><span>Или вставьте из буфера: <kbd>Ctrl+V</kbd> / <kbd>⌘V</kbd></span><small>JPG, PNG, WebP · до 20 МБ</small></button>
     <div class="scan-toolbar" id="scanPhotoTools">${iconButton('scanBack','back','Изменить фото и распознать заново')}${iconButton('scanUpload','upload','Загрузить фото чека')}${iconButton('scanRotate','refresh','Повернуть фото')}${iconButton('scanReset','expand','Сбросить углы')}<input id="scanFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><span id="scanStep" class="muted-small">Загрузите фото или вставьте Ctrl+V / ⌘V · до 20 МБ</span></div>
-    <div id="scanPasteReplace" class="scan-toolbar" hidden><span>Заменить фото и сбросить текущий черновик?</span>${iconButton("scanPasteAccept","save","Заменить фото")}${iconButton("scanPasteDismiss","close","Оставить текущий чек")}</div><div id="scanWorkspace" hidden><div class="scan-image-column"><div id="scanImageFrame"><canvas id="scanCanvas"></canvas><div id="scanNoPhoto" hidden>Фото чека не сохранено или удалено</div><svg id="scanOutline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon fill="#79acff18" stroke="#79acff" stroke-width=".5"/></svg>${[0,1,2,3].map((i)=>`<button type="button" class="scan-corner" data-corner="${i}" aria-label="Угол ${i+1} чека">${i+1}</button>`).join('')}</div><p id="scanCropHint" class="muted-small">Подвиньте углы к краям чека</p></div>
+    <div id="scanPasteReplace" class="scan-toolbar" hidden><span>Заменить фото и сбросить текущий черновик?</span>${iconButton("scanPasteAccept","save","Заменить фото")}${iconButton("scanPasteDismiss","close","Оставить текущий чек")}</div><div id="scanWorkspace" hidden><div class="scan-image-column"><div id="scanImageFrame"><canvas id="scanCanvas" role="img" aria-label="Фото чека"></canvas><div id="scanNoPhoto" hidden>Фото чека не сохранено или удалено</div><svg id="scanOutline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon fill="#79acff18" stroke="#79acff" stroke-width=".5"/></svg>${[0,1,2,3].map((i)=>`<button type="button" class="scan-corner" data-corner="${i}" aria-label="Угол ${i+1} чека">${i+1}</button>`).join('')}</div>
+      <div class="scan-zoom-tools" role="group" aria-label="Масштаб фото чека">
+        ${iconButton('scanZoomOut','minus','Уменьшить фото')}<span id="scanZoomLevel">100%</span>${iconButton('scanZoomIn','plus','Увеличить фото')}
+        ${iconButton('scanZoomFit','fitImage','Показать чек целиком')}
+      </div><p id="scanCropHint" class="muted-small">Подвиньте углы к краям чека</p></div>
     <form id="scanReview" hidden><div class="scan-meta">
       <div class="scan-date-and-shop">
         <div class="field scan-date-field">
@@ -126,6 +130,7 @@
   const catalog=()=>window.App.getRuntimeModule('operation-modal').receiptCatalog;
   const catalogNotice=()=>catalog().status().loading?'Ищу в каталоге…':catalog().status().incomplete?'Каталог загружен не полностью':'';
   const canvas=node('scanCanvas');
+  const photoViewer = window.App.receiptPhotoViewer(dialog);
   function resetPoints(){points=[[0,0],[1,0],[1,1],[0,1]];draw();}
   function fitCrop(){
     if(!source)return;
@@ -150,7 +155,7 @@
     node('scanRetryCancel').hidden=!value;
     dialog.querySelectorAll('[data-corner]').forEach(b=>b.disabled=value);
   }
-  function invalidateReview(){storedImage=null;dialog.dataset.stage=source?'crop':'upload';node('scanStep').textContent='Границы чека';draft=null;node('scanReview').hidden=true;node('scanRetryStatus').textContent='';node('scanConfirmed').checked=false;transferred=false;}
+  function invalidateReview(){photoViewer.reset();storedImage=null;dialog.dataset.stage=source?'crop':'upload';node('scanStep').textContent='Границы чека';draft=null;node('scanReview').hidden=true;node('scanRetryStatus').textContent='';node('scanConfirmed').checked=false;transferred=false;}
   function cancel(){
     if(busy&&draft)node('scanRetryStatus').textContent='Повтор отменён.';
     generation++;job?.cancel();job=null;setBusy(false);status('Распознавание отменено');
@@ -180,7 +185,7 @@
     }catch(error){if(token!==openGeneration)return;if(mode==='edit')context='';core.notify(error.message||'Не удалось открыть чек',{type:'error'});}
   }
   node('scanClose').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>{storePicker.close();if(busy)cancel();node('scanTextDialog').close();closeCatalogLists();closeCategoryPickers();refreshEntry();});
+  dialog.addEventListener('close',()=>{photoViewer.reset();storePicker.close();if(busy)cancel();node('scanTextDialog').close();closeCatalogLists();closeCategoryPickers();refreshEntry();});
   dialog.addEventListener('click',e=>{const r=dialog.getBoundingClientRect();if(e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))dialog.close();});
   // Installed before the global choice listener: Escape in a nested choice belongs to it.
   document.addEventListener('keydown',e=>{
@@ -636,7 +641,7 @@
     photosDeleted(){
       // Never re-upload a removed saved photo from the open editor's cached attachment.
       if(pending.edit)pending.edit.value.image=null;
-      if(context!=='create'){if(busy)cancel();storedImage=null;source=null;canvas.width=canvas.height=1;canvas.hidden=true;node('scanNoPhoto').hidden=false;node('scanBack').hidden=true;node('scanRetry').hidden=true;}
+      if(context!=='create'){photoViewer.reset();if(busy)cancel();storedImage=null;source=null;canvas.width=canvas.height=1;canvas.hidden=true;node('scanNoPhoto').hidden=false;node('scanBack').hidden=true;node('scanRetry').hidden=true;}
     },
     reset(){openGeneration++;if(dialog.open)dialog.close();cleanup();createRecovery=null;pending.create=pending.edit=null;context='create';},
   });

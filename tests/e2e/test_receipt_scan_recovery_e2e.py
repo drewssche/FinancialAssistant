@@ -53,6 +53,11 @@ def test_saved_receipt_reopens_with_current_operation_and_placeholder(static_ser
     expect(page.locator('#scanDate')).to_have_value('2026-10-16')
     expect(page.locator('#scanRows .scan-row')).to_have_count(2)
     expect(page.locator('#scanNoPhoto')).to_be_hidden() if has_photo else expect(page.locator('#scanNoPhoto')).to_be_visible()
+    if has_photo:
+        page.click('#scanZoomIn')
+        expect(page.locator('#scanZoomLevel')).to_have_text('150%')
+    else:
+        expect(page.locator('#scanZoomIn')).to_be_hidden()
     page.click('#scanShowText');expect(page.locator('#scanText')).to_have_value(TEXT);page.click('#scanTextClose')
     page.locator('#scanConfirmed').check();page.click('#scanTransfer');page.click('#scanReplaceYes')
     expect(page.locator('#editAmount')).to_have_value('7.50')
