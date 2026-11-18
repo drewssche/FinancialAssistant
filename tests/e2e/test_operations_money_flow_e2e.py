@@ -51,7 +51,7 @@ def static_server_url() -> str:
 
 
 @pytest.fixture()
-def page_with_money_flow_api_mock():
+def page_with_money_flow_api_mock(request):
     preferences = {
         "preferences_version": 1,
         "data": {
@@ -457,7 +457,11 @@ def page_with_money_flow_api_mock():
             browser = p.chromium.launch(headless=True)
         except Exception as exc:  # pragma: no cover
             pytest.skip(f"Chromium is not available for Playwright: {exc}")
-        page = browser.new_page()
+        device = getattr(request, "param", None)
+        options = p.devices["Pixel 7"] if device == "phone" else {}
+        if device == "desktop":
+            options = {"viewport": {"width": 1440, "height": 900}}
+        page = browser.new_page(**options)
         page.route("https://telegram.org/js/telegram-web-app.js", lambda route: route.fulfill(content_type="application/javascript", body=""))
         page.add_init_script(
             """
@@ -1120,3 +1124,80 @@ def test_edit_existing_settlement_shows_original_amount(static_server_url, page_
     assert page.locator('#editFxSettlementAsset').input_value() == 'USD'
     assert page.locator('#editFxSettlementQuantity').input_value() == '10.00'
     assert float(page.locator('#editFxSettlementUnitPrice').input_value().replace(',', '.')) == 3
+
+
+@pytest.fixture
+def receipt_ledger():
+    from tests.api.test_operations_api import _client_lifecycle
+
+    yield from _client_lifecycle()
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("page_with_money_flow_api_mock", ["desktop", "phone"], indirect=True)
+def test_find_old_receipt_and_open_matching_line(static_server_url, page_with_money_flow_api_mock, receipt_ledger):
+    page = page_with_money_flow_api_mock
+    shop = "Пекарня у дома"
+    catalog_name = "Хлеб ржаной"
+    printed_name = "Буханка <Бородинская>"
+    product = receipt_ledger.post("/api/v1/operations/catalog-products", json={"name": catalog_name})
+    assert product.status_code == 201
+    lines = [{"name": f"Позиция {i}", "shop_name": shop, "quantity": "1", "unit_price": "1.00"} for i in range(16)]
+    lines.append({**lines[0], "name": printed_name, "product_id": product.json()["id"], "unit_price": "2.50"})
+    saved = receipt_ledger.post("/api/v1/operations", json={
+        "kind": "expense", "operation_date": "2020-04-05", "receipt_items": lines,
+    })
+    assert saved.status_code == 201, saved.text
+    operation_id = saved.json()["id"]
+
+    def journal_read(route):
+        url = urlparse(route.request.url)
+        response = receipt_ledger.get(url.path + "?" + url.query)
+        route.fulfill(status=response.status_code, content_type="application/json", body=response.content)
+
+    page.route("**/api/v1/operations/money-flow*", journal_read)
+    page.route("**/api/v1/operations/money-flow/summary*", journal_read)
+    detail_requests = []
+    page.on("request", lambda req: detail_requests.append(req.url) if urlparse(req.url).path == f"/api/v1/operations/{operation_id}" else None)
+    _open_app(page, static_server_url)
+    phone = page.evaluate("navigator.maxTouchPoints > 0")
+    if phone:
+        page.locator("#mobileNavToggleBtn").tap()
+    page.locator("button[data-section='operations']").click()
+    search = page.get_by_role("textbox", name="Поиск по магазину, товару или комментарию")
+    search.fill("Бородинская")
+    page.get_by_role("button", name="Искать за всё время").click()
+    row = page.locator(f"#operationsBody tr[data-operation-row-id='{operation_id}']")
+    expect = sync_api.expect
+    expect(row.locator(".receipt-search-preview mark")).to_have_text("Бородинская")
+    expect(row.locator(".mobile-note-cell")).to_contain_text(shop)
+    button = row.get_by_role("button", name="Открыть чек")
+    if phone:
+        assert button.bounding_box()["height"] >= 44
+        button.tap()
+    else:
+        button.focus()
+        page.keyboard.press("Enter")
+    modal = page.locator("#operationReceiptModal")
+    match = modal.locator("[data-matched-product]")
+    expect(match).to_be_focused()
+    expect(match).to_be_in_viewport(ratio=0.9)
+    expect(match.locator(".operation-receipt-title strong")).to_have_text(printed_name)
+    expect(modal.locator(".operation-receipt-item")).to_have_count(len(lines))
+    expect(modal.locator("#operationReceiptMeta")).to_contain_text("05.04.2020")
+    assert modal.locator(".modal-card").evaluate("n => n.scrollWidth <= n.clientWidth + 1")
+    page.keyboard.press("Escape")
+    expect(button).to_be_focused()
+    expect(search).to_have_value("Бородинская")
+
+    search.fill(catalog_name)
+    expect(row.locator(".receipt-search-preview mark")).to_have_text(catalog_name)
+    row.locator(".mobile-note-cell").click()
+    expect(match.locator("mark")).to_have_text(catalog_name)
+    modal.get_by_role("button", name="Закрыть").click()
+    search.fill(shop)
+    expect(row.locator(".receipt-search-preview mark")).to_have_text(shop)
+    row.get_by_role("button", name="Открыть чек").click()
+    expect(modal.locator("#operationReceiptMeta mark")).to_have_text(shop)
+    expect(modal.locator(".operation-receipt-item").first).to_be_in_viewport()
+    assert not detail_requests

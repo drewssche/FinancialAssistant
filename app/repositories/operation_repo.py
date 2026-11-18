@@ -161,6 +161,7 @@ class OperationRepository:
                 Operation.id.in_(select(OperationReceiptItem.operation_id).where(
                     OperationReceiptItem.user_id == user_id,
                     or_(
+                        search_match(OperationReceiptItem.name, q, original_only=original_only),
                         search_match(OperationReceiptItem.tags, q, original_only=original_only),
                         search_match(OperationReceiptItem.shop_name, q, original_only=original_only),
                     ),

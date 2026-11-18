@@ -14,6 +14,11 @@
 #operationsSection .operations-summary-grid > article, #debtsSection .debts-section-kpi > article { min-height: 0; display: grid; gap: 3px; }
 #operationsSection .operations-summary-grid strong, #debtsSection .debts-section-kpi strong { font-size: 16px; line-height: 1.4; }
 #operationsSection .operations-search-row { padding: 0; border: 0; background: none; margin: 12px 0; }
+#operationsSection .receipt-search-preview { white-space: normal; overflow-wrap: anywhere; }
+#operationsSection button[data-search-all-dates] { margin-block: 4px; }
+@media (pointer: coarse) {
+  #operationsSection tr[data-receipt-search] button[data-receipt-view-id] { min-height: 44px; }
+}
 #operationsSection > .panel > .panel-head:has(#operationsActiveFilters.hidden) { display: none; }
 .record-icon-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 4px; }
 #operationsSection .record-icon-actions { min-width: 138px; }

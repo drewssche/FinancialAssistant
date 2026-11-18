@@ -696,7 +696,7 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "actions.loadAnalyticsSection" not in plans
     assert "actions.openOperationReceiptModal" not in plans
     assert "actions.openOperationReceiptModal" not in init_operations
-    assert "operationsFeature.openOperationReceiptModal(item);" in init_operations
+    assert "operationsFeature.openOperationReceiptModal(item," in init_operations
     assert "actions.loadDashboardAnalyticsPreview" not in operations_mutations_factory
     assert "actions.loadAnalyticsSection" not in operations_mutations_factory
     assert "categoryActions.loadCategories()" not in operations_mutations_factory

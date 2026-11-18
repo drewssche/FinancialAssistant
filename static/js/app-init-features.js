@@ -283,6 +283,12 @@
       });
     }
 
+    el.operationsBody?.addEventListener("click", (event) => {
+      if (event.target.closest("button[data-search-all-dates]")) {
+        operationsPeriodControls.applyPeriodChoice("all_time");
+      }
+    });
+
     if (el.operationsPeriodOptions) {
       el.operationsPeriodOptions.addEventListener("click", (event) => {
         const choiceBtn = event.target.closest("[data-operations-period-choice]");

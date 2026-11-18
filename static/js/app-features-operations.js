@@ -499,7 +499,17 @@
     el.operationsBody.innerHTML = "";
     if (!sortedItems.length) {
       const row = document.createElement("tr");
-      row.innerHTML = '<td colspan="7">Нет операций</td>';
+      const cell = row.insertCell();
+      cell.colSpan = 7;
+      cell.textContent = query ? `По запросу «${query}» покупок и других операций не найдено.` : "Нет операций";
+      if (query && state.period !== "all_time") {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn btn-secondary";
+        button.dataset.searchAllDates = "";
+        button.textContent = "Искать за всё время";
+        cell.append(" ", button);
+      }
       el.operationsBody.appendChild(row);
       return;
     }

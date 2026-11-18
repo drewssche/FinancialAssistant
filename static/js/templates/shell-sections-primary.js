@@ -387,7 +387,7 @@
             </div>
             <div class="muted-small operations-count"><span id="operationsTotalCountLabel">Операций найдено</span>: <span id="operationsTotalCount">0</span></div>
             <div class="table-search-row sticky-search operations-search-row">
-              <input id="filterQ" class="table-search-input" type="text" placeholder="Поиск" />
+              <input id="filterQ" class="table-search-input" type="text" enterkeyhint="search" placeholder="Магазин или товар" aria-label="Поиск по магазину, товару или комментарию" />
               <button id="resetOperationsFiltersBtn" class="btn btn-secondary" type="button" disabled>Сбросить</button>
             </div>
 

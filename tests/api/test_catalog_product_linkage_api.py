@@ -201,6 +201,21 @@ def test_receipts_create_source_offers_and_filter_by_canonical_product(
     assert searched.status_code == 200, searched.text
     assert searched.json()["total"] == 2
 
+    # The name printed by one shop differs from the shared catalog name.
+    for endpoint, scope in [
+        ("/api/v1/operations", {}),
+        ("/api/v1/operations/money-flow", {"source": "all"}),
+        ("/api/v1/operations/money-flow", {"source": "operation"}),
+    ]:
+        params = {**scope, "q": "печеньем", "page_size": 1}
+        result = client.get(endpoint, params=params)
+        assert result.status_code == 200, result.text
+        assert result.json()["total"] == 1
+        record = result.json()["items"][0]
+        assert record.get("source_id", record["id"]) == euroopt_purchase["id"]
+        summary = client.get(f"{endpoint}/summary", params=params)
+        assert summary.json()["expense_total"] == "0.81"
+
     money_flow = client.get(
         "/api/v1/operations/money-flow",
         params={"product_id": product_id, "page_size": 100},

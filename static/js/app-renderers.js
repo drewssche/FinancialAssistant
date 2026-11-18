@@ -161,7 +161,7 @@
     };
   }
 
-  function renderOperationContextChips(item) {
+  function renderOperationContextChips(item, receiptMatch = false) {
     const chips = [];
     const hasReceiptItems = Array.isArray(item?.receipt_items) && item.receipt_items.length > 0;
     const operationId = Number(item?.source_id || item?.id || 0);
@@ -169,7 +169,7 @@
     const hasFxSettlement = Boolean(item?.fx_settlement) || item?.has_fx_settlement === true;
     if (hasReceiptItems && operationId > 0) {
       chips.push(
-        `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-receipt-view-id="${operationId}">Чек</button>`,
+        `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-receipt-view-id="${operationId}">${receiptMatch ? "Открыть чек" : "Чек"}</button>`,
       );
       const discount = getReceiptDiscountSummary(item.receipt_items);
       if (discount) {
@@ -363,15 +363,24 @@
     return direction === "borrow" ? "Добавление: я взял в долг" : "Добавление: я дал в долг";
   }
 
-  function renderMatchingReceiptShops(item, query) {
+  function renderReceiptSearchMatches(item, query) {
     if (!query.trim()) return "";
+    const products = new Map();
     const shops = new Map();
+    const { matchingReceiptProduct, matches, normalize } = window.App.search;
     for (const row of item.receipt_items || []) {
-      const name = String(row.shop_name || "").trim();
-      if (name && window.App.search.matches(name, query)) shops.set(name.toLowerCase(), name);
+      const product = matchingReceiptProduct(row, query);
+      if (product) products.set(normalize(product), product);
+      const shop = String(row.shop_name || "").trim();
+      if (shop && (product || matches(shop, query))) shops.set(normalize(shop), shop);
     }
-    if (!shops.size) return "";
-    return `<div class="muted-small">Магазин · ${Array.from(shops.values(), name => highlightText(name, query)).join(", ")}</div>`;
+    function preview(label, names) {
+      if (!names.size) return "";
+      const visible = Array.from(names.values()).slice(0, 2).map(name => highlightText(name, query));
+      const more = names.size > visible.length ? ` · ещё ${names.size - visible.length}` : "";
+      return `<div class="muted-small receipt-search-preview">${label} · ${visible.join(", ")}${more}</div>`;
+    }
+    return preview("Магазин", shops) + preview("В чеке", products);
   }
 
   function createOperationRow(item, options = {}) {
@@ -406,7 +415,7 @@
         <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
         <td data-label="Категория">${categoryCellHtml}</td>
         <td data-label="Сумма">${formatOperationAmountHtml(item, kindClass)}</td>
-        <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)} ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}${renderMatchingReceiptShops(item, searchQuery)}</td>
+        <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)} ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}${renderReceiptSearchMatches(item, searchQuery)}</td>
       `;
       row.dataset.item = JSON.stringify(item);
       row.dataset.operationRowId = String(item.id);
@@ -426,7 +435,7 @@
         <td><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
         <td>${previewCategoryCellHtml}</td>
         <td>${formatOperationAmountHtml(item, kindClass)}</td>
-        <td>${highlightText(noteText, searchQuery)} ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}${renderMatchingReceiptShops(item, searchQuery)}</td>
+        <td>${highlightText(noteText, searchQuery)} ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}${renderReceiptSearchMatches(item, searchQuery)}</td>
         <td><span class="muted-small">—</span></td>
       `;
       row.classList.add("preview-row");
@@ -452,7 +461,7 @@
       <td data-label="Категория">${contextChipsHtml ? `<div class="operation-category-stack">${categoryHtml}${contextChipsHtml}</div>` : categoryHtml}</td>
       <td data-label="Чек" class="operation-receipt-chip-cell">${receiptCellHtml}</td>
       <td data-label="Сумма">${formatOperationAmountHtml(item, kindClass)}</td>
-      <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)} ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}${renderMatchingReceiptShops(item, searchQuery)}</td>
+      <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)} ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}${renderReceiptSearchMatches(item, searchQuery)}</td>
       <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
         <div class="record-icon-actions">${menuItems}</div>
       </td>
@@ -521,8 +530,9 @@
     const receiptCategoryHtml = receiptCategories.length
       ? renderCategoryChipList(receiptCategories, searchQuery, { maxVisible: 3 })
       : "";
+    const receiptPreview = sourceKind === "operation" ? renderReceiptSearchMatches(item, searchQuery) : "";
     const operationContextChipsHtml = sourceKind === "operation"
-      ? renderOperationContextChips(item)
+      ? renderOperationContextChips(item, Boolean(receiptPreview))
       : "";
     const contextTitleHtml = `<div class="money-flow-title">${highlightText(title, searchQuery)}</div>`;
     const contextSubtitleHtml = subtitle
@@ -582,12 +592,13 @@
       <td data-label="Контекст">${categoryCellHtml}</td>
       <td data-label="Источник">${sourceCellHtml}</td>
       <td data-label="Сумма">${formatFlowAmountHtml(item)}</td>
-      <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)} ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}${renderMatchingReceiptShops(item, searchQuery)}</td>
+      <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)} ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}${receiptPreview}</td>
       <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
         ${menuItems ? `<div class="record-icon-actions">${menuItems}</div>` : "<span class='muted-small'>—</span>"}
       </td>
     `;
     row.dataset.item = JSON.stringify(item);
+    if (receiptPreview) row.dataset.receiptSearch = searchQuery;
     row.dataset.moneyFlowRowId = String(item.id || "");
     row.dataset.moneyFlowSourceId = String(item?.source_id || "");
     if (sourceKind === "operation" && item?.source_id) {

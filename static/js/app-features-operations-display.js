@@ -2,6 +2,7 @@
   function createOperationsDisplayFeature(deps) {
     const { el, core, getCategoryMetaById } = deps;
     let activeReceiptItem = null;
+    let activeReceiptQuery = "";
 
     function getOperationDisplayCategories(item) {
       const categories = core.getReceiptCategoryMetas
@@ -52,12 +53,9 @@
         return;
       }
       activeReceiptItem = item;
-      const esc = (value) => String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
+      const query = options.query || "";
+      activeReceiptQuery = query;
+      const esc = core.escapeHtml;
       const shops = [...new Set(item.receipt_items.map(r => r.shop_name || ""))];
       const commonShop = shops.length === 1 ? shops[0] : "";
       if (el.operationReceiptMeta) {
@@ -65,7 +63,7 @@
         const money = item.currency && item.base_currency && item.currency !== item.base_currency
           ? `${core.formatMoney(item.original_amount || item.amount, { currency: item.currency })} · ≈ ${core.formatMoney(item.amount, { currency: item.base_currency })}`
           : core.formatMoney(item.amount, { currency: item.base_currency || item.currency || undefined });
-        el.operationReceiptMeta.textContent = `${core.formatDateRu(item.operation_date)} · ${money}${commonShop ? ` · ${commonShop}` : ""}${note}`;
+        el.operationReceiptMeta.innerHTML = core.highlightText(`${core.formatDateRu(item.operation_date)} · ${money}${commonShop ? ` · ${commonShop}` : ""}${note}`, query);
       }
       el.operationReceiptItems.innerHTML = item.receipt_items.map((row) => {
         const qty = Number(row.quantity || 0);
@@ -74,7 +72,7 @@
         const receiptCurrency = String(item.currency || item.base_currency || core.getCurrencyConfig?.().code || "BYN").toUpperCase();
         const media = window.App.getRuntimeModule?.("catalog-media") || {};
         const shopChip = row.shop_name && !commonShop
-          ? `<div class="operation-receipt-shop catalog-source-identity">${media.renderThumb?.(row.source_image_id, { kind: "source", size: "chip", alt: row.shop_name, fallback: String(row.shop_name).slice(0, 1) }) || ""}${core.renderCategoryChip({ name: row.shop_name, icon: null, accent_color: null }, "")}</div>`
+          ? `<div class="operation-receipt-shop catalog-source-identity">${media.renderThumb?.(row.source_image_id, { kind: "source", size: "chip", alt: row.shop_name, fallback: String(row.shop_name).slice(0, 1) }) || ""}${core.renderCategoryChip({ name: row.shop_name, icon: null, accent_color: null }, query)}</div>`
           : "";
         const categoryChip = row.category_id
           ? `<div class="operation-receipt-shop">${core.renderCategoryChip(getCategoryMetaById(row.category_id), "")}</div>`
@@ -96,13 +94,16 @@
           alt: row.name || "Позиция",
           fallback: String(row.name || "П").slice(0, 1),
         }) || "";
+        const matchedName = window.App.search.matchingReceiptProduct(row, query);
+        const displayName = matchedName || row.product_name || row.name || "Без названия";
+        const titleHtml = `${itemThumb}<strong>${core.highlightText(displayName, query)}</strong>`;
         const itemName = row.product_id
-          ? `<button class="operation-receipt-item-open" type="button" data-open-receipt-product-card="${Number(row.product_id)}" title="Открыть карточку ${esc(row.product_name || row.name || "товара")}">${itemThumb}<strong>${esc(row.product_name || row.name || "Без названия")}</strong></button>`
+          ? `<button class="operation-receipt-item-open" type="button" data-open-receipt-product-card="${Number(row.product_id)}" title="Открыть карточку ${esc(displayName)}">${titleHtml}</button>`
           : row.template_id
-          ? `<button class="operation-receipt-item-open" type="button" data-open-receipt-template-card="${Number(row.template_id)}" title="Открыть карточку ${esc(row.name || "позиции")}">${itemThumb}<strong>${esc(row.name || "Без названия")}</strong></button>`
-          : `<span class="operation-receipt-item-identity">${itemThumb}<strong title="${esc(row.name || "Без названия")}">${esc(row.name || "Без названия")}</strong></span>`;
+          ? `<button class="operation-receipt-item-open" type="button" data-open-receipt-template-card="${Number(row.template_id)}" title="Открыть карточку ${esc(displayName)}">${titleHtml}</button>`
+          : `<span class="operation-receipt-item-identity">${titleHtml}</span>`;
         return `
-          <article class="operation-receipt-item">
+          <article class="operation-receipt-item"${matchedName ? ' data-matched-product tabindex="-1"' : ""}>
             <div class="operation-receipt-head">
               <div class="operation-receipt-title">
                 ${brandChip}
@@ -122,12 +123,22 @@
       }).join("");
       el.operationReceiptModal.classList.remove("hidden");
       if (options.bringToFront !== false) {
-        core.bringModalToFront?.(el.operationReceiptModal);
+        core.bringModalToFront?.(el.operationReceiptModal, options.opener);
+        const card = el.operationReceiptModal.querySelector(".modal-card");
+        card.scrollTop = 0;
+        const match = el.operationReceiptItems.querySelector("[data-matched-product]");
+        if (match) {
+          match.focus({ preventScroll: true });
+          match.scrollIntoView({ block: "nearest" });
+        } else {
+          el.closeOperationReceiptModalBtn?.focus({ preventScroll: true });
+        }
       }
     }
 
     function closeOperationReceiptModal() {
       activeReceiptItem = null;
+      activeReceiptQuery = "";
       el.operationReceiptModal?.classList.add("hidden");
       core.markModalClosed?.(el.operationReceiptModal);
     }
@@ -145,7 +156,6 @@
         changed = true;
         return {
           ...row,
-          name: template?.product_name || template?.name || row.name,
           product_id: template?.product_id || row.product_id || null,
           product_name: template?.product_name || row.product_name || null,
           product_image_id: template?.product_image_id || row.product_image_id || null,
@@ -166,7 +176,7 @@
       }
       const card = el.operationReceiptModal?.querySelector?.(".modal-card");
       const scrollTop = card?.scrollTop || 0;
-      openOperationReceiptModal(activeReceiptItem, { bringToFront: false });
+      openOperationReceiptModal(activeReceiptItem, { bringToFront: false, query: activeReceiptQuery });
       if (card) card.scrollTop = scrollTop;
       return true;
     }

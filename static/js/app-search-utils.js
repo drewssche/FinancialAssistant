@@ -42,5 +42,10 @@
     return Array.from(String(value ?? "").matchAll(new RegExp(pattern, "giu")), (match) => [match.index, match.index + match[0].length]);
   }
 
-  window.App.search = { normalize, variants, rank, matches, compare, prioritize, highlightRanges };
+  function matchingReceiptProduct(row, query) {
+    if (!query) return "";
+    return [row.product_name, row.name].find(name => name && matches(name, query)) || "";
+  }
+
+  window.App.search = { normalize, variants, rank, matches, compare, prioritize, highlightRanges, matchingReceiptProduct };
 })();

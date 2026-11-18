@@ -60,23 +60,29 @@
       menu.closest(".table-menu-open-row")?.classList.remove("table-menu-open-row");
     }
 
+    function openReceipt(button) {
+      const operationId = Number(button.dataset.receiptViewId);
+      if (!(operationId > 0)) return;
+      const row = button.closest("tr[data-money-flow-row-id]");
+      const operationsFeature = getOperationsFeature();
+      if (!operationsFeature.openOperationReceiptModal) return;
+      core.runAction({
+        errorPrefix: "Ошибка открытия чека",
+        action: async () => {
+          const flow = row && JSON.parse(row.dataset.item || "{}");
+          const item = flow?.source_kind === "operation" && Number(flow.source_id) === operationId && flow.receipt_items?.length
+            ? { ...flow, id: operationId, operation_date: flow.event_date }
+            : await core.requestJson(`/api/v1/operations/${operationId}`, { headers: core.authHeaders() });
+          operationsFeature.openOperationReceiptModal(item, { query: row?.dataset.receiptSearch || "", opener: button });
+        },
+      });
+    }
+
     function handleOperationActionClick(event) {
       const receiptBtn = event.target.closest("button[data-receipt-view-id]");
       if (receiptBtn) {
         closeTableMenuForAction(event.target);
-        const operationId = Number(receiptBtn.dataset.receiptViewId || 0);
-        const operationsFeature = getOperationsFeature();
-        if (operationId > 0 && operationsFeature.openOperationReceiptModal) {
-          core.runAction({
-            errorPrefix: "Ошибка открытия чека",
-            action: async () => {
-              const item = await core.requestJson(`/api/v1/operations/${operationId}`, {
-                headers: core.authHeaders(),
-              });
-              operationsFeature.openOperationReceiptModal(item);
-            },
-          });
-        }
+        openReceipt(receiptBtn);
         return true;
       }
 
@@ -426,6 +432,11 @@
         return;
       }
       if (event.target.closest("button, a, input, select, textarea, label, .app-popover")) {
+        return;
+      }
+      const receiptButton = row.dataset.receiptSearch && row.querySelector("button[data-receipt-view-id]");
+      if (receiptButton) {
+        openReceipt(receiptButton);
         return;
       }
       const item = JSON.parse(row.dataset.item || "{}");
