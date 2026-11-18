@@ -22,6 +22,7 @@ from app.db.models.fx_trade import FxTrade
 from app.db.models.item_brand import ItemBrand
 from app.db.models.item_source import ItemSource
 from app.db.models.operation import Operation
+from app.db.models.receipt_scan_submission import ReceiptScanSubmission
 from app.db.models.operation_item_price import OperationItemPrice
 from app.db.models.operation_item_template import OperationItemTemplate
 from app.db.models.operation_receipt_item import OperationReceiptItem
@@ -45,6 +46,7 @@ __all__ = [
     "CatalogMediaAsset",
     "CatalogProduct",
     "Operation",
+    "ReceiptScanSubmission",
     "OperationItemTemplate",
     "OperationItemPrice",
     "OperationReceiptItem",

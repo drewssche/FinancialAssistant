@@ -2,7 +2,10 @@ from app.schemas.receipt_price_hint import ReceiptPriceHintInput, ReceiptPriceHi
 from app.services.receipt_code_service import ReceiptCodeConflict
 from app.services.receipt_price_hint_service import ReceiptPriceHintService
 from datetime import date
+import hashlib
+import json
 from typing import Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, Response, UploadFile, status
 from pydantic import ValidationError
@@ -60,6 +63,7 @@ from app.services.catalog_product_service import CatalogProductService
 from app.services.item_brand_service import ItemBrandService
 from app.services.item_source_service import ItemSourceService
 from app.services.operation_service import OperationService
+from app.services.receipt_scan_submission import ReceiptSubmissionConflict
 
 router = APIRouter(prefix="/operations", tags=["operations"])
 
@@ -272,8 +276,15 @@ def create_operation(
     payload: OperationCreate,
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
+    idempotency_key: UUID | None = Header(default=None, alias="Idempotency-Key"),
 ):
     service = OperationService(db)
+    submission = None
+    if idempotency_key is not None:
+        if payload.kind != "expense" or payload.receipt_scan is None or not payload.receipt_items:
+            raise HTTPException(status_code=400, detail="Ключ подтверждения применяется к расходу со сканом чека.")
+        body = json.dumps(payload.model_dump(mode="json", exclude_unset=True), sort_keys=True, separators=(",", ":"))
+        submission = (str(idempotency_key), hashlib.sha256(body.encode()).hexdigest())
     try:
         return service.create_operation(
             user_id=user_id,
@@ -292,9 +303,12 @@ def create_operation(
             note=payload.note,
             tags=payload.tags,
             receipt_scan=payload.receipt_scan.model_dump() if payload.receipt_scan else None,
+            receipt_submission=submission,
             receipt_items=[_dump_receipt_item(item) for item in payload.receipt_items],
             fx_settlement=payload.fx_settlement.model_dump() if payload.fx_settlement else None,
         )
+    except ReceiptSubmissionConflict as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ReceiptCodeConflict as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.detail) from exc
     except ValueError as exc:

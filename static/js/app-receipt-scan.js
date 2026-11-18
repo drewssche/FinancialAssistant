@@ -40,7 +40,8 @@
     <div id="scanEmptyRows" hidden><p>Позиции не найдены. Их можно добавить вручную кнопкой «+».</p><button type="button" id="scanRetry" class="btn btn-secondary">${icons.svg('refresh')}Распознать ещё раз</button><button type="button" id="scanRetryCancel" class="btn btn-secondary" hidden>Отменить распознавание</button><p id="scanRetryStatus" class="muted-small" role="status"></p></div>
     <p class="sr-only" id="scanMathHint">Можно вводить вычисления: 7,11 − 0,71 · Enter — получить результат.</p><div id="scanRows"></div>
     <p id="scanArithmetic" role="status"></p><div id="scanReplaceOperation" class="scan-toolbar" hidden><span>Заменить заполненные поля операции данными этого чека?</span>${iconButton('scanReplaceYes','save','Заменить данные операции')}${iconButton('scanReplaceNo','close','Оставить операцию')}</div><label class="scan-confirm"><input id="scanConfirmed" type="checkbox">Проверил дату, магазин, валюту и позиции</label>
-    <footer><button type="submit" class="btn btn-primary btn-icon" id="scanTransfer" aria-label="В черновик операции" title="В черновик операции" disabled>${icons.svg("save")}</button></footer></form></div>
+    <footer><button type="submit" class="btn btn-primary" id="scanTransfer" disabled>${icons.svg("save")}<span></span></button></footer></form></div>
+    <section id="scanSubmission" hidden><strong id="scanSubmissionReceipt"></strong><p id="scanSubmissionMessage" role="status"></p><button type="button" id="scanSubmitRetry" class="btn btn-primary">Повторить сохранение</button></section>
     <p id="scanStatus" class="muted-small" role="status"></p><footer id="scanRunBar"><button id="scanCancel" type="button" class="btn btn-secondary btn-icon" aria-label="Отменить распознавание" title="Отменить распознавание" hidden>${icons.svg("close")}</button><button id="scanRun" type="button" class="btn btn-primary btn-icon" aria-label="Распознать чек" title="Распознать чек" disabled>${icons.svg("receipt")}</button></footer>
     <dialog id="scanPhotoDialog" class="choice-dialog" aria-labelledby="scanPhotoTitle"><header><h3 id="scanPhotoTitle">Фото чека</h3>${iconButton('scanPhotoClose','close','Вернуться к позициям')}</header></dialog>
     <dialog id="scanTextDialog" class="choice-dialog task-dialog"><header><h3>Распознанный текст</h3>${iconButton('scanTextClose','close','Закрыть текст')}</header><div class="segmented" id="scanTextModes"><button type="button" class="segmented-btn active" data-text-mode="edited">Уточнённый</button><button type="button" class="segmented-btn" data-text-mode="original">Исходный</button></div><textarea id="scanText" rows="15" maxlength="80000" aria-label="Распознанный текст"></textarea><button id="scanReparse" class="btn btn-primary btn-icon" type="button" aria-label="Разобрать исправленный текст" title="Разобрать исправленный текст">${icons.svg("refresh")}</button></dialog>`;
@@ -68,6 +69,7 @@
   let originalTextMode=false, editedText='', storedImage=null;
   const reviewText=()=>originalTextMode?editedText:node('scanText').value;
   let context='create', createRecovery=null, applied=false, openGeneration=0;
+  let standalone=false, saving=false, attempt=null;
   const pending={create:null,edit:null};
   function snapshot(){
     if(!draft&&!source)return null;
@@ -162,12 +164,29 @@
     generation++;job?.cancel();job=null;setBusy(false);status('Распознавание отменено');
   }
   function cleanup(){storePicker.close();originalTextMode=false;editedText='';node('scanText').readOnly=false;node('scanReparse').hidden=false;node('scanTextModes').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.textMode==='edited'));dialog.classList.remove('scan-drag-over');pendingPaste=null;node('scanPasteReplace').hidden=true;cancel();node('scanTextDialog').close();source=null;canvas.width=canvas.height=1;canvas.hidden=false;node('scanNoPhoto').hidden=true;node('scanBack').hidden=false;node('scanFile').value='';node('scanText').value='';node('scanRows').replaceChildren();originalText='';invalidateReview();node('scanWorkspace').hidden=true;setBusy(false);status('');}
-  let returnToList = false;
   async function open(mode='create', options={}){
-    refreshEngines();
     if(mode==='edit'&&state.editDebtMovement)return;
+    standalone=mode==='create'&&Boolean(options.fromList);
     const next=mode==='create'?'create':String(state.editOperationId), token=++openGeneration;
     try{
+      if(standalone){
+        const owner=state.currentUserId;
+        const saved = attempt || await window.App.receiptSubmissions.pending(owner).catch(() => null);
+        if (token !== openGeneration || owner !== state.currentUserId) return;
+        if (saved && saved.owner === owner) {
+          attempt = saved;
+          cleanup();
+          context = 'create';
+          applied = false;
+          showSubmission('У предыдущей попытки нет подтверждения. Можно безопасно повторить сохранение.');
+          if(!dialog.open)dialog.showModal();
+          node('scanSubmitRetry').focus();
+          return;
+        }
+      }
+      refreshEngines();
+      hideSubmission();
+      node('scanReplaceOperation').hidden=true;
       if(next!==context){
         if(context==='create')createRecovery=snapshot();
         cleanup();context=next;
@@ -178,29 +197,31 @@
           await restore(saved);syncOperation(true);
         }
       }
-      if(token!==openGeneration||node(mode==='create'?'createModal':'editModal').classList.contains('hidden'))return;
-      if(applied)syncOperation();
+      if(token!==openGeneration||(!standalone&&node(mode==='create'?'createModal':'editModal').classList.contains('hidden')))return;
+      if(applied&&!standalone)syncOperation();
       transferred=false;if(draft)validate();
-      returnToList = Boolean(options.fromList);
       if(!dialog.open)dialog.showModal();
       (draft?node('scanDate'):node('scanDropzone')).focus();
-      catalog().load().then(()=>{if(token!==openGeneration||!dialog.open)return;if(draft)refreshCatalog();storePicker.refresh();}).catch(()=>{});
+      const categories=standalone&&!state.categories?.length
+        ? window.App.getRuntimeModule('category-actions').loadCategoryCatalog().catch(()=>{}) : Promise.resolve();
+      categories.then(()=>catalog().load()).then(()=>{if(token!==openGeneration||!dialog.open)return;if(draft)refreshCatalog();storePicker.refresh();}).catch(()=>{});
     }catch(error){if(token!==openGeneration)return;if(mode==='edit')context='';core.notify(error.message||'Не удалось открыть чек',{type:'error'});}
   }
-  node('scanClose').onclick=()=>dialog.close();
+  node('scanClose').onclick=()=>{if(!saving)dialog.close();};
+  dialog.addEventListener('cancel',e=>{if(saving)e.preventDefault();});
   dialog.addEventListener('close', () => {
     if (dialog.open) return;
     photoViewer.close();photoViewer.reset();storePicker.close();if(busy)cancel();node('scanTextDialog').close();closeCatalogLists();closeCategoryPickers();refreshEntry();
-    if (returnToList && !transferred && !node('createModal').classList.contains('hidden')) {
-      window.App.getRuntimeModule('operation-modal').closeCreateModal();
-    }
-    returnToList = false;
+    if(standalone&&attempt&&context==='create')cleanup();
+    hideSubmission();
+    standalone=false;
   });
-  dialog.addEventListener('click',e=>{const r=dialog.getBoundingClientRect();if(e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))dialog.close();});
+  dialog.addEventListener('click',e=>{const r=dialog.getBoundingClientRect();if(!saving&&e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))dialog.close();});
   // Installed before the global choice listener: Escape in a nested choice belongs to it.
   document.addEventListener('keydown',e=>{
     if(e.key!=='Escape'||!dialog.open||node('appChoiceDialog')?.open)return;
     e.preventDefault();e.stopImmediatePropagation();
+    if(saving)return;
     if(node('scanPhotoDialog').open){node('scanPhotoDialog').close();return;}
     if(!node('createCategoryModal').classList.contains('hidden')&&dialog.contains(node('createCategoryModal'))){window.App.categoryUi.closeCreateCategoryModal();return;}
     if(dialog.querySelector('.scan-category-picker:not(.hidden)')){closeCategoryPickers();return;}
@@ -227,7 +248,7 @@
     finally{bitmap?.close();if(token===generation){setBusy(false);node('scanFile').value='';}}
   };
   function offerImage(file){
-    if(!file)return;
+    if(!file||!node('scanSubmission').hidden)return;
     if(draft||busy){pendingPaste=file;node('scanPasteReplace').hidden=false;node('scanPasteAccept').focus();}
     else loadImage(file);
   }
@@ -622,7 +643,12 @@
     node('scanEmptyRows').hidden=draft.rows.length>0;
     summary.textContent=globalErrors.length?globalErrors.join(' · '):errors.length?'':'Суммы сходятся. Сверьте названия и цифры с фото.';
     summary.hidden=!summary.textContent||(!draft.rows.length&&!draft.unsupported);summary.classList.toggle('scan-error',!!globalErrors.length);
-    node('scanTransfer').disabled=errors.length>0||!node('scanConfirmed').checked||transferred;return errors;
+    const submit=node('scanTransfer');
+    const currency=node('scanCurrency').value;
+    const amount=draft.total>0?' · '+moneyFormat.format(draft.total/100)+' '+currency:'';
+    submit.querySelector('span').textContent=standalone?'Записать расход'+amount:'Перенести в черновик';
+    submit.disabled=errors.length>0||!node('scanConfirmed').checked||transferred||saving;
+    return errors;
   }
 
   function metaChanged(id){
@@ -663,13 +689,157 @@
   node('scanShowText').onclick=()=>node('scanTextDialog').showModal();
   node('scanTextClose').onclick=()=>node('scanTextDialog').close();
   node('scanReparse').onclick=()=>{showDraft(parser.parse(node('scanText').value));node('scanTextDialog').close();};
+  function reviewedItems(modal, mode) {
+    return draft.rows.map(row => {
+      const category = categoryChoice(row);
+      const discounted = row.discount > 0;
+      return modal.createReceiptDraft({
+        ...row.catalog,
+        catalog_editable: Boolean(row.catalog),
+        catalog_name_touched: Boolean(row.catalog_name_touched),
+        catalog_measurement_touched: Boolean(row.catalog_measurement_touched),
+        catalog_edit_variant_id: row.catalog_edit_variant_id || null,
+        ...(row.brand_touched ? {brand_id: row.brand_id, brand_touched: true} : {}),
+        category_id: category.id,
+        category_touched: Boolean(row.category_touched || category.reason),
+        name: row.name, quantity: row.quantity, shop_name: draft.shop,
+        ...window.App.measurements.snapshot(row),
+        variant_id: row.variant_id || null, variant_snapshot: row.variant_snapshot || null,
+        site_selection: row.site_selection || null, site_name: row.site_name || '', site_preview: row.site_preview || null,
+        code_entries: row.code_entries || [], code_match_label: row.code_match_label || '', measurement_touched: true,
+        unit_price: row.price / 100, is_discounted: discounted,
+        regular_unit_price: discounted ? row.price / 100 : null,
+        discount_mode: discounted ? 'amount' : null, discount_value: discounted ? row.discount / 100 : null,
+        discount_type: discounted ? row.discount_type || 'promo' : null, note: row.note || null,
+      }, mode);
+    });
+  }
+
+  function showSubmission(message) {
+    dialog.classList.add('has-submission');
+    node('scanSubmission').hidden = false;
+    node('scanSubmissionReceipt').textContent = attempt.label;
+    node('scanSubmissionMessage').textContent = message;
+    node('scanSubmitRetry').hidden = saving;
+    node('scanClose').disabled = saving;
+  }
+
+  function hideSubmission() {
+    dialog.classList.remove('has-submission');
+    node('scanSubmission').hidden = true;
+    node('scanClose').disabled = false;
+  }
+
+  function prepareExpense() {
+    const modal = window.App.getRuntimeModule('operation-modal');
+    const currency = node('scanCurrency').value;
+    const foreign = currency !== (core.getCurrencyConfig?.().code || 'BYN');
+    const payload = {
+      kind: 'expense', operation_date: draft.date, amount: decimal(draft.total), currency,
+      ...(foreign ? {fx_rate_source: 'nbrb', fx_payment_mode: 'valuation'} : {}),
+      receipt_items: modal.serializeReceiptItems(reviewedItems(modal, 'create')),
+      receipt_scan: scanPayload(),
+    };
+    return {
+      key: crypto.randomUUID(), owner: state.currentUserId, body: JSON.stringify(payload),
+      label: [draft.shop, core.formatDateRu(draft.date), moneyFormat.format(draft.total / 100) + ' ' + currency].join(' · '),
+    };
+  }
+
+  async function restoreRejectedExpense(current, error) {
+    if (error.status === 409) {
+      cleanup();
+      dialog.close();
+    } else {
+      if (!draft || context !== 'create') {
+        cleanup();
+        context = 'create';
+        const payload = JSON.parse(current.body);
+        const scan = payload.receipt_scan;
+        scan.review.rows.forEach((row, index) => { row.site_selection = payload.receipt_items[index]?.site_selection; });
+        await restore({...scan, currency: payload.currency});
+      }
+      node('scanConfirmed').checked = false;
+      validate();
+    }
+    const detail = error.detail;
+    const message = detail?.type === 'receipt_code_conflict'
+      ? `Позиция ${detail.item_index + 1} «${detail.item_name}». ${detail.message}`
+      : (typeof detail === 'string' ? detail : error.message);
+    core.notify(message, {type: 'error'});
+  }
+
+  async function saveExpense() {
+    if (!standalone || saving) return;
+    const isNew = !attempt;
+    if (isNew && (!draft || transferred || validate().length || !node('scanConfirmed').checked)) return;
+    saving = true;
+    if (isNew) {
+      try {
+        attempt = prepareExpense();
+      } catch (error) {
+        saving = false;
+        validate();
+        core.notify(error.message || 'Не удалось подготовить чек к отправке.', {type: 'error'});
+        return;
+      }
+    }
+    const current = attempt;
+    const isCurrent = () => attempt === current && state.currentUserId === current.owner;
+    showSubmission('Записываем расход…');
+    // Persist before the POST so a reload between commit and response can replay exactly the same receipt.
+    if (isNew) {
+      await window.App.receiptSubmissions.remember(current).catch(() => { current.memoryOnly = true; });
+    }
+    if (!isCurrent()) return;
+    let result, rejection;
+    try {
+      result = await core.requestJson('/api/v1/operations', {
+        method: 'POST', headers: {...core.authHeaders(), 'Idempotency-Key': current.key}, body: current.body,
+      });
+      if (!result?.id) throw new Error('Сервер не подтвердил номер операции.');
+    } catch (error) {
+      if (!isCurrent()) return;
+      if (![400, 409, 413, 415, 422].includes(error.status)) {
+        saving = false;
+        const keepTab = current.memoryOnly ? ' Оставьте эту вкладку открытой до подтверждения.' : '';
+        showSubmission('Подтверждение от сервера не получено. Повторите сохранение этого чека.' + keepTab);
+        node('scanSubmitRetry').focus();
+        return;
+      }
+      rejection = error;
+    }
+    await window.App.receiptSubmissions.forget(current.key).catch(() => {});
+    if (!isCurrent()) return;
+    saving = false;
+    attempt = null;
+    hideSubmission();
+    if (rejection) {
+      await restoreRejectedExpense(current, rejection);
+      return;
+    }
+    cleanup();
+    createRecovery = null;
+    pending.create = null;
+    applied = false;
+    context = 'create';
+    dialog.close();
+    core.notify('Расход записан', {type: 'success'});
+    window.App.getRuntimeModule('operations').refreshAfterCreate(result.category_id).catch(() => {
+      core.notify('Расход записан. Не удалось обновить список операций.', {type: 'error'});
+    });
+  }
+
   function transfer(replace=false){
     if(!draft||transferred||validate().length||!node('scanConfirmed').checked)return;
     const modal=window.App.getRuntimeModule('operation-modal');
     const mode=context==='create'?'create':'edit', prefix=mode==='create'?'op':'edit';
     if(mode==='create'&&(node('createModal').classList.contains('hidden')||node('opEntryMode').value!=='operation'||state.createFlowMode==='plan'))return;
     if(mode==='edit'&&(String(state.editOperationId)!==context||node('editModal').classList.contains('hidden')))return;
-    if(!replace&&(state[mode+'ReceiptItems']?.some(r=>r.name||r.unit_price)||node(prefix+'Amount').value)){
+    const formDate=node(prefix+'Date').value, formCurrency=node(prefix+'Currency').value;
+    const changesDate=formDate&&formDate!==core.getTodayIso()&&formDate!==draft.date;
+    const changesCurrency=formCurrency!==(core.getCurrencyConfig?.().code||'BYN')&&formCurrency!==node('scanCurrency').value;
+    if(!replace&&(modal.hasReceiptInput(mode)||node(prefix+'Amount').value||node(prefix+'Kind').value!=='expense'||changesDate||changesCurrency)){
       node('scanReplaceOperation').hidden=false;node('scanReplaceYes').focus();return;
     }
     node('scanReplaceOperation').hidden=true;
@@ -678,15 +848,16 @@
     modal.setOperationKind(mode,'expense');
     node(prefix+'Date').value=draft.date;node(prefix+'Date').dispatchEvent(new Event('change',{bubbles:true}));
     node(prefix+'Currency').value=node('scanCurrency').value;node(prefix+'Currency').dispatchEvent(new Event('change',{bubbles:true}));
-    state[mode+'ReceiptItems']=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,catalog_editable:Boolean(r.catalog),catalog_name_touched:Boolean(r.catalog_name_touched),catalog_measurement_touched:Boolean(r.catalog_measurement_touched),catalog_edit_variant_id:r.catalog_edit_variant_id||null,...(r.brand_touched?{brand_id:r.brand_id,brand_touched:true}:{}),category_id:categoryChoice(r).id,category_touched:Boolean(r.category_touched||categoryChoice(r).reason),name:r.name,quantity:r.quantity,shop_name:draft.shop,...window.App.measurements.snapshot(r),variant_id:r.variant_id||null,variant_snapshot:r.variant_snapshot||null,site_selection:r.site_selection||null,site_name:r.site_name||'',site_preview:r.site_preview||null,code_entries:r.code_entries||[],code_match_label:r.code_match_label||'',measurement_touched:true,
-      unit_price:r.price/100, is_discounted:r.discount>0, regular_unit_price:r.discount>0?r.price/100:null,
-      discount_mode:r.discount>0?'amount':null, discount_value:r.discount>0?r.discount/100:null,
-      discount_type:r.discount>0?r.discount_type||'promo':null,note:r.note||null},mode));
+    state[mode+'ReceiptItems']=reviewedItems(modal,mode);
     if(mode==='create')modal.setCreateOperationMode('receipt');else modal.setEditOperationMode('receipt');
     node(prefix+'Amount').value=decimal(draft.total);node(prefix+'Amount').dispatchEvent(new Event('input',{bubbles:true}));
     modal.renderReceiptSummary(mode);applied=true;dialog.close();
   };
-  node('scanReview').onsubmit=e=>{e.preventDefault();transfer();};
+  node('scanReview').onsubmit=e=>{
+    e.preventDefault();
+    if(standalone)saveExpense();else transfer();
+  };
+  node('scanSubmitRetry').onclick=()=>saveExpense();
   node('scanReplaceYes').onclick=()=>transfer(true);
   node('scanReplaceNo').onclick=()=>{node('scanReplaceOperation').hidden=true;};
   const button=document.createElement('button');button.type='button';button.id='openReceiptScan';button.className='btn btn-secondary receipt-scan-entry';
@@ -712,10 +883,10 @@
       if(pending.edit)pending.edit.value.image=null;
       if(context!=='create'){photoViewer.close();photoViewer.reset();if(busy)cancel();storedImage=null;source=null;canvas.width=canvas.height=1;canvas.hidden=true;node('scanNoPhoto').hidden=false;node('scanBack').hidden=true;node('scanRetry').hidden=true;}
     },
-    reset(){openGeneration++;if(dialog.open)dialog.close();cleanup();createRecovery=null;pending.create=pending.edit=null;context='create';},
+    reset(){openGeneration++;attempt=null;saving=false;hideSubmission();if(dialog.open)dialog.close();cleanup();createRecovery=null;pending.create=pending.edit=null;context='create';},
   });
   function refreshEntry(){button.querySelector('span').textContent=pending.create?'Проверить чек':((context==='create'&&(draft||source))||createRecovery)?'Продолжить чек':'Сканировать чек';}
-  const sync=()=>{button.hidden=node('opEntryMode').value!=='operation'||state.createFlowMode==='plan';if(node(context==='create'?'createModal':'editModal').classList.contains('hidden')&&dialog.open)dialog.close();};
+  const sync=()=>{button.hidden=node('opEntryMode').value!=='operation'||state.createFlowMode==='plan';if(!standalone&&node(context==='create'?'createModal':'editModal').classList.contains('hidden')&&dialog.open)dialog.close();};
   new MutationObserver(sync).observe(node('createModal'),{attributes:true,attributeFilter:['class']});
   new MutationObserver(sync).observe(node('editModal'),{attributes:true,attributeFilter:['class']});
   node('createEntryModeSwitch').addEventListener('click',()=>queueMicrotask(sync));

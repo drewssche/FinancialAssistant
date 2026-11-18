@@ -63,6 +63,7 @@
     "/static/js/app-receipt-scan-engine.js",
     "/static/js/app-receipt-categories.js",
     "/static/js/app-scan-category-picker.js",
+    "/static/js/app-receipt-submissions.js",
     "/static/js/app-receipt-scan.js",
     "/static/js/app-features-debt-movement-editor.js",
     "/static/js/app-features-currency-digest-actions.js",

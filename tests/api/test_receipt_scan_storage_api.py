@@ -1,5 +1,6 @@
 import base64
 import io
+from uuid import uuid4
 
 import pytest
 from PIL import Image
@@ -77,3 +78,42 @@ def test_failed_update_retains_original_photo(client):
     assert client.patch(url, json={'amount': 30, 'receipt_scan': {'image': 'bad'}}).status_code == 400
     assert client.get(url+'/receipt-scan').json() == before
     assert client.get(url).json()['amount'] == operation['amount']
+
+
+def reviewed_expense():
+    return {
+        'kind': 'expense', 'operation_date': '2026-10-18', 'amount': '8.50', 'currency': 'BYN',
+        'receipt_items': [{'name': 'Молоко', 'shop_name': 'Green', 'quantity': '2', 'unit_price': '4.25'}],
+        'receipt_scan': scan(),
+    }
+
+
+def test_scan_replay_is_scoped_to_user_and_preserves_a_single_purchase(client):
+    key = {'Idempotency-Key': str(uuid4())}
+    payload = reviewed_expense()
+    path = '/api/v1/operations'
+    first = client.post(path, json=payload, headers=key)
+    assert first.status_code == 201, first.text
+    repeated = client.post(path, json=payload, headers=key)
+    assert repeated.status_code == 201 and repeated.json() == first.json()
+    assert client.post(path, headers=key, json={**payload, 'note': 'изменено'}).status_code == 409
+    assert client.get(path).json()['total'] == 1
+    app.dependency_overrides[get_current_user_id] = lambda: 2
+    other = client.post(path, headers=key, json=payload)
+    assert other.status_code == 201 and other.json()['id'] != first.json()['id']
+    app.dependency_overrides[get_current_user_id] = lambda: 1
+    assert client.delete(f"{path}/{first.json()['id']}").is_success
+    assert client.post(path, headers=key, json=payload).status_code == 409
+    assert client.get(path).json()['total'] == 0
+
+
+def test_rejected_scan_rolls_back_the_request_and_can_be_corrected(client):
+    headers = {'Idempotency-Key': str(uuid4())}
+    payload = reviewed_expense()
+    path = '/api/v1/operations'
+    bad = client.post(path, headers=headers, json={**payload, 'amount': '100.00'})
+    assert bad.status_code == 400
+    corrected = client.post(path, headers=headers, json=payload)
+    assert corrected.status_code == 201, corrected.text
+    another = client.post(path, headers={'Idempotency-Key': str(uuid4())}, json=payload)
+    assert another.status_code == 201 and another.json()['id'] != corrected.json()['id']

@@ -1,4 +1,5 @@
 from app.services.receipt_scan_storage import prepare_scan, attach_scan
+from app.services.receipt_scan_submission import ReceiptSubmissionConflict, reserve_submission
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 import re
@@ -132,7 +133,16 @@ class OperationService:
         receipt_scan: dict | None = None,
         fx_policy_snapshot: dict | None = None,
         commit: bool = True,
+        receipt_submission: tuple[str, str] | None = None,
     ):
+        submission = None
+        if receipt_submission is not None:
+            submission = reserve_submission(self.db, user_id, *receipt_submission)
+            if submission.operation_id is not None:
+                try:
+                    return self.get_operation(user_id, submission.operation_id)
+                except LookupError as exc:
+                    raise ReceiptSubmissionConflict("Расход по этому чеку был записан и затем удалён.") from exc
         prepared_scan = prepare_scan(receipt_scan)
         self._validate_kind(kind)
         normalized_items, receipt_total = self._normalize_receipt_items(receipt_items or [])
@@ -141,6 +151,8 @@ class OperationService:
             receipt_items=normalized_items,
         )
         original_amount = self._resolve_operation_amount(amount=amount, receipt_total=receipt_total)
+        if submission is not None and original_amount != receipt_total:
+            raise ValueError("Сумма позиций не совпадает с итогом проверенного чека.")
         base_currency = self._get_user_base_currency(user_id)
         normalized_currency = self._normalize_currency(currency or base_currency, default=base_currency)
         policy = FxRatePolicyService(self.db)
@@ -290,6 +302,8 @@ class OperationService:
             },
         )
         attach_scan(item, prepared_scan)
+        if submission is not None:
+            submission.operation_id = item.id
         if commit:
             self.db.commit()
             self._invalidate_caches(user_id)

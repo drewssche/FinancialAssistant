@@ -889,6 +889,8 @@
     selectDebtCounterparty,
     selectEditCategory,
     receiptCatalog: receipt.receiptCatalog,
+    serializeReceiptItems: receipt.serializeReceiptItems,
+    hasReceiptInput: receipt.hasReceiptInput,
     reconcileReceiptPrices: receipt.reconcileReceiptPrices,
     createReceiptDraft,
     clearReceiptItems,

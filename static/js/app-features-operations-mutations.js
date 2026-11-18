@@ -77,6 +77,14 @@
       await Promise.all(tasks);
     }
 
+    function refreshAfterCreate(categoryId) {
+      core.invalidateUiRequestCache("operations");
+      getDashboardData().invalidateSummaryCache?.();
+      invalidateAllTimeAnchor();
+      trackCategoryUsage(categoryId);
+      return refreshAfterOperationMutation();
+    }
+
     async function refreshAfterDebtMutation() {
       const tasks = [];
       const analyticsFeature = getAnalyticsFeature();
@@ -321,11 +329,6 @@
         body: JSON.stringify(payload),
       }, "create", payload.receipt_items);
       window.App.getRuntimeModule("receipt-scan").saved("create");
-      const dashboardData = getDashboardData();
-      core.invalidateUiRequestCache("operations");
-      dashboardData.invalidateSummaryCache?.();
-      invalidateAllTimeAnchor();
-      trackCategoryUsage(payload.category_id);
       document.getElementById("opAmount").value = "";
       document.getElementById("opTags").value = "";
       document.getElementById("opNote").value = "";
@@ -334,7 +337,7 @@
       renderCreateCategoryPicker();
       updateCreatePreview();
       closeCreateModal();
-      await refreshAfterOperationMutation();
+      await refreshAfterCreate(payload.category_id);
     }
 
     async function updateOperation(event) {
@@ -443,6 +446,7 @@
 
     return {
       getValidatedCreateOperationPayload,
+      refreshAfterCreate,
       getValidatedUpdateOperationPayload,
       createOperation,
       updateOperation,

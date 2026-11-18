@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from tests.api.test_catalog_product_linkage_api import client as expense_ledger
 from playwright.sync_api import expect
 from tests.e2e.test_modal_date_layout_e2e import DATE_METRICS
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, page_with_receipt_api_mock, _login, _ensure_categories_loaded
@@ -171,6 +172,7 @@ def test_scan_review_to_unsaved_operation(static_server_url,page_with_receipt_ap
     page.click('#scanRun');expect(page.locator('#scanReview')).to_be_visible()
     expect(page.locator('#scanRows .scan-row')).to_have_count(2)
     expect(page.locator('#scanTransfer')).to_be_disabled()
+    expect(page.get_by_role('button',name='Перенести в черновик')).to_be_visible()
     expect(page.locator('#scanDate')).to_have_value('2026-10-12')
     rows = page.locator('#scanRows .scan-row')
     expect(rows.locator('summary').first).to_contain_text('2 × 3,00 · скидка 0,50 BYN')
@@ -536,3 +538,112 @@ def test_scan_errors_stay_with_their_rows_and_reindex_after_delete(static_server
     expect(p.locator('#scanArithmetic')).to_contain_text('Суммы сходятся')
     p.locator('#scanConfirmed').check()
     expect(p.locator('#scanTransfer')).to_be_enabled()
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width,section,currency,lose_response', [
+    (320, 'dashboard', 'BYN', False),
+    (1440, 'operations', 'EUR', True),
+])
+def test_review_saves_expense_once(static_server_url, page_with_receipt_api_mock, expense_ledger,
+                                   width, section, currency, lose_response):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({'width': width, 'height': 850})
+    calls, errors = [], []
+    page.on('pageerror', lambda error: errors.append(str(error)))
+    path = '/api/v1/operations'
+    if currency == 'EUR':
+        assert expense_ledger.put('/api/v1/currency/rates/current', json={
+            'currency': 'EUR', 'rate': '3.20', 'rate_date': '2026-10-12', 'source': 'nbrb_history_unit',
+        }).is_success
+
+    def save(route):
+        request = route.request
+        if request.method != 'POST':
+            return route.fallback()
+        key = request.headers['idempotency-key']
+        reply = expense_ledger.post(path, headers={'Idempotency-Key': key}, json=request.post_data_json)
+        calls.append((key, request.post_data, reply.status_code))
+        if lose_response and len(calls) == 1 and reply.is_success:
+            return route.abort('timedout')
+        route.fulfill(status=reply.status_code, json=reply.json())
+
+    page.route('**' + path, save)
+    page.goto(static_server_url + '/static/index.html')
+    _login(page)
+    _ensure_categories_loaded(page)
+    if section == 'operations':
+        page.click('button[data-section="operations"]')
+    page.click('#scanReceiptCta')
+    expect(page.locator('#createModal')).to_be_hidden()
+    # A fractional quantity and a line discount both affect the confirmed total.
+    stub(page, TEXT.replace('3.00 x2.000', '12.00 x0.500'))
+    upload(page)
+    page.click('#scanRun')
+    page.select_option('#scanCurrency', currency)
+    button = page.get_by_role('button', name='Записать расход · 7,50 ' + currency)
+    expect(button).to_be_disabled()
+    page.locator('#scanConfirmed').check()
+    expect(button).to_be_enabled()
+    assert page.locator('#receiptScanDialog').evaluate('n => n.scrollWidth <= n.clientWidth + 1')
+    button.evaluate('(b) => { b.click(); b.form.requestSubmit(); }')
+    if lose_response:
+        expect(page.locator('#scanSubmitRetry')).to_be_visible()
+        assert expense_ledger.get(path).json()['total'] == 1 and len(calls) == 1
+        page.reload()
+        _login(page)
+        page.click('#scanReceiptCta')
+        page.get_by_role('button', name='Повторить сохранение').click()
+    expect(page.locator('#receiptScanDialog')).to_be_hidden()
+    expect(page.locator('#createModal')).to_be_hidden()
+    assert len(calls) == (2 if lose_response else 1) and len(set(calls)) == 1
+    assert calls[0][2] == 201
+    rows = expense_ledger.get(path).json()
+    assert rows['total'] == 1
+    saved = expense_ledger.get(path + '/' + str(rows['items'][0]['id'])).json()
+    assert saved['original_amount'] == '7.50' and saved['currency'] == currency
+    assert saved['operation_date'] == '2026-10-12' and saved['has_receipt_scan']
+    if currency == 'EUR':
+        assert saved['amount'] == '24.00' and saved['fx_rate_source'] == 'nbrb'
+    first = saved['receipt_items'][0]
+    assert float(first['quantity']) == 0.5 and float(first['discount_value']) == 0.50
+    assert float(first['regular_unit_price']) == 12.0
+    attachment = expense_ledger.get(f"{path}/{saved['id']}/receipt-scan").json()
+    assert attachment['image'] and attachment['original_text'] and attachment['review']['total'] == 750
+    page.click('#scanReceiptCta')
+    expect(page.locator('#scanDropzone')).to_be_visible()
+    expect(page.locator('#scanSubmitRetry')).to_be_hidden()
+    assert not errors
+
+
+@pytest.mark.e2e
+def test_scan_validation_failure_returns_to_editable_review(static_server_url, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    requests = []
+    def save(route):
+        if route.request.method != 'POST':
+            return route.fallback()
+        requests.append((route.request.headers['idempotency-key'], route.request.post_data_json))
+        if len(requests) == 1:
+            return route.fulfill(status=400, json={'detail': 'Проверьте магазин'})
+        route.fulfill(status=201, json={'id': 1})
+
+    page.route('**/api/v1/operations', save)
+    page.goto(static_server_url + '/static/index.html')
+    _login(page)
+    page.click('#scanReceiptCta')
+    stub(page)
+    upload(page)
+    page.click('#scanRun')
+    page.locator('#scanConfirmed').check()
+    page.click('#scanTransfer')
+    expect(page.locator('#scanConfirmed')).not_to_be_checked()
+    expect(page.locator('#scanTransfer')).to_be_disabled()
+    expect(page.locator('#scanRows .scan-row')).to_have_count(2)
+    page.locator('#scanShop').fill('Исправленный магазин')
+    page.locator('#scanConfirmed').check()
+    page.click('#scanTransfer')
+    expect(page.locator('#receiptScanDialog')).to_be_hidden()
+    assert len(requests) == 2
+    assert requests[0][0] != requests[1][0]
+    assert requests[1][1]['receipt_items'][0]['shop_name'] == 'Исправленный магазин'

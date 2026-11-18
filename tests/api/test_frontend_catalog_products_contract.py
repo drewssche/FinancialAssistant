@@ -68,7 +68,8 @@ def test_receipt_picker_uses_one_product_and_resolves_source_offer_without_overw
     assert "if (item.price_touched) return;" in receipt
     assert "price_touched:" in receipt
     assert "category_touched: Boolean(seed.category_touched)" in receipt
-    assert receipt.count("category_touched: Boolean(item.category_touched)") == 2
+    assert "category_touched: Boolean(item.category_touched)" in receipt
+    assert 'getReceiptPayload("create", validate)' in receipt and 'getReceiptPayload("edit", validate)' in receipt
     assert 'updateReceiptItemField(draftId, "category_id"' in interactions
     assert "preserveProduct: keepProduct" in receipt
     assert "...(Number(item.product_id) > 0 ? { product_id: Number(item.product_id) } : {})" in receipt

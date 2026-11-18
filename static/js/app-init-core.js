@@ -252,7 +252,7 @@
       const scan = event.currentTarget === el.scanReceiptCta;
       const fromList = el.createModal.classList.contains("hidden");
       try {
-        if (fromList) {
+        if (!scan && fromList) {
           await getOperationModal().openCreateModal({opener: event.currentTarget, focusAmount: !scan && event.detail === 0});
         }
         if (scan) await window.App.getRuntimeModule("receipt-scan").open("create", {fromList});

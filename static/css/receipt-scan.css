@@ -47,8 +47,15 @@
  .scan-image-column {position:static;}
  #scanCanvas {max-height:55vh;}
  .scan-corner {width:44px;height:44px;}
- #scanTransfer {width:44px;}
+ #scanTransfer {width:100%;}
 }
+#scanTransfer {display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;max-width:100%;white-space:normal;}
+#scanTransfer svg {flex:none;width:18px;height:18px;}
+#scanSubmission {display:grid;gap:12px;margin-top:16px;overflow-wrap:anywhere;}
+#scanSubmission p {margin:0;}
+.receipt-scan-dialog[data-stage].has-submission {width:min(520px,calc(100vw - 24px));}
+.receipt-scan-dialog.has-submission > :not(header):not(#scanSubmission),
+.receipt-scan-dialog.has-submission #scanBack {display:none !important;}
 .receipt-scan-dialog > header {flex-wrap:nowrap;}
 .receipt-scan-dialog h3 {flex:1;min-width:0;}
 .receipt-scan-dialog :is(input:not([type=checkbox]),select,textarea) {min-width:0;width:100%;box-sizing:border-box;}

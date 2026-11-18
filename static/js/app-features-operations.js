@@ -975,6 +975,7 @@
     setOperationsSortPreset,
     refreshAll,
     refreshAfterDebtMutation: mutationFeature.refreshAfterDebtMutation,
+    refreshAfterCreate: mutationFeature.refreshAfterCreate,
     refreshOperationsView,
     getCurrentOperationItems,
     clearOperationsCategoryFilter,

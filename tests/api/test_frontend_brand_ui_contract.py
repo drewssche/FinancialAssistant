@@ -151,7 +151,8 @@ def test_receipt_brand_search_does_not_persist_an_unconfirmed_draft_choice():
     pickers = _read("static/js/app-features-operation-modal-receipt-pickers.js")
 
     assert "item.brand_touched || item.brand_id" not in receipt
-    assert receipt.count("...(item.brand_touched ? { brand_id:") == 2
+    assert "...(item.brand_touched ? { brand_id:" in receipt
+    assert "return serializeReceiptItems(getReceiptItems(mode)" in receipt
     assert "The text box is only a search query" in receipt
     assert 'currentInput.value = normalizeReceiptName(item?.brand_name || "")' in interactions
 

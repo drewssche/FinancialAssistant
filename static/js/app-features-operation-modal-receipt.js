@@ -1106,19 +1106,14 @@
       }
     }
 
-    function getCreateReceiptPayload({validate = false} = {}) {
-      if (!isReceiptModeEnabled("create")) {
-        return [];
-      }
-      if (validate) validateForeignPrices("create");
-      const defaultCategoryId = el.opCategory?.value ? Number(el.opCategory.value) : null;
-      return getReceiptItems("create")
+    function serializeReceiptItems(items, categoryFor = item => item.category_id || null) {
+      return items
         .map((item) => ({
           ...(Number(item.template_id) > 0 ? { template_id: Number(item.template_id) } : {}),
           ...(Number(item.product_id) > 0 ? { product_id: Number(item.product_id) } : {}),
           ...(Number(item.source_id) > 0 ? { source_id: Number(item.source_id) } : {}),
           ...(item.brand_touched ? { brand_id: item.brand_id ? Number(item.brand_id) : null } : {}),
-          category_id: resolveReceiptPayloadCategoryId(item, "create", defaultCategoryId),
+          category_id: categoryFor(item),
           category_touched: Boolean(item.category_touched),
           catalog_name_touched: Boolean(item.catalog_name_touched),
           catalog_measurement_touched: Boolean(item.catalog_measurement_touched),
@@ -1145,47 +1140,21 @@
         .filter((item) => item.name && (item.discount_mode || (Number(item.quantity) > 0 && Number(item.unit_price) > 0)));
     }
 
-    function getEditReceiptPayload({validate = false} = {}) {
-      if (!isReceiptModeEnabled("edit")) {
-        return [];
-      }
-      if (validate) validateForeignPrices("edit");
-      const defaultCategoryId = el.editCategory?.value ? Number(el.editCategory.value) : null;
-      return getReceiptItems("edit")
-        .map((item) => ({
-          ...(Number(item.template_id) > 0 ? { template_id: Number(item.template_id) } : {}),
-          ...(Number(item.product_id) > 0 ? { product_id: Number(item.product_id) } : {}),
-          ...(Number(item.source_id) > 0 ? { source_id: Number(item.source_id) } : {}),
-          ...(item.brand_touched ? { brand_id: item.brand_id ? Number(item.brand_id) : null } : {}),
-          category_id: resolveReceiptPayloadCategoryId(item, "edit", defaultCategoryId),
-          category_touched: Boolean(item.category_touched),
-          catalog_name_touched: Boolean(item.catalog_name_touched),
-          catalog_measurement_touched: Boolean(item.catalog_measurement_touched),
-          catalog_edit_variant_id: item.catalog_edit_variant_id || null,
-          shop_name: normalizeReceiptName(item.shop_name || "") || null,
-          name: normalizeReceiptName(item.name),
-          ...(item.note ? { note: item.note } : {}),
-          ...window.App.measurements.snapshot(item),
-          catalog_codes: window.App.receiptCodes.payload(item),
-          receipt_codes: window.App.receiptCodes.receiptPayload(item),
-          site_selection: item.site_selection || null,
-          variant_id: item.variant_id || null,
-          ...(item.tags_input != null ? {tags: window.App.purchaseTags.parse(item.tags_input)} : {}),
-          variant_snapshot: item.variant_snapshot || null,
-          quantity: String(asQty(item.quantity || 0)),
-          unit_price: core.formatAmount(item.unit_price || 0),
-          is_discounted: Boolean(item.is_discounted),
-          regular_unit_price: item.is_discounted && Number(item.regular_unit_price || 0) > 0
-            ? core.formatAmount(item.regular_unit_price)
-            : null,
-          discount_type: item.is_discounted ? (item.discount_type || "promo") : null,
-          ...window.App.receiptPricing.payload(item.is_discounted ? item : {...item, discount_mode: null}),
-        }))
-        .filter((item) => item.name && (item.discount_mode || (Number(item.quantity) > 0 && Number(item.unit_price) > 0)));
+    function getReceiptPayload(mode, validate) {
+      if (!isReceiptModeEnabled(mode)) return [];
+      if (validate) validateForeignPrices(mode);
+      const category = mode === "create" ? el.opCategory : el.editCategory;
+      const defaultCategoryId = category?.value ? Number(category.value) : null;
+      return serializeReceiptItems(getReceiptItems(mode), item => resolveReceiptPayloadCategoryId(item, mode, defaultCategoryId));
     }
+
+    const getCreateReceiptPayload = ({validate = false} = {}) => getReceiptPayload("create", validate);
+    const getEditReceiptPayload = ({validate = false} = {}) => getReceiptPayload("edit", validate);
 
     return {
       receiptCatalog: interactions.receiptCatalog,
+      serializeReceiptItems,
+      hasReceiptInput: mode => getReceiptItems(mode).some(item => hasReceiptRowContent(item) || item.category_touched || item.measurement_touched),
       applyOfferPrice,
       reconcileReceiptPrices,
       createReceiptDraft,
