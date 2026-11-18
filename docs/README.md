@@ -16,6 +16,8 @@ This folder keeps durable product, architecture, engineering, and operations con
 
 Keep this list short. If an item is implemented, promote durable decisions into source-of-truth docs and remove the note.
 
+- [План упрощения интерфейса от 18 ноября 2026](UX_SIMPLIFICATION_PLAN.md) — согласованное снятие массового ввода, работа с валютным остатком, обзор разделов и проверки ключевых сценариев.
+
 - `UI_AUDIT_2026-10-13.md` - all-section desktop/mobile UX audit, evidence limits and proposed simplification stages; approved direction; implementation progress is tracked separately in the roadmap.
 - `UI_AUDIT_2026-10-14.md` - cross-section follow-up audit, modal/action consistency fixes and scope of visual verification.
 

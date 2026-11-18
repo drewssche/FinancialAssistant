@@ -4,6 +4,12 @@
 
 - [x] 2026-09-10: completed plans open for editing directly from operation source chips, plan history, and the activity journal. Enabling recurrence offers the next date and an explicit “Сохранить и возобновить” action; saving reactivates the same plan with its history and linked operations preserved. A read-only server preview and locked save validate dates/end dates, prevent replay of completed occurrences and duplicate reactivation, and refresh reminders. Ordinary edits keep completed plans completed.
 
+## Упрощение ФинАсиста — 18 ноября 2026
+
+- [ ] Убрать массовое добавление во всех точках входа. Вынести сканирование на главную, исправить фокус формы и поиск покупок по магазину.
+- [ ] Упростить ввод расхода, проверку чека и подтверждение плана. Перенести оплату с валютного остатка в детали расхода с поддержкой ранее записанных сделок.
+- Объём работ, предложения по всем 11 разделам и сценарии приёмки собраны в [плане упрощения интерфейса](UX_SIMPLIFICATION_PLAN.md).
+
 ## Receipt product previews — 2026-10-25
 
 - [x] Show a persistent inline product card during receipt review: verified code, retailer, name, brand/size when published, safe thumbnail and source link. Apply name/link only on explicit action; receipt amounts remain unchanged. Identity search no longer requires price/stock parsing.
