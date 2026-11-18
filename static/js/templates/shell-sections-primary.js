@@ -303,7 +303,6 @@
                   <button id="operationsCategoryFilterChip" class="operations-filter-chip hidden" data-clear-operations-filter="category" type="button"></button>
                   <button id="operationsItemTemplateFilterChip" class="operations-filter-chip hidden" data-clear-operations-filter="position" type="button"></button>
                   <button id="operationsBrandFilterChip" class="operations-filter-chip hidden" data-clear-operations-filter="brand" type="button"></button>
-                  <button id="clearOperationsCategoryFilterBtn" class="operations-filter-reset hidden" type="button" title="Сбросить все фильтры" aria-label="Сбросить все фильтры">×</button>
                 </div>
               </div>
             </div>
@@ -370,7 +369,6 @@
                     <button class="segmented-btn" data-op-sort="amount" type="button">По сумме</button>
                   </div>
                 </div>
-                <button id="resetOperationsFiltersBtn" class="btn btn-secondary btn-icon" type="button" aria-label="Сбросить фильтры" title="Сбросить фильтры">${window.App.icons.svg("refresh")}</button>
               </section>
             </div>
             <div id="operationsSummaryGrid" class="analytics-kpi-grid operations-summary-grid">
@@ -390,6 +388,7 @@
             <div class="muted-small operations-count"><span id="operationsTotalCountLabel">Операций найдено</span>: <span id="operationsTotalCount">0</span></div>
             <div class="table-search-row sticky-search operations-search-row">
               <input id="filterQ" class="table-search-input" type="text" placeholder="Поиск" />
+              <button id="resetOperationsFiltersBtn" class="btn btn-secondary" type="button" disabled>Сбросить</button>
             </div>
 
             <div class="table-wrap">

@@ -26,7 +26,7 @@
       return;
     }
     const scrollTarget = target.closest(
-      ".receipt-item-row, .money-input-wrap, .create-category-field, .debt-due-field, .receipt-summary, .preview-panel, .bulk-import-preview, .field",
+      ".receipt-item-row, .money-input-wrap, .create-category-field, .debt-due-field, .receipt-summary, .preview-panel, .field",
     ) || target;
     window.requestAnimationFrame(() => {
       window.setTimeout(() => {

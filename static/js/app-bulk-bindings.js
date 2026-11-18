@@ -9,9 +9,6 @@
 
     window.App.bulkBindingsOperations.bindOperationBulkHandlers();
     window.App.bulkBindingsCategories.bindCategoryBulkHandlers();
-    if (window.App.bulkBindingsItemCatalog?.bindItemCatalogBulkHandlers) {
-      window.App.bulkBindingsItemCatalog.bindItemCatalogBulkHandlers();
-    }
   }
 
   window.App.bulkBindings = {

@@ -178,9 +178,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     bulk_bindings_categories = (
         REPO_ROOT / "static" / "js" / "app-bulk-bindings-categories.js"
     ).read_text(encoding="utf-8")
-    bulk_bindings_operations = (
-        REPO_ROOT / "static" / "js" / "app-bulk-bindings-operations.js"
-    ).read_text(encoding="utf-8")
     pickers_init = (REPO_ROOT / "static" / "js" / "app-init-features-pickers.js").read_text(encoding="utf-8")
     picker_coordinator = (REPO_ROOT / "static" / "js" / "app-picker-ui-coordinator.js").read_text(encoding="utf-8")
     categories_ui_coordinator = (REPO_ROOT / "static" / "js" / "app-categories-ui-coordinator.js").read_text(encoding="utf-8")
@@ -225,17 +222,12 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "function getOperationsFeature()" in analytics_highlights
     assert "function getSessionFeature()" in init_core
     assert "function getCategoryActions()" in init_core
-    assert "function getBulkUi()" in init_core
-    assert "getBulkUi().openBatchCreateModal?.()" in init_core
-    assert "getBulkUi().openBatchCategoryModal?.()" in init_core
-    assert "getBulkUi().openBatchItemTemplateModal?.()" in init_core
     assert "getCategoryActions().openCreateGroupModal?.()" in init_core
     assert "function openCreateGroupModal()" in categories_ui
     assert "openCreateGroupModal: categoryUi.openCreateGroupModal" in categories_js
     assert "function getCategoryActions()" in init_startup
     assert "function getNavigationActions()" in init_startup
     assert "function getCategoryActions()" in bulk_bindings_categories
-    assert "function getCategoryActions()" in bulk_bindings_operations
     assert "function getSessionFeature()" in init_startup
     assert "function getTelegramWebApp()" in init_startup
     assert "function getSessionFeature()" in core_actions
@@ -271,7 +263,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'registerRuntimeModule?.("period-control-utils"' in period_control_utils
     assert 'getRuntimeModule?.("category-actions")' in section_ui
     assert 'getRuntimeModule?.("category-actions")' in bulk_bindings_categories
-    assert 'getRuntimeModule?.("category-actions")' in bulk_bindings_operations
     assert '"setupCategoryIconPickers"' not in features
     assert '"closeIconPopovers"' not in features
     assert '"fillGroupSelect"' not in features
@@ -432,7 +423,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'getRuntimeModule?.("bulk-ui")' in bulk_bindings_ops
     assert 'getRuntimeModule?.("dashboard")' in bulk_bindings_ops
     assert 'getRuntimeModule?.("operations")' in bulk_bindings_ops
-    assert 'getRuntimeModule?.("item-catalog")' in (REPO_ROOT / "static" / "js" / "app-bulk-bindings-item-catalog.js").read_text(encoding="utf-8")
     assert 'getRuntimeModule?.("item-catalog-modal-factory")' in item_catalog
     assert 'getRuntimeModule?.("item-catalog-sources-factory")' in item_catalog_modal
     assert 'registerRuntimeModule?.("plans-recurrence"' in plans_recurrence
@@ -536,7 +526,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert '"switchSection"' in features
     assert '"navigateSectionBack"' in features
     assert '"openDebtRepaymentModal"' in features
-    assert '"openBatchCreateModal"' in features
     assert '"openCreateCategoryModal"' not in features
     assert '"closeCreateCategoryModal"' not in features
     assert '"closeEditCategoryModal"' not in features
@@ -680,7 +669,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "actions.loadDashboardOperations(" not in bulk_bindings_ops
     assert "actions.loadOperations(" not in bulk_bindings_ops
     assert "actions.getCurrentOperationItems(" not in bulk_bindings_ops
-    assert "actions.loadItemCatalog(" not in (REPO_ROOT / "static" / "js" / "app-bulk-bindings-item-catalog.js").read_text(encoding="utf-8")
     assert "actions.submitPlanForm(" not in init_features
     assert "actions.createOperation(" not in init_features
     assert "actions.updateOperation(" not in init_features

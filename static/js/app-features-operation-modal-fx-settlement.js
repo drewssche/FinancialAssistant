@@ -40,6 +40,13 @@
       toggle.classList.toggle("is-off", !enabled);
       toggle.setAttribute("aria-checked", enabled ? "true" : "false");
     }
+    const prefix = isEdit ? "edit" : "op";
+    const summary = document.getElementById(`${prefix}SettlementSummary`);
+    if (summary) {
+      const quantity = document.getElementById(`${prefix}FxSettlementQuantity`)?.value;
+      const asset = document.getElementById(`${prefix}FxSettlementAsset`)?.value;
+      summary.textContent = enabled && quantity && asset ? ` · Списание ${quantity.replace(".", ",")} ${asset}` : "";
+    }
     if (stateNode) {
       stateNode.textContent = enabled ? "Вкл" : "Выкл";
     }

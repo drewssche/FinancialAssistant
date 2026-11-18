@@ -131,6 +131,12 @@
         if(!products.has(item.product_id))products.set(item.product_id,{id:item.product_id,name:item.name,offers:[],unlinked:[]});
         products.get(item.product_id).unlinked.push(item);
       }
+      host.hidden = !products.size && !data.tracked_count && !data.events.length;
+      if (host.hidden) {
+        dashboardView = null;
+        host.replaceChildren();
+        return;
+      }
       dashboardView ||= !data.events.length&&products.size?'products':'changes';
       host.innerHTML=`<div class="panel-head row between"><h3>Уведомления о ценах</h3><span class="muted-small">${data.monitoring ? `Подключено: ${Number(data.monitoring.connected)} · Проверено: ${Number(data.monitoring.checked)}${data.monitoring.errors ? ` · Ошибок: ${Number(data.monitoring.errors)}` : ""}` : ""}</span></div><div class="segmented watch-view-tabs" role="tablist" aria-label="Уведомления о ценах"><button type="button" class="segmented-btn" role="tab" id="watchChangesTab" aria-controls="watchChangesPanel" data-watch-view="changes">Изменения</button><button type="button" class="segmented-btn" role="tab" id="watchProductsTab" aria-controls="watchProductsPanel" data-watch-view="products">Товары · ${data.tracked_count}</button></div><section id="watchChangesPanel" role="tabpanel" aria-labelledby="watchChangesTab"><div class="watch-grid" data-watch-events tabindex="0" aria-label="История уведомлений о ценах"></div><div data-watch-more></div></section><section id="watchProductsPanel" role="tabpanel" aria-labelledby="watchProductsTab"><div class="watch-grid" data-watch-products></div></section>`;
       const selectView=(view,focus=false)=>{
@@ -160,7 +166,7 @@
       if(!data.events.length)eventHost.innerHTML='<p class="muted-small">Изменений цен пока нет</p>';
       host.querySelector('[data-watch-products]').innerHTML=[...products.values()].map(p=>`<article class="watch-card watch-product-card"><button type="button" class="catalog-product-name-btn" data-watch-open="${p.id}" title="${esc(p.name)}"><span>${esc(p.name)}</span></button><div class="watch-product-sources">${p.offers.map(o=>`<div class="watch-product-source">${quote(o.snapshot,true)}<small class="muted-small">${esc(date(o.checked_at))}${o.error?' · '+esc(o.error):''}</small></div>`).join('')}${p.unlinked.map(item=>`<div class="watch-match-state"><strong>${esc(item.matching_sources?.join(', ')||'Источник')}</strong><span>${esc(matchLabels[item.matching_state]||'Подбираем страницу по коду…')}</span></div>`).join('')}</div></article>`).join('')||'<p class="muted-small">Уведомления о товарах пока не включены</p>';
       bindOpen();
-    }catch(e){if(token===dashboardSeq&&authToken===window.App.state.token){host.innerHTML='<h3>Уведомления о ценах</h3><span class="muted-small">Не удалось загрузить предложения.</span> <button type="button" class="btn btn-secondary">Повторить</button>';window.App.icons.apply(host.querySelector('button'),'refresh','Повторить');host.querySelector('button').onclick=loadDashboard;}}
+    }catch(e){if(token===dashboardSeq&&authToken===window.App.state.token){host.hidden=false;host.innerHTML='<h3>Уведомления о ценах</h3><span class="muted-small">Не удалось загрузить предложения.</span> <button type="button" class="btn btn-secondary">Повторить</button>';window.App.icons.apply(host.querySelector('button'),'refresh','Повторить');host.querySelector('button').onclick=loadDashboard;}}
   }
   window.App.registerRuntimeModule('catalog-watch',{open,close(){generation++;product=null;clearTimeout(matchingTimer);},loadDashboard});
 })();

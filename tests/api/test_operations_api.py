@@ -1189,6 +1189,37 @@ def test_operation_receipt_items_autofill_amount_and_discrepancy(client: TestCli
     assert payload["receipt_items"][0]["shop_name"] == "Корона"
 
 
+def test_shop_search_before_pagination_and_receipt_deduplication(client):
+    ids = []
+    for day, shop in enumerate(["Корона", "Корона", "Другой магазин"], start=1):
+        response = client.post("/api/v1/operations", json={
+            "kind": "expense", "operation_date": f"2026-03-0{day}",
+            "receipt_items": [
+                {"shop_name": shop, "name": product, "quantity": "1", "unit_price": "2.00"}
+                for product in ["Хлеб", "Молоко"]
+            ],
+        })
+        assert response.status_code == 201, response.text
+        ids.append(response.json()["id"])
+    for endpoint, source in [("operations", {}), ("operations/money-flow", {"source": "all"}),
+                             ("operations/money-flow", {"source": "operation"})]:
+        for page, operation_id in enumerate(reversed(ids[:2]), start=1):
+            response = client.get(f"/api/v1/{endpoint}", params={
+                **source, "q": "корон", "page": page, "page_size": 1,
+                "sort_by": "operation_date", "sort_dir": "desc",
+            })
+            assert response.status_code == 200, response.text
+            result = response.json()
+            assert result["total"] == 2
+            assert len(result["items"]) == 1
+            record = result["items"][0]
+            assert record.get("source_id", record["id"]) == operation_id
+            assert record["receipt_items"][0]["shop_name"] == "Корона"
+        summary = client.get(f"/api/v1/{endpoint}/summary", params={**source, "q": "корон"})
+        assert summary.status_code == 200
+        assert summary.json()["expense_total"] == "8.00"
+
+
 def test_operations_filter_by_receipt_item_category(client: TestClient):
     food_category = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
     assert food_category.status_code == 200

@@ -538,6 +538,8 @@
     updateCreatePreview();
     window.App.getRuntimeModule("operation-layout")?.sync("create", true);
     el.createModal.classList.remove("hidden");
+    core.bringModalToFront(el.createModal, options.opener);
+    if (options.focusAmount) document.getElementById("opAmount").focus();
   }
 
   async function openCreateReceiptWithItem(item = {}) {

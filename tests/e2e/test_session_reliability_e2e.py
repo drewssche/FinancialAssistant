@@ -34,7 +34,7 @@ def static_server_url() -> str:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
     process = subprocess.Popen(
-        [sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
+        [sys.executable, "-m", "tests.e2e.static_server", str(port), "--bind", "127.0.0.1"],
         cwd=str(repo_root),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -303,6 +303,11 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     page.wait_for_selector("#createModal:not(.hidden)")
     page.fill("#opAmount", "129.90")
     page.fill("#opNote", "Большой чек не должен закрыться")
+    expect(page.locator("#createSessionRefreshBtn")).to_be_hidden()
+    page.evaluate("""() => {
+      window.App.state.sessionExpiresAt = new Date(Date.now() + 3 * 60_000).toISOString();
+      window.App.getRuntimeModule('session').updateSessionStatus();
+    }""")
     page.click("#createSessionRefreshBtn")
     page.wait_for_function("() => document.getElementById('sessionRemainingLabel')?.textContent.includes('Осталось 30 мин')")
 
@@ -336,45 +341,22 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     assert counters["refresh"] == 3
     expect(page.locator("#createModal")).to_be_visible()
     expect(page.locator("#opNote")).to_have_value("Большой чек не должен закрыться")
-    action_grouping = page.evaluate(
-        """
-        () => {
-          const calculator = document.getElementById('createFinanceCalculatorToggle')?.getBoundingClientRect();
-          const refresh = document.getElementById('createSessionRefreshBtn')?.getBoundingClientRect();
-          const close = document.getElementById('closeCreateModalBtn')?.getBoundingClientRect();
-          const calculatorStyle = document.getElementById('createFinanceCalculatorToggle')
-            ? getComputedStyle(document.getElementById('createFinanceCalculatorToggle'))
-            : null;
-          const refreshStyle = document.getElementById('createSessionRefreshBtn')
-            ? getComputedStyle(document.getElementById('createSessionRefreshBtn'))
-            : null;
-          return calculator && refresh && close && calculatorStyle && refreshStyle ? {
-            contextualGap: refresh.left - calculator.right,
-            systemGap: close.left - refresh.right,
-            contextualColor: calculatorStyle.color,
-            refreshColor: refreshStyle.color,
-          } : null;
-        }
-        """
-    )
-    assert action_grouping is not None
-    assert action_grouping["contextualGap"] > action_grouping["systemGap"]
-    assert action_grouping["refreshColor"] != action_grouping["contextualColor"]
+    expect(page.locator("#createSessionRefreshBtn")).to_be_hidden()
     page.set_viewport_size({"width": 390, "height": 844})
     geometry = page.evaluate(
         """
         () => {
           const card = document.querySelector('#createModal .modal-card')?.getBoundingClientRect();
           const actions = document.querySelector('#createModal .modal-head-actions')?.getBoundingClientRect();
-          const actionButtons = Array.from(document.querySelectorAll('#createModal .modal-head-actions > button:not(.hidden)'))
-            .map((button) => button.getBoundingClientRect());
+          const actionButtons = Array.from(document.querySelectorAll('#createModal .modal-head-actions > button'))
+            .filter((button) => button.checkVisibility());
           return card && actions ? {
             cardLeft: card.left,
             cardRight: card.right,
             actionsLeft: actions.left,
             actionsRight: actions.right,
-            actionWidths: actionButtons.map((button) => button.width),
-            actionHeights: actionButtons.map((button) => button.height),
+            actionWidths: actionButtons.map((button) => button.offsetWidth),
+            actionHeights: actionButtons.map((button) => button.offsetHeight),
             bodyClientWidth: document.documentElement.clientWidth,
             bodyScrollWidth: document.documentElement.scrollWidth,
           } : null;
@@ -384,7 +366,7 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     assert geometry is not None
     assert geometry["actionsLeft"] >= geometry["cardLeft"] - 1
     assert geometry["actionsRight"] <= geometry["cardRight"] + 1
-    assert all(width >= 42 for width in geometry["actionWidths"])
+    assert geometry["actionWidths"] and all(width >= 42 for width in geometry["actionWidths"])
     assert all(height >= 42 for height in geometry["actionHeights"])
     assert geometry["bodyScrollWidth"] <= geometry["bodyClientWidth"] + 1
     page.screenshot(path="/tmp/finasist-session-refresh-modal.png", full_page=True)

@@ -92,7 +92,7 @@ Develop on a feature branch, fetch the current `origin/main`, integrate changes 
 - verify login works
 - verify previously approved user still enters workspace
 - verify `pending/rejected` handling still behaves correctly
-- verify one long mobile modal and one batch modal on phone
+- verify the operation editor and a multi-item receipt on a narrow screen
 - verify analytics calendar opens and scrolls normally
 - verify create/edit of a receipt, plan confirmation/resumption, debt repayment and the work/payment views when their dependencies changed
 - verify nested picker/calculator windows, Escape, focus restoration and preserved drafts on narrow and desktop screens

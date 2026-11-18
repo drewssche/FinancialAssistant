@@ -209,14 +209,6 @@
       });
     });
 
-    if (el.clearOperationsCategoryFilterBtn && actions.resetOperationsFilters) {
-      el.clearOperationsCategoryFilterBtn.addEventListener("click", () => {
-        core.runAction({
-          errorPrefix: "Ошибка сброса фильтров",
-          action: () => actions.resetOperationsFilters(),
-        });
-      });
-    }
     el.operationsActiveFilters?.addEventListener("click", (event) => {
       const chip = event.target.closest("button[data-clear-operations-filter]");
       if (!chip || !actions.clearOperationsFilter) return;
@@ -341,6 +333,7 @@
     }
 
     el.filterQ.addEventListener("input", () => {
+      if (el.filterQ.value.trim()) el.resetOperationsFiltersBtn.disabled = false;
       if (filterDebounceId) {
         clearTimeout(filterDebounceId);
       }

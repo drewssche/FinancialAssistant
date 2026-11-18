@@ -6,8 +6,9 @@
 
 ## Упрощение ФинАсиста — 18 ноября 2026
 
-- [ ] Убрать массовое добавление во всех точках входа. Вынести сканирование на главную, исправить фокус формы и поиск покупок по магазину.
-- [ ] Упростить ввод расхода, проверку чека и подтверждение плана. Перенести оплату с валютного остатка в детали расхода с поддержкой ранее записанных сделок.
+- [x] Убраны три формы массового ввода. Сканер открывается с главной и из операций. Сумма доступна сразу с клавиатуры. Поиск находит магазины в строках чека до разбивки на страницы.
+- [ ] Упростить ввод расхода, проверку чека и подтверждение плана.
+- [x] Валютное списание перенесено в детали оплаты. В операциях оставлен единый сброс у поиска. Продление сессии появляется по необходимости, пустой блок наблюдения за ценами скрывается.
 - Объём работ, предложения по всем 11 разделам и сценарии приёмки собраны в [плане упрощения интерфейса](UX_SIMPLIFICATION_PLAN.md).
 
 ## Receipt product previews — 2026-10-25
@@ -51,7 +52,7 @@
 - [x] Save inferred missing sizes through the existing receipt/catalog transaction, preserving historical sizes and barcode ownership. Receipt arithmetic and payment amounts remain unchanged.
 
 ## Product Scope
-- MVP-1 is implemented: Telegram auth, dashboard summary, operations CRUD, categories/groups, batch operation creation, receipt items, item catalog, debts, plans, currency/FX, admin access states, persisted UI preferences, and Docker Compose runtime.
+- MVP-1 is implemented: Telegram auth, dashboard summary, operations CRUD, categories/groups, receipt items, item catalog, debts, plans, currency/FX, admin access states, persisted UI preferences, and Docker Compose runtime.
 - MVP-2 backlog: Google auth provider, budgets/limits, richer reports/charts, export/import.
 - MVP-3 backlog: deeper Telegram Mini App optimization, async jobs and notifications, advanced analytics, optional position-level analytics.
 

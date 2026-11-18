@@ -161,7 +161,8 @@
     generation++;job?.cancel();job=null;setBusy(false);status('Распознавание отменено');
   }
   function cleanup(){storePicker.close();originalTextMode=false;editedText='';node('scanText').readOnly=false;node('scanReparse').hidden=false;node('scanTextModes').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.textMode==='edited'));dialog.classList.remove('scan-drag-over');pendingPaste=null;node('scanPasteReplace').hidden=true;cancel();node('scanTextDialog').close();source=null;canvas.width=canvas.height=1;canvas.hidden=false;node('scanNoPhoto').hidden=true;node('scanBack').hidden=false;node('scanFile').value='';node('scanText').value='';node('scanRows').replaceChildren();originalText='';invalidateReview();node('scanWorkspace').hidden=true;setBusy(false);status('');}
-  async function open(mode='create'){
+  let returnToList = false;
+  async function open(mode='create', options={}){
     refreshEngines();
     if(mode==='edit'&&state.editDebtMovement)return;
     const next=mode==='create'?'create':String(state.editOperationId), token=++openGeneration;
@@ -179,13 +180,21 @@
       if(token!==openGeneration||node(mode==='create'?'createModal':'editModal').classList.contains('hidden'))return;
       if(applied)syncOperation();
       transferred=false;if(draft)validate();
+      returnToList = Boolean(options.fromList);
       if(!dialog.open)dialog.showModal();
       (draft?node('scanDate'):node('scanDropzone')).focus();
       catalog().load().then(()=>{if(token!==openGeneration||!dialog.open)return;if(draft)refreshCatalog();storePicker.refresh();}).catch(()=>{});
     }catch(error){if(token!==openGeneration)return;if(mode==='edit')context='';core.notify(error.message||'Не удалось открыть чек',{type:'error'});}
   }
   node('scanClose').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>{photoViewer.reset();storePicker.close();if(busy)cancel();node('scanTextDialog').close();closeCatalogLists();closeCategoryPickers();refreshEntry();});
+  dialog.addEventListener('close', () => {
+    if (dialog.open) return;
+    photoViewer.reset();storePicker.close();if(busy)cancel();node('scanTextDialog').close();closeCatalogLists();closeCategoryPickers();refreshEntry();
+    if (returnToList && !transferred && !node('createModal').classList.contains('hidden')) {
+      window.App.getRuntimeModule('operation-modal').closeCreateModal();
+    }
+    returnToList = false;
+  });
   dialog.addEventListener('click',e=>{const r=dialog.getBoundingClientRect();if(e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))dialog.close();});
   // Installed before the global choice listener: Escape in a nested choice belongs to it.
   document.addEventListener('keydown',e=>{
@@ -629,6 +638,7 @@
   savedButton.innerHTML=icons.svg('receipt')+'<span>Исходный чек</span>';savedButton.hidden=true;savedButton.onclick=()=>open('edit');
   node('editOperationForm').before(savedButton);
   window.App.registerRuntimeModule('receipt-scan',{
+    open,
     beginOperation(){pending.create=null;applied=false;if(context==='create')transferred=false;else if(createRecovery)createRecovery.applied=false;refreshEntry();},
     editOperation(item){openGeneration++;savedButton.hidden=!item.has_receipt_scan;pending.edit=null;if(context!=='create'){cleanup();context='';}},
     payload(mode){

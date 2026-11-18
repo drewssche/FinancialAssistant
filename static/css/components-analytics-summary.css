@@ -1063,21 +1063,6 @@
   background: rgba(255, 151, 63, 0.08);
 }
 
-.operations-filter-reset {
-  width: 30px;
-  min-width: 30px;
-  height: 30px;
-  display: inline-grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid rgba(86, 108, 142, 0.42);
-  border-radius: 6px;
-  background: rgba(18, 27, 43, 0.78);
-  color: #cbd6eb;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
 .currency-position-compact {
   display: inline-grid;
   gap: 0.18rem;

@@ -54,7 +54,7 @@ Settings UX additions:
 - Primary CTA is defined at screen-zone level and remains single per active section.
 - Secondary CTA is allowed in the same zone when it is part of the same scenario.
 - Canonical mapping (current baseline):
-- `Dashboard`/`Operations`: primary `+ Добавить операцию`, secondary `+ Массовое добавление`
+- `Dashboard`/`Operations`: primary `Добавить операцию`, secondary `Сканировать чек`
 - `Categories`: primary `+ Создать категорию`, secondary `+ Создать группу`
 - `Debts`: primary `+ Новый долг`
 - `Item Catalog`: primary `+ Создать позицию`, secondary `+ Создать источник`

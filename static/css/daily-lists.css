@@ -220,3 +220,13 @@
 :is(#debtsSection, #dashboardDebtsList) .debt-mobile-card-title-block {grid-template-columns:minmax(0,1fr) auto;align-items:start;}
 :is(#debtsSection, #dashboardDebtsList) .debt-closed-toggle {grid-column:1 / -1;max-width:100%;white-space:normal;}
 :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-note {min-width:0;overflow-wrap:anywhere;}
+
+#operationsSection .operations-search-row { display: flex; align-items: center; gap: 8px; }
+#operationsSection .operations-search-row input { min-width: 0; flex: 1; }
+:is(#addOperationCta, #scanReceiptCta) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+:is(#addOperationCta, #scanReceiptCta) svg { width: 18px; height: 18px; flex: none; }
+@media (max-width: 640px) {
+  .main:has(:is(#dashboardSection, #operationsSection):not(.hidden)) > .topbar .top-actions { width: 100%; margin: 0; }
+  .main:has(:is(#dashboardSection, #operationsSection):not(.hidden)) > .topbar .cta-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  :is(#addOperationCta, #scanReceiptCta) { min-width: 0; padding-inline: 9px; }
+}

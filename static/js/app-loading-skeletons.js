@@ -331,9 +331,6 @@
     if (el.operationsTotalCount) {
       el.operationsTotalCount.innerHTML = inlineLine("skeleton-w-32", "skeleton-line-lg");
     }
-    if (el.deleteAllOperationsBtn) {
-      el.deleteAllOperationsBtn.disabled = true;
-    }
     if (el.operationsBody) {
       el.operationsBody.innerHTML = Array.from({ length: 7 }, () => `
         <tr class="operations-skeleton-row">

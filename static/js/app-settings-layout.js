@@ -116,14 +116,13 @@
     for (const [id, icon, label] of [
       ['addCategoryCta', 'plus', 'Создать категорию'],
       ['addGroupCta', 'folderPlus', 'Создать группу'],
-      ['batchCategoryCta', 'upload', 'Массовое добавление категорий'],
       ['resetUiScaleBtn', 'refresh', 'Масштаб 100%'],
       ['addBankCurrencyAlertBtn', 'plus', 'Добавить порог банковского курса'],
       ['categoriesCollapseAllBtn', 'collapse', 'Свернуть группы'],
       ['categoriesExpandAllBtn', 'expand', 'Развернуть группы'],
       ['deleteAllCategoriesBtn', 'trash', 'Удалить все категории'],
     ]) icons.apply(document.getElementById(id), icon, label);
-    for (const id of ['addCategoryCta', 'addGroupCta', 'batchCategoryCta']) {
+    for (const id of ['addCategoryCta', 'addGroupCta']) {
       document.getElementById(id)?.classList.add('directory-header-action');
     }
   }

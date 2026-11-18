@@ -354,39 +354,5 @@
       </div>
     </div>
 
-    <div id="batchItemTemplateModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="batchItemTemplateTitle">
-      <div class="modal-card modal-small">
-        <div class="panel-head row between">
-          <h3 id="batchItemTemplateTitle">Массовое добавление позиций</h3>
-          <button id="closeBatchItemTemplateModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
-        </div>
-        <form id="batchItemTemplateForm" class="category-modal-form">
-          <p class="subtitle"><code>Источник;позиция;цена</code> — по одной позиции на строку. Цена необязательна; новые источники создаются автоматически.</p>
-          <textarea aria-label="Строки позиций для импорта" id="batchItemTemplateInput" rows="8" placeholder="Евроопт;Сигареты Rothmans;9,40&#10;WB;USB кабель;12.99"></textarea>
-          <div id="batchItemTemplateFeedback" class="status-box hidden"></div>
-          <div id="batchItemTemplatePreview" class="bulk-import-preview hidden">
-            <div class="preview-title">Предпросмотр строк</div>
-            <div class="table-wrap">
-              <table class="table table-hover mobile-card-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Источник</th>
-                    <th>Позиция</th>
-                    <th>Цена</th>
-                    <th>Статус</th>
-                  </tr>
-                </thead>
-                <tbody id="batchItemTemplatePreviewBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </form>
-        <div class="modal-footer">
-          <button id="previewBatchItemTemplateBtn" class="btn btn-secondary btn-icon" type="submit" form="batchItemTemplateForm" title="Проверить строки" aria-label="Проверить строки">${window.App.icons.svg("eye")}</button>
-          <button id="confirmBatchItemTemplateBtn" class="btn btn-cta modal-main-cta hidden btn-icon" type="button" title="Импортировать строки" aria-label="Импортировать строки">${window.App.icons.svg("save")}</button>
-        </div>
-      </div>
-    </div>
 `;
 })();

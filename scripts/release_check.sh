@@ -24,9 +24,14 @@ if [[ "${RUN_E2E}" == "1" ]]; then
     tests/e2e/test_purchase_quantity_metrics_e2e.py \
     tests/e2e/test_analytics_trend_cashflow_e2e.py \
     -m e2e
-  run_pytest "E2E: bulk and batch forms" \
-    tests/e2e/test_bulk_import_sections_e2e.py \
-    tests/e2e/test_batch_create_operations_e2e.py \
+  run_pytest "E2E: directory actions and debt entry" \
+    tests/e2e/test_directory_actions_e2e.py \
+    tests/e2e/test_create_debt_dates_e2e.py \
+    -m e2e
+  run_pytest "E2E: purchase shortcuts, receipt drafts and price alerts" \
+    tests/e2e/test_simple_controls_e2e.py \
+    tests/e2e/test_receipt_scan_recovery_e2e.py \
+    tests/e2e/test_catalog_watch_e2e.py \
     -m e2e
   run_pytest "E2E: mobile shell" tests/e2e/test_mobile_shell_cards_e2e.py -m e2e
   run_pytest "E2E: debts" tests/e2e/test_debts_flow_e2e.py -m e2e

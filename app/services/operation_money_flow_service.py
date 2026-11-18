@@ -47,7 +47,7 @@ class OperationMoneyFlowService:
                 str(item.get("source_kind") or ""),
                 ("расход expense" if item.get("flow_direction") == "outflow" else "доход income") if item.get("source_kind") == "operation" else "",
                 " ".join(str(row.get(key) or "") for row in item.get("receipt_items", [])
-                         for key in ("name", "category_name", "brand_name", "product_name")),
+                         for key in ("name", "category_name", "brand_name", "product_name", "shop_name")),
             ]
         ).casefold()
 

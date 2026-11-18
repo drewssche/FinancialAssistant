@@ -108,8 +108,7 @@
     min-height: 3rem;
   }
 
-  .category-modal-form textarea,
-  #batchCreateInput {
+  .category-modal-form textarea {
     min-height: 10rem;
   }
 
@@ -302,17 +301,8 @@
   .modal-card .segmented,
   .modal-card .receipt-item-row,
   .modal-card .preview-panel,
-  .modal-card .bulk-import-preview,
   .modal-card .receipt-summary {
     scroll-margin-bottom: calc(var(--control-height-lg) + var(--space-10, 2.5rem) + env(safe-area-inset-bottom));
-  }
-
-  .modal-card .bulk-import-preview {
-    padding-bottom: calc(var(--control-height-lg) + var(--space-6) + env(safe-area-inset-bottom));
-  }
-
-  .modal-card .bulk-import-preview .table-wrap {
-    padding-bottom: calc(var(--control-height-lg) + var(--space-4) + env(safe-area-inset-bottom));
   }
 
   .modal-card .operation-category-picker,

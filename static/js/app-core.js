@@ -186,6 +186,31 @@
     }
   }, true);
 
+  const modalOpeners = new WeakMap();
+  const focusableControls = 'a[href], button, input, textarea, select, summary, [tabindex]';
+
+  function keepTabInsideModal(event) {
+    if (event.key !== "Tab" || event.defaultPrevented || document.querySelector("dialog:modal")) return;
+    const modal = getTopVisibleModal();
+    if (!modal) return;
+    const portals = [...document.querySelectorAll(".app-popover:not(.hidden)")].filter(popover =>
+      !modal.contains(popover) && popover.__appPopoverOwners?.some(owner => modal.contains(owner))
+    );
+    const scopes = [modal, ...portals];
+    const controls = scopes.flatMap(scope => [...scope.querySelectorAll(focusableControls)]).filter(node =>
+      node.tabIndex >= 0 && !node.matches(":disabled") && !node.closest("[inert]") && node.getClientRects().length
+      && getComputedStyle(node).visibility === "visible"
+    );
+    const active = document.activeElement;
+    const index = controls.indexOf(active);
+    const next = index < 0 ? null : controls[index + (event.shiftKey ? -1 : 1)];
+    const scope = scopes.find(node => node.contains(active));
+    // The browser handles traversal within a scope, including segments of native date fields.
+    if (next && scope?.contains(next)) return;
+    event.preventDefault();
+    (next || (event.shiftKey ? controls.at(-1) : controls[0]))?.focus();
+  }
+
   let modalStackCounter = 0;
   let modalStackObserver = null;
   const MODAL_STACK_BASE_Z_INDEX = 200;
@@ -196,9 +221,12 @@
       .filter((node) => !node.classList.contains("hidden"));
   }
 
-  function bringModalToFront(modal) {
+  function bringModalToFront(modal, opener = document.activeElement) {
     if (!modal?.matches?.(MODAL_LAYER_SELECTOR)) {
       return;
+    }
+    if (!modal.dataset.modalStackIndex && opener instanceof HTMLElement && !modal.contains(opener)) {
+      modalOpeners.set(modal, opener);
     }
     modalStackCounter += 1;
     modal.dataset.modalStackIndex = String(modalStackCounter);
@@ -242,11 +270,16 @@
     modal.classList.remove("modal-front");
     modal.style.zIndex = "";
     delete modal.dataset.modalStackIndex;
+    const opener = modalOpeners.get(modal);
+    modalOpeners.delete(modal);
     const next = getTopVisibleModal();
     if (next) {
       bringModalToFront(next);
     } else {
       modalStackCounter = 0;
+    }
+    if (opener?.isConnected && opener.getClientRects().length && (!next || next.contains(opener))) {
+      opener.focus({preventScroll: true});
     }
   }
 
@@ -254,6 +287,7 @@
     if (modalStackObserver || !document.body || typeof MutationObserver === "undefined") {
       return;
     }
+    document.addEventListener("keydown", keepTabInsideModal);
     modalStackObserver = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         const modal = mutation.target;

@@ -75,7 +75,7 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert ".activity-center-drawer" in activity_center_css
     assert "@media (max-width: 900px)" in activity_center_css
     assert "@media (hover: none), (pointer: coarse)" in activity_center_css
-    assert '@import url("/static/css/components-activity-center.css?v=20261016-toast-layers");' in styles
+    assert '@import url("/static/css/components-activity-center.css?v=20261118-purchase-entry");' in styles
     assert "function configureUsageButton" in usage
     assert "/api/v1/operations/money-flow?" in usage
     assert "item_template_id" in usage
@@ -101,7 +101,7 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert "bindUsageUi" in init_core
     assert "core.getTopVisibleModal?.()" in init_core
     core_js = (REPO_ROOT / "static" / "js" / "app-core.js").read_text(encoding="utf-8")
-    assert "function bringModalToFront(modal)" in core_js
+    assert "function bringModalToFront(modal," in core_js
     assert "function getTopVisibleModal()" in core_js
     assert "function installModalStackObserver()" in core_js
     assert "modalStackCounter = 0;" in core_js

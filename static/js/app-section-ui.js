@@ -279,34 +279,15 @@
       state.activeSection === "categories" ||
       state.activeSection === "item_catalog";
     el.topActions.classList.toggle("hidden", !showTopActions);
-    if (
-      el.addOperationCta
-      && el.batchOperationCta
-      && el.addPlanCta
-      && el.addDebtCta
-      && el.addCategoryCta
-      && el.addGroupCta
-      && el.batchCategoryCta
-      && el.addItemTemplateCta
-      && el.addItemSourceCta
-      && el.batchItemCatalogCta
-    ) {
-      const showOps = state.activeSection === "dashboard" || state.activeSection === "operations";
-      const showPlans = state.activeSection === "plans";
-      const showDebts = state.activeSection === "debts";
-      const showCategories = state.activeSection === "categories";
-      const showItemCatalog = state.activeSection === "item_catalog";
-      el.addOperationCta.classList.toggle("hidden", !showOps);
-      el.batchOperationCta.classList.toggle("hidden", !showOps);
-      el.addPlanCta.classList.toggle("hidden", !showPlans);
-      el.addDebtCta.classList.toggle("hidden", !showDebts);
-      el.addCategoryCta.classList.toggle("hidden", !showCategories);
-      el.addGroupCta.classList.toggle("hidden", !showCategories);
-      el.batchCategoryCta.classList.toggle("hidden", !showCategories);
-      el.addItemTemplateCta.classList.toggle("hidden", !showItemCatalog);
-      el.addItemSourceCta.classList.toggle("hidden", !showItemCatalog);
-      el.batchItemCatalogCta.classList.toggle("hidden", !showItemCatalog);
-    }
+    const showOps = ["dashboard", "operations"].includes(state.activeSection);
+    el.addOperationCta.classList.toggle("hidden", !showOps);
+    el.scanReceiptCta.classList.toggle("hidden", !showOps);
+    el.addPlanCta.classList.toggle("hidden", state.activeSection !== "plans");
+    el.addDebtCta.classList.toggle("hidden", state.activeSection !== "debts");
+    el.addCategoryCta.classList.toggle("hidden", state.activeSection !== "categories");
+    el.addGroupCta.classList.toggle("hidden", state.activeSection !== "categories");
+    el.addItemTemplateCta.classList.toggle("hidden", state.activeSection !== "item_catalog");
+    el.addItemSourceCta.classList.toggle("hidden", state.activeSection !== "item_catalog");
   }
 
   function renderTodayLabel() {

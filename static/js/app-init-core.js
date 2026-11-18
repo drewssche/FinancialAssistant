@@ -47,10 +47,6 @@
     return window.App.getRuntimeModule?.("usage") || {};
   }
 
-  function getBulkUi() {
-    return window.App.getRuntimeModule?.("bulk-ui") || {};
-  }
-
   function isCompactMobileViewport() {
     return window.matchMedia("(max-width: 640px)").matches;
   }
@@ -228,8 +224,8 @@
     });
 
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        if (closeVisibleModalOnEscape()) {
+      if (event.key === "Escape" && !event.defaultPrevented) {
+        if (getPickerUtils()?.closeActivePopoverOnEscape(document.activeElement, core.getTopVisibleModal()) || closeVisibleModalOnEscape()) {
           event.preventDefault();
           return;
         }
@@ -249,7 +245,25 @@
   }
 
   function bindModalHandlers() {
-    el.addOperationCta.addEventListener("click", () => getOperationModal().openCreateModal?.());
+    let opening = false;
+    async function openPurchase(event) {
+      if (opening) return;
+      opening = true;
+      const scan = event.currentTarget === el.scanReceiptCta;
+      const fromList = el.createModal.classList.contains("hidden");
+      try {
+        if (fromList) {
+          await getOperationModal().openCreateModal({opener: event.currentTarget, focusAmount: !scan && event.detail === 0});
+        }
+        if (scan) await window.App.getRuntimeModule("receipt-scan").open("create", {fromList});
+      } catch (error) {
+        core.notify(error.message || "Не удалось открыть форму", {type: "error"});
+      } finally {
+        opening = false;
+      }
+    }
+    el.addOperationCta.addEventListener("click", openPurchase);
+    el.scanReceiptCta.addEventListener("click", openPurchase);
     if (el.addPlanCta && getPlansFeature().openCreatePlan) {
       el.addPlanCta.addEventListener("click", () => getPlansFeature().openCreatePlan?.());
     }
@@ -270,19 +284,6 @@
     if (el.addItemSourceCta && getItemCatalogFeature().openSourceGroupModal) {
       el.addItemSourceCta.addEventListener("click", () => {
         getItemCatalogFeature().openSourceGroupModal?.();
-      });
-    }
-    el.batchOperationCta.addEventListener("click", () => {
-      getBulkUi().openBatchCreateModal?.();
-    });
-    if (el.batchCategoryCta) {
-      el.batchCategoryCta.addEventListener("click", () => {
-        getBulkUi().openBatchCategoryModal?.();
-      });
-    }
-    if (el.batchItemCatalogCta) {
-      el.batchItemCatalogCta.addEventListener("click", () => {
-        getBulkUi().openBatchItemTemplateModal?.();
       });
     }
 

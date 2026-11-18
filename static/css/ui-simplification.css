@@ -54,7 +54,7 @@
 .operation-extra > .task-dialog:not([open]) { display: none; }
 .task-dialog { width: min(660px, calc(100vw - 24px)); }
 .task-dialog .fx-settlement-block { margin: 0; padding: 0; background: none; border: 0; }
-:is(#createModal, #editModal).operation-editor .operation-extra:not(:has(> input, > .create-category-field:not(.hidden))) { display: none; }
+:is(#createModal, #editModal).operation-editor .operation-extra:not(:has(> input, > .create-category-field:not(.hidden), > .operation-payment-details:not([hidden]))) { display: none; }
 @media (max-width: 640px) {
   :is(#createModal, #editModal).operation-editor .modal-head-actions { flex-wrap: wrap; max-width: 100%; justify-content: flex-end; }
 }

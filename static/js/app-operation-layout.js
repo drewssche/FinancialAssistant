@@ -21,7 +21,24 @@
     const extra = panel('Комментарий и дополнительные параметры', 'operation-extra');
     form.append(extra);
     extra.append(byId(`${prefix}Note`), byId(`${prefix}FxSettlementBlock`));
-    form.append(window.App.taskDialogs.attach(byId(`${prefix}FxSettlementBlock`), 'Валютный остаток', header));
+    const payment = document.createElement('details');
+    payment.className = 'operation-payment-details';
+    const paymentTitle = document.createElement('summary');
+    paymentTitle.textContent = 'Детали оплаты';
+    const settlementSummary = document.createElement('span');
+    settlementSummary.id = `${prefix}SettlementSummary`;
+    paymentTitle.append(settlementSummary);
+    payment.append(paymentTitle);
+    extra.append(payment);
+    const block = byId(`${prefix}FxSettlementBlock`);
+    const settlement = window.App.taskDialogs.attach(block, 'Списать с валютного остатка', payment);
+    paymentTitle.after(settlement.trigger);
+    settlement.trigger.classList.remove('btn-icon');
+    settlement.trigger.textContent = 'Списать с валютного остатка';
+    form.append(settlement);
+    const syncPayment = () => { payment.hidden = block.classList.contains('hidden'); };
+    new MutationObserver(syncPayment).observe(block, {attributes: true, attributeFilter: ['class']});
+    syncPayment();
     const preview = modal.querySelector(':scope > .operation-modal-card > .preview-panel');
     const previewDetails = panel('Предпросмотр', 'operation-preview');
     if (preview) { preview.before(previewDetails); previewDetails.append(preview); }
@@ -81,7 +98,7 @@
     noteLabel.innerHTML = `<span>Комментарий</span>`;
     sidebar.append(noteLabel);
     const receiptSummary = receipt.querySelector('.receipt-summary');
-    const layout = {modal, form, extra, entry, check, amount, amountAnchor, category, categoryAnchor, currency, currencyAnchor, receiptCurrency, prefix, sidebar, noteLabel, receipt, receiptSummary, previewDetails, syncPreview};
+    const layout = {modal, form, extra, payment, entry, check, amount, amountAnchor, category, categoryAnchor, currency, currencyAnchor, receiptCurrency, prefix, sidebar, noteLabel, receipt, receiptSummary, previewDetails, syncPreview};
     layouts.set(mode, layout);
     return layout;
   }
@@ -121,7 +138,7 @@
       categoryAnchor.after(category);
     }
     byId(`${prefix}Amount`).placeholder = receipt ? (desktop.matches ? 'Необязательно' : 'Сумма в бумажном чеке (необязательно)') : 'Сумма';
-    if (reset) {view.previewDetails.hidden=true;view.syncPreview();}
+    if (reset) { view.previewDetails.hidden = true; view.payment.open = false; view.syncPreview(); }
     const plan = mode === 'create' && window.App.state.createFlowMode === 'plan';
     if (mode === 'create' && byId('openReceiptScan')) byId('openReceiptScan').hidden = !operation || plan;
     const tagsField = byId(`${prefix}TagsField`);

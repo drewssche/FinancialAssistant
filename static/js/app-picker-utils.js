@@ -367,6 +367,22 @@
     return true;
   }
 
+  function closeActivePopoverOnEscape(active, modal) {
+    const popovers = [...document.querySelectorAll(".app-popover:not(.hidden)")].reverse();
+    for (const popover of popovers) {
+      const owners = popover.__appPopoverOwners || [];
+      if (modal && !modal.contains(popover) && !owners.some(owner => modal.contains(owner))) continue;
+      const owner = owners.find(node => node.contains(active)) || owners[0];
+      if (!popover.contains(active) && !owner?.contains(active)) continue;
+      const trigger = owner?.matches("input, button") ? owner : owner?.querySelector("input:not([type=hidden]), button");
+      trigger?.focus({preventScroll: true});
+      setPopoverOpen(popover, false);
+      popover.__appPopoverOnClose?.();
+      return true;
+    }
+    return false;
+  }
+
   function closeOpenPopoversOnOutside(event) {
     const openPopovers = Array.from(document.querySelectorAll(".app-popover:not(.hidden)"));
     let closedAny = false;
@@ -399,6 +415,7 @@
     eventPathIncludes,
     setPopoverOpen,
     closePopoverOnOutside,
+    closeActivePopoverOnEscape,
     closeOpenPopoversOnOutside,
   };
 

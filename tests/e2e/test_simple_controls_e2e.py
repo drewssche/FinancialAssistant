@@ -1,13 +1,20 @@
 """Interaction contracts: searchable choices, explicit units and unchanged historical data."""
+import re
+
 import pytest
 from playwright.sync_api import expect
-from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, page_with_receipt_api_mock, _login, _ensure_categories_loaded
+from tests.e2e import test_receipt_picker_store_scope_e2e as receipt_fixture
+from tests.e2e.test_receipt_picker_store_scope_e2e import _ensure_categories_loaded, _login
+
+static_server_url = receipt_fixture.static_server_url
+page_with_receipt_api_mock = receipt_fixture.page_with_receipt_api_mock
 
 
 def start(page, url, width):
     page.set_viewport_size({'width': width, 'height': 1000})
     page.goto(url + '/static/index.html')
-    _login(page); _ensure_categories_loaded(page)
+    _login(page)
+    _ensure_categories_loaded(page)
     page.click('#addOperationCta')
     expect(page.locator('#createModal')).to_be_visible()
 
@@ -16,7 +23,8 @@ def start(page, url, width):
 @pytest.mark.parametrize('width', [320, 390, 1440])
 def test_searchable_choice_keyboard_escape_and_preview(static_server_url, page_with_receipt_api_mock, width):
     page = page_with_receipt_api_mock
-    errors = []; page.on('pageerror', lambda error: errors.append(str(error)))
+    errors = []
+    page.on('pageerror', lambda error: errors.append(str(error)))
     start(page, static_server_url, width)
     select = page.locator('#opCurrency')
     original = select.input_value()
@@ -33,23 +41,28 @@ def test_searchable_choice_keyboard_escape_and_preview(static_server_url, page_w
     expect(select).to_have_value(original)
     expect(select).to_be_focused()
     select.press('ArrowDown')
-    search.fill('USD'); search.press('Enter')
+    search.fill('USD')
+    search.press('Enter')
     expect(select).to_have_value('USD')
     expect(dialog).not_to_be_visible()
     # Wrong keyboard layout also works in all select-backed pickers.
     page.evaluate("document.querySelector('#opCurrency').add(new Option('Российский рубль','RUB'))")
-    select.click(); search.fill('hjccbqcrbq')
+    select.click()
+    search.fill('hjccbqcrbq')
     expect(dialog.locator('.choice-option')).to_have_count(1)
     dialog.locator('.choice-option').click()
     expect(select).to_have_value('RUB')
     preview = page.locator('#createModal .operation-preview-action')
     expect(preview).to_have_attribute('aria-pressed', 'false')
-    preview.click(); expect(preview).to_have_attribute('aria-pressed', 'true')
-    expect(preview).to_have_class(__import__('re').compile('is-active'))
+    preview.click()
+    expect(preview).to_have_attribute('aria-pressed', 'true')
+    expect(preview).to_have_class(re.compile('is-active'))
     page.screenshot(path=f'/tmp/fa-simple-preview-{width}.png')
-    preview.click(); expect(preview).to_have_attribute('aria-pressed', 'false')
+    preview.click()
+    expect(preview).to_have_attribute('aria-pressed', 'false')
     select.select_option(original)
-    settings = page.locator('#createModal button[aria-label="Валютный остаток"]')
+    page.locator('#createModal .operation-payment-details summary').click()
+    settings = page.locator('#createModal button[aria-label="Списать с валютного остатка"]')
     settings.click()
     task = page.locator('#createModal .task-dialog')
     expect(task).to_be_visible()
@@ -94,16 +107,71 @@ def test_milk_litre_weight_and_untouched_snapshot(static_server_url, page_with_r
 
 
 @pytest.mark.e2e
-def test_import_help_closes_independently_and_with_owner(static_server_url, page_with_receipt_api_mock):
-    page=page_with_receipt_api_mock
-    start(page,static_server_url,390)
-    page.evaluate("window.App.actions.closeCreateModal();window.App.getRuntimeModule('bulk-ui').openBatchCreateModal()")
-    owner=page.locator('#batchCreateModal');trigger=page.locator('#batchCreateHint')
+@pytest.mark.parametrize("width", [320, 390, 1440])
+def test_purchase_shortcuts_keyboard_and_draft(static_server_url, page_with_receipt_api_mock, width):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({"width": width, "height": 844})
+    page.goto(static_server_url + "/static/index.html")
+    _login(page)
+    _ensure_categories_loaded(page)
+    scan = page.get_by_role("button", name="Сканировать чек", exact=True)
+    scan.click()
+    expect(page.locator("#receiptScanDialog")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.locator("#createModal")).to_be_hidden()
+    expect(scan).to_be_focused()
+
+    add = page.get_by_role("button", name="Добавить операцию", exact=True)
+    add.focus()
+    add.press("Enter")
+    amount = page.locator("#opAmount")
+    expect(amount).to_be_focused()
+    amount.fill("57.50")
+    page.locator("#openReceiptScan").click()
+    expect(page.locator("#receiptScanDialog")).to_be_visible()
+    page.click("#scanClose")
+    expect(page.locator("#createModal")).to_be_visible()
+    expect(amount).to_have_value("57.50")
+
+    category = page.locator("#opCategorySearch")
+    category.focus()
+    picker = page.locator("#createCategoryPickerBlock")
+    expect(picker).to_be_visible()
+    submit = page.locator("#submitCreateOperationBtn")
+    submit.press("Tab")
+    expect(picker.get_by_role("button").first).to_be_focused()
+    page.keyboard.press("Shift+Tab")
+    expect(submit).to_be_focused()
+    picker.get_by_role("button").first.press("Escape")
+    expect(picker).to_be_hidden()
+    expect(category).to_be_focused()
+    for key in ["Tab"] * 30 + ["Shift+Tab"] * 30:
+        page.keyboard.press(key)
+        assert page.evaluate("""() => {
+            const modal = document.querySelector('#createModal'), active = document.activeElement;
+            const picker = active.closest('.app-popover:not(.hidden)');
+            return modal.contains(active) || picker?.__appPopoverOwners?.some(owner => modal.contains(owner));
+        }""")
+    page.click("#closeCreateModalBtn")
+    expect(add).to_be_focused()
+    assert page.locator("#batchCreateModal, #batchCategoryModal, #batchItemTemplateModal").count() == 0
+    for button in (add, scan):
+        rect = button.bounding_box()
+        assert rect and 0 <= rect["x"] and rect["x"] + rect["width"] <= width + 1
+
+
+@pytest.mark.e2e
+def test_escape_closes_catalog_row_menu_and_returns_to_trigger(static_server_url, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(static_server_url + "/static/index.html")
+    _login(page)
+    page.locator("#mainNav button[data-section=item_catalog]").click()
+    page.locator('[data-item-catalog-view="sources"]').click()
+    page.set_viewport_size({"width": 390, "height": 844})
+    trigger = page.locator('#itemCatalogBody [data-mobile-card-menu-trigger^="item-template-"]:visible').first
     trigger.click()
-    help=page.get_by_role('dialog',name='Формат импорта',exact=True)
-    expect(help).to_be_visible();expect(help).to_contain_text('Дата: ДД.ММ.ГГГГ')
-    page.keyboard.press('Escape')
-    expect(help).to_be_hidden();expect(owner).to_be_visible();expect(trigger).to_be_focused()
-    trigger.click()
-    page.evaluate("window.App.getRuntimeModule('bulk-ui').closeBatchCreateModal()")
-    expect(owner).to_be_hidden();expect(help).to_be_hidden()
+    menu = page.locator(".mobile-card-actions-popover:visible")
+    menu.get_by_role("button").first.press("Escape")
+    expect(menu).to_have_count(0)
+    expect(trigger).to_be_focused()

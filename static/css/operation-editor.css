@@ -345,3 +345,7 @@
 .purchase-tags-dialog .modal-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 .purchase-tags-dialog::backdrop { background: #0008; }
 button[data-purchase-tag] { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+
+.operation-payment-details { grid-column: 1 / -1; }
+.operation-payment-details summary { cursor: pointer; padding-block: 8px; }
+.operation-payment-details[hidden] { display: none; }

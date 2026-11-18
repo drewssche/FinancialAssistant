@@ -8,6 +8,7 @@
   let telegramAuthPromise = null;
   let autoTelegramLoginPromise = null;
   let sessionRefreshPromise = null;
+  let refreshFailed = false;
   let bootstrapPromise = null;
   let sessionTimerId = null;
   let sessionLifecycleBound = false;
@@ -36,6 +37,7 @@
   }
 
   function storeAccessToken(data, options = {}) {
+    refreshFailed = false;
     const token = String(data?.access_token || "").trim();
     if (!token) throw new Error("Сервер не вернул токен доступа");
     const claims = parseTokenPayload(token);
@@ -85,6 +87,9 @@
     if (!el.sessionStatusRow || !el.sessionRemainingLabel) return;
     const remainingMs = sessionRemainingMs();
     const visible = Boolean(state.token && state.sessionExpiresAt);
+    for (const button of [el.createSessionRefreshBtn, el.editSessionRefreshBtn]) {
+      button?.classList.toggle("hidden", !visible || (remainingMs > AUTO_REFRESH_WINDOW_MS && !refreshFailed));
+    }
     el.sessionStatusRow.classList.toggle("hidden", !visible);
     if (!visible) return;
     el.sessionRemainingLabel.textContent = remainingMs > 0
@@ -168,6 +173,10 @@
         hideSessionRecovery();
         if (manual) core.notify?.("Сессия продлена", { type: "success" });
         return true;
+      })
+      .catch(error => {
+        if (epoch === sessionEpoch) refreshFailed = true;
+        throw error;
       })
       .finally(() => {
         state.sessionRefreshPending = false;

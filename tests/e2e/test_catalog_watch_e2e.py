@@ -36,11 +36,13 @@ def test_watch_link_preview_confirm_toggle_dashboard(static_server_url,page_with
     host.scroll_into_view_if_needed()
     box=host.bounding_box();assert box['x']>=0 and box['x']+box['width']<=width+1
     p.screenshot(path=f'/tmp/fa-watch-{width}.png')
+    expect(p.locator('#watchProductsTab')).to_have_text('Товары · 1')
     toggle.uncheck();expect(toggle).not_to_be_checked()
     host.locator('[data-watch-remove]').click();expect(host.locator('[data-watch-search]')).to_be_visible()
     assert data['offers']==[]
     p.locator('#closeCatalogProductModalBtn').click()
-    expect(p.locator('#dashboardProductWatches')).to_contain_text('Изменений цен пока нет')
+    expect(p.locator('#dashboardProductWatches')).to_be_empty()
+    expect(p.locator('#dashboardProductWatches')).to_be_hidden()
 
 
 @pytest.mark.e2e

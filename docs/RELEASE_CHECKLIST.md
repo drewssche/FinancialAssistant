@@ -128,7 +128,7 @@ Before exposing the app inside Telegram WebApp, verify:
 Expected:
 - app is usable end-to-end on a real phone or equivalent mobile emulation
 - auth/session restore behaves correctly after reopening the Mini App
-- regression suite covers auth/access states, modal CTA reachability, batch preview reachability and analytics mobile navigation
+- regression suite covers auth/access states, modal CTA reachability, receipt review and keyboard focus and analytics mobile navigation
 
 ## 6. Critical Regression Matrix
 Run this targeted matrix before releases that touch auth, dashboard, operations, debts, plans, Telegram runtime, or frontend orchestration:

@@ -11,6 +11,8 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 
+from tests.e2e.test_receipt_picker_store_scope_e2e import _login
+
 sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
 
 
@@ -22,7 +24,7 @@ def static_server_url() -> str:
         port = s.getsockname()[1]
 
     process = subprocess.Popen(
-        [sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
+        [sys.executable, "-m", "tests.e2e.static_server", str(port), "--bind", "127.0.0.1"],
         cwd=str(repo_root),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -456,6 +458,7 @@ def page_with_money_flow_api_mock():
         except Exception as exc:  # pragma: no cover
             pytest.skip(f"Chromium is not available for Playwright: {exc}")
         page = browser.new_page()
+        page.route("https://telegram.org/js/telegram-web-app.js", lambda route: route.fulfill(content_type="application/javascript", body=""))
         page.add_init_script(
             """
             window.Telegram = {
@@ -476,27 +479,7 @@ def page_with_money_flow_api_mock():
 
 def _open_app(page, static_server_url: str):
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
-    if page.locator("#loginScreen:not(.hidden)").count():
-        try:
-            page.click("#telegramLoginBtn", timeout=1200)
-        except sync_api.TimeoutError:
-            # Telegram auto-login may hide the button between the visibility check and click.
-            pass
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login(page)
 
 
 @pytest.mark.e2e
@@ -605,7 +588,7 @@ def test_operations_money_flow_mode_supports_source_filter_and_drilldown(static_
     table_text = page.locator("#operationsBody").inner_text()
     assert "Я дал в долг" in table_text
     assert "Мне вернули долг" in table_text
-    assert "FX" in table_text
+    assert "Покупка USD" in table_text
 
     page.click("#operationsSourceTabs button[data-operations-source='debt']")
     page.wait_for_function(
@@ -726,7 +709,7 @@ def test_operation_row_shows_receipt_categories_discount_and_clean_source(
     assert "Перекус" in (context.text_content() or "")
     assert "Фрукты" in (context.text_content() or "")
     assert "Скидка чека −6.7%" in (context.text_content() or "")
-    assert "Операция" in (source.text_content() or "")
+    assert row.get_attribute("data-money-flow-source") == "operation"
     assert "Из плана #77" in (source.text_content() or "")
     assert "Без категории" not in (source.text_content() or "")
 
@@ -1097,3 +1080,43 @@ def test_compact_debt_movement_date_is_readable_and_controls_fit(static_server_u
     card=page.locator('#editModal .operation-modal-card')
     assert card.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
     page.screenshot(path=f'/tmp/fa-debt-movement-date-{width}.png')
+
+
+@pytest.mark.e2e
+def test_search_shows_receipt_shop_once_and_one_reset(static_server_url, page_with_money_flow_api_mock):
+    page = page_with_money_flow_api_mock
+    _open_app(page, static_server_url)
+    page.click("button[data-section='operations']")
+    search = page.locator("#filterQ")
+    search.fill("Кофейня")
+    matched = page.locator("#operationsBody [data-operation-row-id='1'] .mobile-note-cell")
+    page.wait_for_function("""() => document.querySelector('#operationsBody [data-operation-row-id="1"] .mobile-note-cell')?.textContent.includes('Магазин')""")
+    assert matched.inner_text().count("Кофейня") == 1
+    reset = page.get_by_role("button", name="Сбросить", exact=True)
+    reset.click()
+    assert search.input_value() == ""
+    assert reset.is_disabled()
+    page.click("#operationsSourceTabs button[data-operations-source='debt']")
+    assert reset.is_enabled()
+    reset.click()
+    page.wait_for_selector('#operationsSourceTabs button.active[data-operations-source=all]')
+
+
+@pytest.mark.e2e
+def test_edit_existing_settlement_shows_original_amount(static_server_url, page_with_money_flow_api_mock):
+    page = page_with_money_flow_api_mock
+    _open_app(page, static_server_url)
+    page.evaluate("""() => window.App.getRuntimeModule('operation-modal').openEditModal({
+        id: 43, kind: 'expense', amount: '30.00', original_amount: '30.00', currency: 'BYN',
+        operation_date: '2026-03-05', receipt_items: [],
+        fx_settlement: {asset_currency: 'USD', quantity: '10.00', unit_price: '3.000000', quote_total: '30.00'}
+    })""")
+    summary = page.locator('#editModal .operation-payment-details summary')
+    assert summary.is_visible()
+    assert '10,00 USD' in summary.inner_text()
+    assert not page.locator('#editModal .modal-head-actions button[aria-label*="остатка"]').count()
+    summary.click()
+    page.get_by_role('button', name='Списать с валютного остатка').click()
+    assert page.locator('#editFxSettlementAsset').input_value() == 'USD'
+    assert page.locator('#editFxSettlementQuantity').input_value() == '10.00'
+    assert float(page.locator('#editFxSettlementUnitPrice').input_value().replace(',', '.')) == 3

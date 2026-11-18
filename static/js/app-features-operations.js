@@ -188,7 +188,7 @@
   }
 
   function renderOperationsActiveFilters() {
-    if (!el.operationsActiveFilters || !el.operationsCategoryFilterChip || !el.clearOperationsCategoryFilterBtn) {
+    if (!el.operationsActiveFilters || !el.operationsCategoryFilterChip) {
       return;
     }
     state.operationsMode = "money_flow";
@@ -250,10 +250,9 @@
       hasItemTemplate || hasProduct,
     );
     renderChip(el.operationsBrandFilterChip, "Бренд", state.operationsBrandFilterName || `#${state.operationsBrandFilterId}`, hasBrand);
-    el.clearOperationsCategoryFilterBtn.classList.toggle("hidden", !hasAny);
     if (el.resetOperationsFiltersBtn) {
       const hasQuery = Boolean(el.filterQ?.value.trim());
-      el.resetOperationsFiltersBtn.disabled = !hasAny && !hasQuery;
+      el.resetOperationsFiltersBtn.disabled = !(hasAny || hasQuery || hasKind || hasSource || hasQuickView || hasCurrencyScope);
     }
   }
 
@@ -457,9 +456,6 @@
       el.operationsSelectAll.checked = false;
       el.operationsSelectAll.indeterminate = false;
     }
-    if (el.deleteAllOperationsBtn) {
-      el.deleteAllOperationsBtn.classList.add("hidden");
-    }
   }
 
   function appendUniqueOperations(items) {
@@ -494,9 +490,6 @@
     applyOperationsModeUi();
     bindOperationSorting();
     renderOperationsActiveFilters();
-    if (el.deleteAllOperationsBtn) {
-      el.deleteAllOperationsBtn.disabled = isMoneyFlowMode || sortedItems.length === 0;
-    }
     const visibleIds = new Set(sortedItems.map((item) => String(item.id)));
     for (const id of Array.from(state.selectedOperationIds)) {
       if (!visibleIds.has(String(id))) {

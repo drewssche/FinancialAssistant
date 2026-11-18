@@ -511,7 +511,7 @@ At the bottom-left sidebar, show compact static user block:
 - One primary CTA per active section/screen; secondary actions use secondary/ghost style in same zone
 - Similar actions must use the same visual class pattern (`cta-main`, `cta-inline`) to preserve consistency
 - Canonical mapping:
-- `Dashboard/Operations`: primary `+ Добавить операцию`, secondary `+ Массовое добавление`
+- `Dashboard/Operations`: primary `Добавить операцию`, secondary `Сканировать чек`
 - `Debts`: primary `+ Новый долг`
 - `Categories`: primary `+ Создать категорию`, secondary `+ Создать группу`
 - `Item Catalog`: primary `+ Создать позицию`, secondary `+ Создать источник`

@@ -356,7 +356,8 @@ def test_operations_section_is_money_flow_first_without_bulk_select():
     assert 'id="operationsPeriodTrigger"' in shell_primary
     assert 'id="operationsPeriodControlLabel"' in shell_primary
     assert 'class="segmented hidden" data-period-tabs' in shell_primary
-    assert shell_primary.index('id="resetOperationsFiltersBtn"') < shell_primary.index('id="operationsSummaryGrid"')
+    assert shell_primary.index('id="filterQ"') < shell_primary.index('id="resetOperationsFiltersBtn"')
+    assert shell_primary.count('id="resetOperationsFiltersBtn"') == 1
     assert 'id="operationsQuickActionsCard"' not in shell_primary
     assert 'id="quickFilterExpenseBtn"' not in shell_primary
     assert 'id="quickFilterIncomeBtn"' not in shell_primary

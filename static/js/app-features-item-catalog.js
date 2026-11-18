@@ -530,12 +530,8 @@
       el.addItemTemplateCta.classList.toggle("hidden", ["brands", "changes", "purchases", "discounts"].includes(activeView));
     }
     window.App.icons.apply(el.addItemSourceCta, "plus", "Создать источник");
-    window.App.icons.apply(el.batchItemCatalogCta, "receipt", "Массовое добавление");
     if (el.addItemSourceCta) {
       el.addItemSourceCta.classList.toggle("hidden", activeView !== "sources");
-    }
-    if (el.batchItemCatalogCta) {
-      el.batchItemCatalogCta.classList.toggle("hidden", activeView !== "sources");
     }
   }
 

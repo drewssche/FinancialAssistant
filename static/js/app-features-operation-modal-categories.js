@@ -224,10 +224,6 @@
     }
 
     function handleCreateCategorySearchKeydown(event) {
-      if (event.key === "Escape") {
-        closeCreateCategoryPopover();
-        return;
-      }
       if (event.key !== "Enter") {
         return;
       }
@@ -262,10 +258,6 @@
     }
 
     function handleEditCategorySearchKeydown(event) {
-      if (event.key === "Escape") {
-        closeEditCategoryPopover();
-        return;
-      }
       if (event.key !== "Enter") {
         return;
       }

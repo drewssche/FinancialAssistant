@@ -431,33 +431,6 @@
   z-index: 0;
 }
 
-.bulk-import-preview {
-  margin-top: var(--space-3);
-  border-top: 1px solid var(--border);
-  padding-top: var(--space-3);
-  scroll-margin-bottom: calc(var(--control-height-lg) + var(--space-8) + env(safe-area-inset-bottom));
-  position: relative;
-  z-index: 0;
-}
-
-.bulk-import-preview .table td:last-child,
-.bulk-import-preview .table th:last-child {
-  width: 1%;
-  white-space: nowrap;
-}
-
-.bulk-import-status-ok {
-  color: #9ee8bc;
-}
-
-.bulk-import-status-warn {
-  color: #ffd07a;
-}
-
-.bulk-import-status-error {
-  color: #ffb2bc;
-}
-
 .preview-title {
   color: var(--muted);
   font-size: 0.8125rem;

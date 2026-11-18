@@ -290,7 +290,7 @@ def test_store_picker_and_header_follow_visual_contract(static_server_url, page_
     assert page.locator('#createModal .operation-tools').count() == 0
     preview = page.locator('#createModal .operation-preview-action')
     assert preview.is_visible()
-    assert page.locator('#createSessionRefreshBtn').is_visible()
+    assert page.locator('#createSessionRefreshBtn').is_hidden()
     preview.click()
     assert page.locator('#createPreviewBody').is_visible()
     preview.click()

@@ -483,9 +483,6 @@
       "closeDebtHistoryModal",
       "openEditDebtModal",
       "deleteDebtFlow",
-      "openBatchCreateModal",
-      "openBatchCategoryModal",
-      "openBatchItemTemplateModal",
     ]),
   });
 
