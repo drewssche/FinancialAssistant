@@ -73,7 +73,7 @@
 @media (min-width: 900px) {
 
   :is(#createModal, #editModal).operation-editor .operation-extra { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .operation-extra > .operation-panel-label, .operation-extra > .fx-settlement-block { grid-column: 1 / -1; }
+  .operation-extra > .operation-panel-label { grid-column: 1 / -1; }
 }
 @media (max-width: 640px) {
   :is(#createModal, #editModal).operation-editor .operation-modal-card { padding: 12px; padding-bottom: 0; }
@@ -346,9 +346,6 @@
 .purchase-tags-dialog::backdrop { background: #0008; }
 button[data-purchase-tag] { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 
-.operation-payment-details { grid-column: 1 / -1; }
-.operation-payment-details summary { cursor: pointer; padding-block: 8px; }
-.operation-payment-details[hidden] { display: none; }
 
 /* Quick entry uses the same controls as the full editor. */
 :is(#createModal, #editModal).operation-editor.is-simple-operation .operation-modal-card { max-width: 640px; }

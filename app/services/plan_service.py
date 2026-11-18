@@ -228,7 +228,6 @@ class PlanService:
         base_currency = self.operation_service._get_user_base_currency(user_id)
         normalized_currency = self.operation_service._normalize_currency(currency or base_currency, default=base_currency)
         fx_policy = self._normalize_plan_fx_policy(
-            kind=kind,
             currency=normalized_currency,
             base_currency=base_currency,
             fx_rate_source=fx_rate_source,
@@ -355,14 +354,12 @@ class PlanService:
         updates["base_currency"] = base_currency
         if "amount" in updates:
             updates["original_amount"] = updates["amount"]
-        next_kind = str(updates.get("kind", item.kind))
         next_currency = self.operation_service._normalize_currency(
             updates.get("currency", item.currency),
             default=base_currency,
         )
         updates.update(
             self._normalize_plan_fx_policy(
-                kind=next_kind,
                 currency=next_currency,
                 base_currency=base_currency,
                 fx_rate_source=(
@@ -980,7 +977,6 @@ class PlanService:
     def _normalize_plan_fx_policy(
         self,
         *,
-        kind: str,
         currency: str,
         base_currency: str,
         fx_rate_source: str | None,
@@ -995,12 +991,6 @@ class PlanService:
         if source is None:  # defensive; default above always resolves it
             source = "nbrb"
         payment_mode = policy.normalize_payment_mode(fx_payment_mode)
-        policy.validate_payment_mode(
-            kind=kind,
-            currency=currency,
-            base_currency=base_currency,
-            payment_mode=payment_mode,
-        )
         if currency == base_currency:
             return {
                 "fx_rate_source": "nbrb",

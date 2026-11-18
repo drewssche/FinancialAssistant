@@ -39,9 +39,7 @@ def test_manifest_lists_bootstrap_scripts_in_stable_order():
     assert script_sources.index("/static/js/app-features-operation-modal-debt.js") < script_sources.index(
         "/static/js/app-features-operation-modal.js"
     )
-    assert script_sources.index("/static/js/app-features-operation-modal-fx-settlement.js") < script_sources.index(
-        "/static/js/app-features-operation-modal-currency.js"
-    )
+    assert "/static/js/app-features-operation-modal-fx-settlement.js" not in script_sources
     assert script_sources.index("/static/js/app-features-operation-modal-currency.js") < script_sources.index(
         "/static/js/app-features-operation-modal.js"
     )

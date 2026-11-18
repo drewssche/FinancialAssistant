@@ -6,8 +6,6 @@
       core,
       updateCreatePreview,
       updateEditPreview,
-      syncCreateFxSettlementFieldUi,
-      syncEditFxSettlementFieldUi,
     } = deps;
 
     const RECEIPT_TEMPLATES_CACHE_TTL_MS = 20000;
@@ -75,7 +73,7 @@
     }
 
     function getReceiptCurrency(mode = "create") {
-      const selected = mode === "edit" ? el.editCurrency?.value : el.opCurrency?.value;
+      const selected = mode === "edit" ? state.editReceiptCurrency || el.editCurrency?.value : el.opCurrency?.value;
       return String(selected || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
     }
 
@@ -102,7 +100,7 @@
         select.value = price.currency;
         select.dispatchEvent(new CustomEvent("change", {bubbles: true, detail: {receiptPrice: true}}));
       }
-      item.unit_price = price?.currency === select.value ? asMoney(price.amount) : 0;
+      item.unit_price = price?.currency === getReceiptCurrency(mode) ? asMoney(price.amount) : 0;
     }
 
     function reconcileReceiptPrices(mode) {
@@ -891,7 +889,9 @@
       }
       const resolvedAmount = core.resolveMoneyInput(ctx.amountNode?.value || 0);
       const hasAmountOverride = Number.isFinite(Number(options?.amountValue));
-      const comparedAmount = hasAmountOverride ? Number(options.amountValue) : Number(resolvedAmount.previewValue || 0);
+      const paidAmount = hasAmountOverride ? Number(options.amountValue) : Number(resolvedAmount.previewValue || 0);
+      const mixed = resolvedMode === "edit" && state.editReceiptCurrency && state.editReceiptCurrency !== el.editCurrency.value;
+      const comparedAmount = mixed ? paidAmount * fxRate : paidAmount;
       // Compare cents: floating-point residue such as 3.55e-15 must never enter the expression parser.
       const diff = hasAmountOverride || !resolvedAmount.empty
         ? (Math.round(comparedAmount * 100) - Math.round(total * 100)) / 100 : 0;
@@ -921,11 +921,6 @@
       renderReceiptItems(mode);
       renderReceiptSummary(mode);
       if (mode === "create") {
-        syncCreateFxSettlementFieldUi?.();
-      } else {
-        syncEditFxSettlementFieldUi?.();
-      }
-      if (mode === "create") {
         updateCreatePreview();
       } else {
         updateEditPreview();
@@ -942,13 +937,11 @@
       if (!ctx.amountNode) {
         return;
       }
-      ctx.amountNode.value = core.formatAmount(total);
-      renderReceiptSummary(mode, { amountValue: total });
-      if (mode === "create") {
-        syncCreateFxSettlementFieldUi?.();
-      } else {
-        syncEditFxSettlementFieldUi?.();
-      }
+      const mixed = mode === "edit" && state.editReceiptCurrency && state.editReceiptCurrency !== el.editCurrency.value;
+      const paid = mixed ? total / getReceiptFxRate(mode) : total;
+      if (!Number.isFinite(paid)) return;
+      ctx.amountNode.value = core.formatAmount(paid);
+      renderReceiptSummary(mode);
       if (mode === "create") {
         updateCreatePreview();
       } else {
@@ -1028,11 +1021,6 @@
       renderReceiptItems(mode);
       renderReceiptSummary(mode);
       if (mode === "create") {
-        syncCreateFxSettlementFieldUi?.();
-      } else {
-        syncEditFxSettlementFieldUi?.();
-      }
-      if (mode === "create") {
         updateCreatePreview();
       } else {
         updateEditPreview();
@@ -1046,11 +1034,6 @@
       hideAllReceiptPickers();
       renderReceiptItems(mode);
       renderReceiptSummary(mode);
-      if (mode === "create") {
-        syncCreateFxSettlementFieldUi?.();
-      } else {
-        syncEditFxSettlementFieldUi?.();
-      }
     }
 
     function syncReceiptCategoriesToKind(mode = "create") {
@@ -1068,11 +1051,6 @@
       }
       renderReceiptItems(mode);
       renderReceiptSummary(mode);
-      if (mode === "create") {
-        syncCreateFxSettlementFieldUi?.();
-      } else {
-        syncEditFxSettlementFieldUi?.();
-      }
     }
 
     function resolveReceiptPayloadCategoryId(item, mode = "create", defaultCategoryId = null) {

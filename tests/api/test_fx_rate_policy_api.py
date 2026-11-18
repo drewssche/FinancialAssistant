@@ -70,7 +70,7 @@ def test_bank_operation_freezes_quote_for_regular_and_unchanged_policy_updates(
     assert payload["fx_rate"] == "3.530000"
     assert payload["fx_rate_display"] == "3.530000"
     assert payload["fx_bank_name"] == "Технобанк"
-    assert payload["fx_payment_mode"] == "direct_conversion"
+    assert payload["fx_payment_mode"] == "valuation"
     assert payload["fx_settlement"] is None
     assert state["calls"] == 1
 
@@ -297,7 +297,7 @@ def test_bank_plan_is_dynamic_but_confirmation_and_history_keep_snapshot(
     assert event["fx_bank_name"] == "Технобанк"
 
 
-def test_foreign_balance_plan_confirmation_creates_one_linked_settlement_and_rolls_back_shortage(
+def test_foreign_plan_confirmation_records_valuation_independently_of_balance(
     client: TestClient,
 ):
     funded = client.post(
@@ -329,11 +329,11 @@ def test_foreign_balance_plan_confirmation_creates_one_linked_settlement_and_rol
     confirmed = client.post(f"/api/v1/plans/{plan.json()['id']}/confirm")
     assert confirmed.status_code == 200, confirmed.text
     operation = confirmed.json()["operation"]
-    assert operation["fx_settlement"]["quantity"] == "229.000"
-    assert operation["fx_settlement"]["trade_id"]
+    assert operation["original_amount"] == "229.00"
+    assert operation["fx_settlement"] is None
     overview = client.get("/api/v1/currency/overview", params={"currency": "EUR"})
     assert overview.status_code == 200, overview.text
-    assert overview.json()["positions"][0]["quantity"] == "71.000000"
+    assert overview.json()["positions"][0]["quantity"] == "300.000000"
 
     insufficient = client.post(
         "/api/v1/plans",
@@ -348,17 +348,17 @@ def test_foreign_balance_plan_confirmation_creates_one_linked_settlement_and_rol
         },
     )
     assert insufficient.status_code == 201, insufficient.text
-    rejected = client.post(f"/api/v1/plans/{insufficient.json()['id']}/confirm")
-    assert rejected.status_code == 400, rejected.text
-    assert "Not enough currency balance" in rejected.json()["detail"]
+    confirmed = client.post(f"/api/v1/plans/{insufficient.json()['id']}/confirm")
+    assert confirmed.status_code == 200, confirmed.text
+    assert confirmed.json()["operation"]["fx_settlement"] is None
     fetched_plan = client.get(f"/api/v1/plans/{insufficient.json()['id']}")
     assert fetched_plan.status_code == 200
-    assert fetched_plan.json()["confirm_count"] == 0
+    assert fetched_plan.json()["confirm_count"] == 1
     operations = client.get("/api/v1/operations", params={"page": 1, "page_size": 20})
-    assert operations.json()["total"] == 1
+    assert operations.json()["total"] == 2
 
 
-def test_operation_payment_mode_transitions_create_remove_and_revalidate_settlement(client: TestClient):
+def test_legacy_payment_mode_requests_keep_one_valuation_and_manual_balance(client: TestClient):
     funded = client.post(
         "/api/v1/currency/trades",
         json={
@@ -400,22 +400,16 @@ def test_operation_payment_mode_transitions_create_remove_and_revalidate_settlem
         json={"fx_payment_mode": "foreign_balance"},
     )
     assert balance.status_code == 200, balance.text
-    assert balance.json()["fx_settlement"]["quantity"] == "10.000"
-    assert client.get("/api/v1/currency/overview", params={"currency": "EUR"}).json()["positions"][0]["quantity"] == "40.000000"
-    assert balance.json()["fx_settlement"]["trade_id"]
-
-    rejected = client.patch(
-        f"/api/v1/operations/{operation_id}",
-        json={"amount": "60.00"},
-    )
-    assert rejected.status_code == 400
-    assert "Not enough currency balance" in rejected.json()["detail"]
-    unchanged = client.get(f"/api/v1/operations/{operation_id}")
-    assert unchanged.json()["original_amount"] == "10.00"
-    assert unchanged.json()["fx_settlement"]["quantity"] == "10.000"
+    assert balance.json()["fx_settlement"] is None
+    assert balance.json()["fx_payment_mode"] == "valuation"
+    larger = client.patch(f"/api/v1/operations/{operation_id}", json={"amount": "60.00"})
+    assert larger.status_code == 200, larger.text
+    assert larger.json()["original_amount"] == "60.00"
+    assert larger.json()["amount"] == "210.00"
+    assert client.get("/api/v1/currency/overview", params={"currency": "EUR"}).json()["positions"][0]["quantity"] == "50.000000"
 
 
-def test_delete_restore_preserves_bank_provenance_and_revalidates_linked_trade(
+def test_delete_restore_preserves_bank_provenance_without_a_trade(
     client: TestClient,
     monkeypatch,
 ):
@@ -450,7 +444,7 @@ def test_delete_restore_preserves_bank_provenance_and_revalidates_linked_trade(
     assert created.status_code == 201, created.text
     payload = created.json()
     operation_id = payload["id"]
-    trade_id = payload["fx_settlement"]["trade_id"]
+    assert payload["fx_settlement"] is None
     assert client.delete(f"/api/v1/operations/{operation_id}").status_code == 204
     restored = client.post(f"/api/v1/operations/{operation_id}/restore")
     assert restored.status_code == 200, restored.text
@@ -460,10 +454,10 @@ def test_delete_restore_preserves_bank_provenance_and_revalidates_linked_trade(
     assert restored_payload["fx_bank_name"] == "Технобанк"
     assert restored_payload["fx_bank_channel"] == "cash"
     assert restored_payload["fx_rate_kind"] == "sell"
-    assert restored_payload["fx_settlement"]["trade_id"] == trade_id
+    assert restored_payload["fx_settlement"] is None
 
 
-def test_legacy_v1_restore_infers_rub_scale_and_foreign_balance_mode(client: TestClient):
+def test_legacy_v1_restore_infers_rub_scale_and_preserves_wallet(client: TestClient):
     funded = client.post(
         "/api/v1/currency/trades",
         json={
@@ -491,7 +485,6 @@ def test_legacy_v1_restore_infers_rub_scale_and_foreign_balance_mode(client: Tes
     )
     assert created.status_code == 201, created.text
     operation_id = created.json()["id"]
-    trade_id = created.json()["fx_settlement"]["trade_id"]
     assert client.delete(f"/api/v1/operations/{operation_id}").status_code == 204
 
     override = app.dependency_overrides[get_db]
@@ -512,6 +505,8 @@ def test_legacy_v1_restore_infers_rub_scale_and_foreign_balance_mode(client: Tes
         metadata = dict(event.metadata_json or {})
         restore_snapshot = dict(metadata["_restore_snapshot"])
         restore_snapshot["version"] = 1
+        restore_snapshot["fx_settlement"] = {"asset_currency": "RUB", "quote_currency": "BYN",
+            "quantity": "100.00", "unit_price": "0.035600", "side": "sell", "trade_date": "2026-08-19"}
         operation_snapshot = dict(restore_snapshot["operation"])
         for key in (
             "fx_rate_source",
@@ -540,8 +535,8 @@ def test_legacy_v1_restore_infers_rub_scale_and_foreign_balance_mode(client: Tes
     assert payload["fx_rate"] == "0.035600"
     assert payload["fx_rate_scale"] == 100
     assert payload["fx_rate_display"] == "3.560000"
-    assert payload["fx_payment_mode"] == "foreign_balance"
-    assert payload["fx_settlement"]["trade_id"] == trade_id
+    assert payload["fx_payment_mode"] == "valuation"
+    assert payload["fx_settlement"] is None
 
 
 def test_plan_confirm_rolls_back_operation_event_and_counter_on_late_failure(
@@ -728,4 +723,4 @@ def test_skipped_foreign_plan_history_keeps_original_and_resolved_base_amount(cl
     assert event["base_currency"] == "BYN"
     assert event["amount"] == "801.50"
     assert event["fx_rate"] == "3.500000"
-    assert event["fx_payment_mode"] == "direct_conversion"
+    assert event["fx_payment_mode"] == "valuation"

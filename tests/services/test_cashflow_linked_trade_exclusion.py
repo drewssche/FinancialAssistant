@@ -47,7 +47,7 @@ def test_currency_service_treats_linked_trade_as_non_cashflow() -> None:
         db.close()
 
 
-def test_money_flow_excludes_linked_trade_even_if_trade_kind_is_manual() -> None:
+def test_money_flow_excludes_legacy_unlinked_card_payment() -> None:
     db = _build_session()
     try:
         operation = Operation(
@@ -73,8 +73,8 @@ def test_money_flow_excludes_linked_trade_even_if_trade_kind_is_manual() -> None
                 quantity=Decimal("5.000000"),
                 unit_price=Decimal("4.000000"),
                 fee=Decimal("0.00"),
-                trade_kind="manual",
-                linked_operation_id=operation.id,
+                trade_kind="card_payment",
+                linked_operation_id=None,
                 trade_date=date(2026, 4, 1),
                 note="legacy linked settlement",
             )
@@ -103,7 +103,7 @@ def test_money_flow_excludes_linked_trade_even_if_trade_kind_is_manual() -> None
         db.close()
 
 
-def test_dashboard_cashflow_overlay_excludes_linked_trade_even_if_trade_kind_is_manual() -> None:
+def test_dashboard_cashflow_overlay_excludes_legacy_unlinked_card_payment() -> None:
     db = _build_session()
     try:
         db.add(
@@ -115,8 +115,8 @@ def test_dashboard_cashflow_overlay_excludes_linked_trade_even_if_trade_kind_is_
                 quantity=Decimal("5.000000"),
                 unit_price=Decimal("4.000000"),
                 fee=Decimal("0.00"),
-                trade_kind="manual",
-                linked_operation_id=123,
+                trade_kind="card_payment",
+                linked_operation_id=None,
                 trade_date=date(2026, 4, 1),
                 note="legacy linked settlement",
             )

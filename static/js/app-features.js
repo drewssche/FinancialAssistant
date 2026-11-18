@@ -39,8 +39,6 @@
   const handleReceiptItemsListClick = operationModal.handleReceiptItemsListClick;
   const handlePullReceiptTotal = operationModal.handlePullReceiptTotal;
   const renderReceiptSummary = operationModal.renderReceiptSummary;
-  const syncCreateFxSettlementFieldUi = operationModal.syncCreateFxSettlementFieldUi;
-  const syncEditFxSettlementFieldUi = operationModal.syncEditFxSettlementFieldUi;
   const onCategoryCreated = operationModal.onCategoryCreated;
   const handleCreatePreviewClick = operationModal.handleCreatePreviewClick;
   const setOperationKind = operationModal.setOperationKind;
@@ -69,12 +67,6 @@
   const markCurrencyQuantitySource = operationModal.markCurrencyQuantitySource;
   const markCurrencyQuoteSource = operationModal.markCurrencyQuoteSource;
   const resetCurrencyRateAutofill = operationModal.resetCurrencyRateAutofill;
-  const toggleCreateFxSettlement = operationModal.toggleCreateFxSettlement;
-  const markFxSettlementQuantitySource = operationModal.markFxSettlementQuantitySource;
-  const markFxSettlementRateSource = operationModal.markFxSettlementRateSource;
-  const toggleEditFxSettlement = operationModal.toggleEditFxSettlement;
-  const markEditFxSettlementQuantitySource = operationModal.markEditFxSettlementQuantitySource;
-  const markEditFxSettlementRateSource = operationModal.markEditFxSettlementRateSource;
   const applyDebtCurrencyUi = operationModal.applyDebtCurrencyUi;
 
   const savePreferences = sessionFeatures.savePreferences;
@@ -266,8 +258,6 @@
     handleDebtCounterpartyPickerClick,
     handleEditCategoryPickerClick,
     renderReceiptSummary,
-    syncCreateFxSettlementFieldUi,
-    syncEditFxSettlementFieldUi,
     onCategoryCreated,
     handleCreatePreviewClick,
     setOperationKind,
@@ -298,12 +288,6 @@
     markCurrencyQuantitySource,
     markCurrencyQuoteSource,
     resetCurrencyRateAutofill,
-    toggleCreateFxSettlement,
-    markFxSettlementQuantitySource,
-    markFxSettlementRateSource,
-    toggleEditFxSettlement,
-    markEditFxSettlementQuantitySource,
-    markEditFxSettlementRateSource,
     applyDebtCurrencyUi,
     savePreferences,
     savePreferencesDebounced,

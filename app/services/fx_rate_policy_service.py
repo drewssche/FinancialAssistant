@@ -78,7 +78,8 @@ class FxRatePolicyService:
             raise ValueError(
                 "fx_payment_mode must be one of: valuation, direct_conversion, foreign_balance"
             )
-        return normalized
+        # Older clients and saved plans may still use the former payment modes.
+        return "valuation"
 
     @staticmethod
     def normalize_bank_code(value: str | None) -> str | None:
@@ -96,14 +97,6 @@ class FxRatePolicyService:
         if normalized is not None and normalized != expected:
             raise ValueError(f"Bank {bank_code} does not provide the {normalized} rate channel")
         return normalized or expected
-
-    @classmethod
-    def validate_payment_mode(cls, *, kind: str, currency: str, base_currency: str, payment_mode: str) -> None:
-        if payment_mode in {"direct_conversion", "foreign_balance"}:
-            if kind != "expense":
-                raise ValueError(f"fx_payment_mode {payment_mode} is supported only for expense operations")
-            if currency == base_currency:
-                raise ValueError(f"fx_payment_mode {payment_mode} requires a foreign currency")
 
     def resolve(
         self,

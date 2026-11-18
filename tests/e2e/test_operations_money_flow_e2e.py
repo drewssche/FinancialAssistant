@@ -806,19 +806,13 @@ def test_saved_bank_operation_keeps_snapshot_until_explicit_refresh(
         "fx_bank_code": "technobank",
         "fx_bank_channel": "cash",
         "fx_rate_kind": "sell",
-        "fx_payment_mode": "foreign_balance",
+        "fx_payment_mode": "valuation",
         "fx_manual_rate": None,
         "fx_refresh_rate": False,
     }
     assert page.locator("#editFxRate").input_value() == "3.1800"
 
-    page.click('#editFxPaymentModeSwitch button[data-fx-payment-mode="direct_conversion"]')
-    mode_only_payload = page.evaluate(
-        "() => window.App.getRuntimeModule('operation-modal').getOperationFxPolicyPayload('edit', { isPlan: false })"
-    )
-    assert mode_only_payload["fx_payment_mode"] == "direct_conversion"
-    assert mode_only_payload["fx_refresh_rate"] is False
-    assert page.evaluate("() => window.App.getRuntimeModule('operation-modal').getEditFxSettlementPayload()") is None
+    assert page.locator("#editFxPaymentModeSwitch").count() == 0
 
     page.evaluate(
         """
@@ -869,12 +863,8 @@ def test_saved_bank_operation_keeps_snapshot_until_explicit_refresh(
     assert refresh_metrics["last_refreshed_bank"] == "technobank"
 
     page.evaluate("() => window.App.getRuntimeModule('operation-modal').setOperationKind('edit', 'income')")
-    assert page.locator("#editFxPaymentMode").input_value() == "valuation"
     assert page.locator("#editFxRateKind").input_value() == "buy"
     assert "Покупка банком" in page.locator("#editFxRateMeta").inner_text()
-    assert page.locator('#editFxPaymentModeSwitch button[data-fx-payment-mode="direct_conversion"]').is_disabled()
-    assert page.locator('#editFxPaymentModeSwitch button[data-fx-payment-mode="foreign_balance"]').is_disabled()
-    assert "только BYN-оценка" in page.locator("#editFxPaymentModeHint").inner_text()
 
     desktop_geometry = page.evaluate(
         """
@@ -1007,7 +997,6 @@ def test_new_foreign_operation_defaults_to_nbrb_and_ignores_stale_currency_respo
         "() => document.querySelector('#opCurrency')?.value === 'USD' && document.querySelector('#opFxRate')?.value === '3.1100'"
     )
     assert page.locator("#opFxRateSource").input_value() == "nbrb"
-    assert page.locator("#opFxPaymentMode").input_value() == "valuation"
 
     page.evaluate("() => window.__resolveDelayedEur()")
     page.wait_for_timeout(100)
@@ -1107,23 +1096,37 @@ def test_search_shows_receipt_shop_once_and_one_reset(static_server_url, page_wi
 
 
 @pytest.mark.e2e
-def test_edit_existing_settlement_shows_original_amount(static_server_url, page_with_money_flow_api_mock):
+@pytest.mark.parametrize("page_with_money_flow_api_mock", ["desktop", "phone"], indirect=True)
+def test_historical_card_expense_keeps_receipt_currency_in_editor(static_server_url, page_with_money_flow_api_mock):
     page = page_with_money_flow_api_mock
     _open_app(page, static_server_url)
     page.evaluate("""() => window.App.getRuntimeModule('operation-modal').openEditModal({
-        id: 43, kind: 'expense', amount: '30.00', original_amount: '30.00', currency: 'BYN',
-        operation_date: '2026-03-05', receipt_items: [],
-        fx_settlement: {asset_currency: 'USD', quantity: '10.00', unit_price: '3.000000', quote_total: '30.00'}
+        id: 43, kind: 'expense', amount: '30.00', original_amount: '10.00', currency: 'USD',
+        base_currency: 'BYN', receipt_currency: 'BYN', fx_payment_mode: 'valuation',
+        fx_rate: '3.000000', fx_rate_source: 'manual', fx_rate_date: '2026-03-05', operation_date: '2026-03-05',
+        receipt_items: [{name: 'Товар', shop_name: 'Магазин', quantity: '1', unit_price: '30.00', line_total: '30.00'}]
     })""")
-    summary = page.locator('#editModal .operation-payment-details summary')
-    assert summary.is_visible()
-    assert '10,00 USD' in summary.inner_text()
-    assert not page.locator('#editModal .modal-head-actions button[aria-label*="остатка"]').count()
-    summary.click()
-    page.get_by_role('button', name='Списать с валютного остатка').click()
-    assert page.locator('#editFxSettlementAsset').input_value() == 'USD'
-    assert page.locator('#editFxSettlementQuantity').input_value() == '10.00'
-    assert float(page.locator('#editFxSettlementUnitPrice').input_value().replace(',', '.')) == 3
+    expect = sync_api.expect
+    expect(page.locator("#editAmount")).to_have_value("10.00")
+    expect(page.locator("#editCurrency")).to_have_value("USD")
+    expect(page.locator("#editAmountCompound #editCurrency")).to_be_visible()
+    expect(page.locator("#editReceiptItemsList [data-receipt-currency-slot]").first).to_have_text("BYN")
+    expect(page.locator("#editFxComputedAmount")).to_contain_text("30,00")
+    expect(page.locator("#editModal .operation-payment-details")).to_have_count(0)
+    writes = []
+    def capture(route):
+        writes.append(route.request.post_data_json)
+        route.fulfill(status=200, content_type="application/json", body='{"id":43}')
+    page.route("**/api/v1/operations/43", capture)
+    with page.expect_response(lambda response: response.url.endswith("/api/v1/operations/43")
+                              and response.request.method == "PATCH") as saved:
+        page.locator("#submitEditOperationBtn").click()
+    assert saved.value.ok
+    assert len(writes) == 1
+    payload = writes[0]
+    assert payload["currency"] == "USD" and float(payload["amount"]) == 10
+    assert float(payload["receipt_items"][0]["unit_price"]) == 30
+    assert payload["fx_payment_mode"] == "valuation" and not payload.get("fx_settlement")
 
 
 @pytest.fixture

@@ -201,6 +201,7 @@ class OperationOut(BaseModel):
     category_accent_color: str | None = None
     note: str | None
     receipt_items: list[OperationReceiptItemOut] = []
+    receipt_currency: str | None = None
     receipt_total: Decimal | None = None
     receipt_discrepancy: Decimal | None = None
     fx_settlement: OperationFxSettlementOut | None = None
@@ -250,6 +251,7 @@ class MoneyFlowItemOut(BaseModel):
     has_fx_settlement: bool = False
     settlement_asset_currency: str | None = None
     receipt_items: list[OperationReceiptItemOut] = []
+    receipt_currency: str | None = None
     receipt_total: Decimal | None = None
     receipt_discrepancy: Decimal | None = None
     source_plan_id: int | None = None

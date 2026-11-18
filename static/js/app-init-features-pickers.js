@@ -27,10 +27,6 @@
           node.addEventListener("input", actions.renderReceiptSummary);
           node.addEventListener("change", actions.renderReceiptSummary);
         }
-        if (id === "opAmount" && actions.syncCreateFxSettlementFieldUi) {
-          node.addEventListener("input", actions.syncCreateFxSettlementFieldUi);
-          node.addEventListener("change", actions.syncCreateFxSettlementFieldUi);
-        }
         if (id === "opCurrency" && actions.syncOperationCurrencyFields) {
           node.addEventListener("change", async (event) => {
             if (!event.detail?.receiptPrice) node.dataset.receiptCurrencyChosen = "1";
@@ -38,7 +34,6 @@
             if (!event.detail?.receiptPrice) actions.renderReceiptItems?.("create");
             actions.resetCreateOperationFxRateAutofill?.();
             await actions.syncOperationCurrencyFields("create");
-            actions.syncCreateFxSettlementFieldUi?.();
             if (event.detail?.receiptPrice) actions.renderReceiptItems?.("create");
             actions.renderReceiptSummary?.("create");
             actions.updateCreatePreview?.();
@@ -48,7 +43,6 @@
           node.addEventListener("change", async () => {
             actions.resetCreateOperationFxRateAutofill?.();
             await actions.syncSuggestedOperationFxRate("create").catch(() => {});
-            actions.syncCreateFxSettlementFieldUi?.();
             actions.renderReceiptItems?.("create");
             actions.renderReceiptSummary?.("create");
             actions.updateCreatePreview?.();
@@ -57,7 +51,6 @@
         if (id === "opFxRate" && actions.markCreateOperationFxRateManual) {
           node.addEventListener("input", () => {
             actions.markCreateOperationFxRateManual();
-            actions.syncCreateFxSettlementFieldUi?.();
           });
         }
       }
@@ -103,25 +96,6 @@
         }
       }
     }
-    for (const id of ["opUseFxSettlement", "opFxSettlementAsset", "opFxSettlementQuantity", "opFxSettlementUnitPrice", "opFxSettlementNote"]) {
-      const node = document.getElementById(id);
-      if (!node) {
-        continue;
-      }
-      node.addEventListener("input", actions.syncCreateFxSettlementFieldUi);
-      node.addEventListener("change", actions.syncCreateFxSettlementFieldUi);
-      if (id === "opUseFxSettlement" && actions.toggleCreateFxSettlement) {
-        node.addEventListener("change", actions.toggleCreateFxSettlement);
-      }
-      if (id === "opFxSettlementQuantity" && actions.markFxSettlementQuantitySource) {
-        node.addEventListener("input", actions.markFxSettlementQuantitySource);
-        node.addEventListener("change", actions.markFxSettlementQuantitySource);
-      }
-      if (id === "opFxSettlementUnitPrice" && actions.markFxSettlementRateSource) {
-        node.addEventListener("input", actions.markFxSettlementRateSource);
-        node.addEventListener("change", actions.markFxSettlementRateSource);
-      }
-    }
     pickerCoordinator.bindDateField("debtStartDate", actions.updateCreatePreview);
     pickerCoordinator.bindDateField("debtDueDate", actions.updateCreatePreview);
     pickerCoordinator.bindDateField("currencyTradeDateModal", actions.updateCreatePreview);
@@ -155,17 +129,12 @@
           node.addEventListener("input", () => actions.renderReceiptSummary("edit"));
           node.addEventListener("change", () => actions.renderReceiptSummary("edit"));
         }
-        if (id === "editAmount" && actions.syncEditFxSettlementFieldUi) {
-          node.addEventListener("input", actions.syncEditFxSettlementFieldUi);
-          node.addEventListener("change", actions.syncEditFxSettlementFieldUi);
-        }
         if (id === "editCurrency" && actions.syncOperationCurrencyFields) {
           node.addEventListener("change", async () => {
             window.App.getRuntimeModule("operation-modal")?.reconcileReceiptPrices?.("edit");
             actions.renderReceiptItems?.("edit");
             actions.resetEditOperationFxRateAutofill?.();
             await actions.syncOperationCurrencyFields("edit");
-            actions.syncEditFxSettlementFieldUi?.();
             actions.renderReceiptSummary?.("edit");
             actions.updateEditPreview?.();
           });
@@ -174,7 +143,6 @@
           node.addEventListener("change", async () => {
             actions.resetEditOperationFxRateAutofill?.();
             await actions.syncSuggestedOperationFxRate("edit").catch(() => {});
-            actions.syncEditFxSettlementFieldUi?.();
             actions.renderReceiptItems?.("edit");
             actions.renderReceiptSummary?.("edit");
             actions.updateEditPreview?.();
@@ -183,28 +151,8 @@
         if (id === "editFxRate" && actions.markEditOperationFxRateManual) {
           node.addEventListener("input", () => {
             actions.markEditOperationFxRateManual();
-            actions.syncEditFxSettlementFieldUi?.();
           });
         }
-      }
-    }
-    for (const id of ["editUseFxSettlement", "editFxSettlementAsset", "editFxSettlementQuantity", "editFxSettlementUnitPrice", "editFxSettlementNote"]) {
-      const node = document.getElementById(id);
-      if (!node) {
-        continue;
-      }
-      node.addEventListener("input", actions.syncEditFxSettlementFieldUi);
-      node.addEventListener("change", actions.syncEditFxSettlementFieldUi);
-      if (id === "editUseFxSettlement" && actions.toggleEditFxSettlement) {
-        node.addEventListener("change", actions.toggleEditFxSettlement);
-      }
-      if (id === "editFxSettlementQuantity" && actions.markEditFxSettlementQuantitySource) {
-        node.addEventListener("input", actions.markEditFxSettlementQuantitySource);
-        node.addEventListener("change", actions.markEditFxSettlementQuantitySource);
-      }
-      if (id === "editFxSettlementUnitPrice" && actions.markEditFxSettlementRateSource) {
-        node.addEventListener("input", actions.markEditFxSettlementRateSource);
-        node.addEventListener("change", actions.markEditFxSettlementRateSource);
       }
     }
     pickerCoordinator.bindDateField("editDate", actions.updateEditPreview);

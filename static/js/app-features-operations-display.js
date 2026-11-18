@@ -69,7 +69,7 @@
         const qty = Number(row.quantity || 0);
         const price = Number(row.unit_price || 0);
         const total = Number(row.line_total || qty * price || 0);
-        const receiptCurrency = String(item.currency || item.base_currency || core.getCurrencyConfig?.().code || "BYN").toUpperCase();
+        const receiptCurrency = String(item.receipt_currency || item.currency || item.base_currency || core.getCurrencyConfig?.().code || "BYN").toUpperCase();
         const media = window.App.getRuntimeModule?.("catalog-media") || {};
         const shopChip = row.shop_name && !commonShop
           ? `<div class="operation-receipt-shop catalog-source-identity">${media.renderThumb?.(row.source_image_id, { kind: "source", size: "chip", alt: row.shop_name, fallback: String(row.shop_name).slice(0, 1) }) || ""}${core.renderCategoryChip({ name: row.shop_name, icon: null, accent_color: null }, query)}</div>`

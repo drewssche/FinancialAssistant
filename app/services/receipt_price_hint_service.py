@@ -34,7 +34,7 @@ class ReceiptPriceHintService:
             Operation, Operation.id == OperationReceiptItem.operation_id
         ).where(OperationReceiptItem.template_id == request.template_id,
                 OperationReceiptItem.user_id == user_id, Operation.user_id == user_id,
-                Operation.kind == 'expense', Operation.currency == request.currency,
+                Operation.kind == 'expense', Operation.item_currency == request.currency,
                 Operation.operation_date <= request.as_of,
                 OperationReceiptItem.quantity > 0, OperationReceiptItem.line_total >= 0,
                 OperationReceiptItem.sale_unit == request.sale_unit,

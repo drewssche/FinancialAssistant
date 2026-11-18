@@ -5,17 +5,6 @@
     { code: "bsb", name: "БСБ Банк", channel: "cash", channelLabel: "наличные" },
     { code: "sber", name: "Сбер Банк", channel: "cash", channelLabel: "наличные" },
   ];
-  const PAYMENT_MODE_HINTS = {
-    valuation: "Только BYN-эквивалент. Валютный остаток не изменится.",
-    direct_conversion: "Одна расходная операция: BYN конвертируются в валюту и сразу идут на оплату — без двойного расхода.",
-    foreign_balance: "Оплата из уже пополненного валютного остатка. Сервис проверит и спишет доступную валюту.",
-  };
-  const PAYMENT_MODE_LABELS = {
-    valuation: "только пересчёт",
-    direct_conversion: "пополнить и оплатить",
-    foreign_balance: "с валютного остатка",
-  };
-
   function formatFxPolicyProvenance(item = {}) {
     const currency = String(item.currency || "BYN").toUpperCase();
     const baseCurrency = String(item.base_currency || "BYN").toUpperCase();
@@ -55,8 +44,7 @@
     } else if (source === "manual" || !source) {
       sourceText = source ? "Ручной курс" : "Сохранённый курс";
     }
-    const mode = PAYMENT_MODE_LABELS[item.fx_payment_mode] || "";
-    return [sourceText, mode, rateText].filter(Boolean).join(" · ");
+    return [sourceText, rateText].filter(Boolean).join(" · ");
   }
 
   function createOperationModalFxPolicyFeature(deps) {
@@ -68,8 +56,6 @@
       renderReceiptSummary,
       updateCreatePreview,
       updateEditPreview,
-      syncCreateFxSettlementFieldUi,
-      syncEditFxSettlementFieldUi,
     } = deps;
     const uiState = {
       create: freshState(),
@@ -105,9 +91,6 @@
         bankCode: edit ? el.editFxBankCode : el.opFxBankCode,
         rateKindSwitch: edit ? el.editFxRateKindSwitch : el.opFxRateKindSwitch,
         rateKind: edit ? el.editFxRateKind : el.opFxRateKind,
-        paymentSwitch: edit ? el.editFxPaymentModeSwitch : el.opFxPaymentModeSwitch,
-        paymentMode: edit ? el.editFxPaymentMode : el.opFxPaymentMode,
-        paymentHint: edit ? el.editFxPaymentModeHint : el.opFxPaymentModeHint,
         rateLabel: edit ? el.editFxRateLabel : el.opFxRateLabel,
         rateMeta: edit ? el.editFxRateMeta : el.opFxRateMeta,
         computed: edit ? el.editFxComputedAmount : el.opFxComputedAmount,
@@ -127,12 +110,6 @@
         return value;
       }
       return kind === "income" ? "buy" : "sell";
-    }
-
-    function normalizePaymentMode(value) {
-      return ["valuation", "direct_conversion", "foreign_balance"].includes(String(value || ""))
-        ? String(value)
-        : "valuation";
     }
 
     function displayScale(currency, options = null, snapshot = null) {
@@ -191,7 +168,6 @@
         source: normalizeSource(n.source?.value),
         bankCode: String(n.bankCode?.value || "technobank").trim().toLowerCase(),
         rateKind: normalizeRateKind(n.rateKind?.value, n.kind?.value || "expense"),
-        paymentMode: normalizePaymentMode(n.paymentMode?.value),
       };
     }
 
@@ -321,12 +297,13 @@
         n.computed.textContent = "";
         return;
       }
+      document.getElementById(mode === "edit" ? "editFxEquivalentTitle" : "opFxEquivalentTitle").textContent = `Эквивалент в ${context.baseCurrency}`;
       const amount = core.resolveMoneyInput(n.amount?.value || 0);
       const original = Number(amount.previewValue || 0);
       const baseAmount = original * Number(context.fxRate || 0);
       n.computed.textContent = original > 0 && context.fxRate > 0
         ? `${core.formatMoney(original, { currency: context.currency })} ≈ ${core.formatMoney(baseAmount, { currency: context.baseCurrency })}`
-        : "Укажите сумму, чтобы увидеть BYN-эквивалент";
+        : `Укажите сумму, чтобы увидеть эквивалент в ${context.baseCurrency}`;
     }
 
     function renderUi(mode) {
@@ -346,14 +323,9 @@
           loadRateOptions(mode, { apply: true }).catch(() => {});
         }
       }
-      if (incomeMode && n.paymentMode?.value !== "valuation") {
-        n.paymentMode.value = "valuation";
-        context.paymentMode = "valuation";
-      }
       const source = context.source;
       syncControl(n.sourceSwitch, "fx-rate-source", source);
       syncControl(n.rateKindSwitch, "fx-rate-kind", context.rateKind);
-      syncControl(n.paymentSwitch, "fx-payment-mode", context.paymentMode);
       n.bankFields?.classList.toggle("hidden", source !== "bank");
       if (n.rate) {
         n.rate.readOnly = source !== "manual";
@@ -367,14 +339,6 @@
       if (n.rateLabel) {
         n.rateLabel.textContent = `Курс ${context.baseCurrency} за ${context.scale} ${context.currency}`;
       }
-      if (n.paymentHint) {
-        n.paymentHint.textContent = incomeMode
-          ? "Для дохода доступна только BYN-оценка без списания или пополнения валютного остатка."
-          : (PAYMENT_MODE_HINTS[context.paymentMode] || PAYMENT_MODE_HINTS.valuation);
-      }
-      n.paymentSwitch?.querySelectorAll("button[data-fx-payment-mode]").forEach((button) => {
-        button.disabled = incomeMode && button.dataset.fxPaymentMode !== "valuation";
-      });
       if (n.rateMeta) {
         const side = source === "bank" ? (context.rateKind === "buy" ? "Покупка банком" : "Продажа банком") : "";
         n.rateMeta.innerHTML = [side, provenanceMeta(mode)].filter(Boolean).map((value) => `<span>${escapeHtml(value)}</span>`).join("");
@@ -387,10 +351,8 @@
       renderUi(mode);
       renderReceiptSummary(mode);
       if (mode === "edit") {
-        syncEditFxSettlementFieldUi?.();
         updateEditPreview();
       } else {
-        syncCreateFxSettlementFieldUi?.();
         updateCreatePreview();
       }
     }
@@ -402,7 +364,6 @@
       if (n.source) n.source.value = "nbrb";
       if (n.bankCode) n.bankCode.value = "technobank";
       if (n.rateKind) n.rateKind.value = n.kind?.value === "income" ? "buy" : "sell";
-      if (n.paymentMode) n.paymentMode.value = "valuation";
       if (n.rate) n.rate.value = "1";
       setHint(mode, "");
       renderUi(mode);
@@ -418,11 +379,9 @@
       const kind = n.kind?.value || item?.kind || "expense";
       const bankCode = String(item?.fx_bank_code || "technobank").toLowerCase();
       const rateKind = normalizeRateKind(item?.fx_rate_kind, kind);
-      const paymentMode = normalizePaymentMode(item?.fx_payment_mode || (item?.fx_settlement ? "foreign_balance" : "valuation"));
       if (n.source) n.source.value = source;
       if (n.bankCode) n.bankCode.value = bankCode;
       if (n.rateKind) n.rateKind.value = rateKind;
-      if (n.paymentMode) n.paymentMode.value = paymentMode;
       const snapshotRate = Number(item?.fx_rate || item?.current_rate || 0);
       const scale = displayScale(contextBefore.currency, null, item);
       const displayRate = Number(item?.fx_rate_display || item?.current_rate_display || (snapshotRate > 0 ? snapshotRate * scale : 0));
@@ -598,7 +557,6 @@
         if (n.source) n.source.value = "nbrb";
         if (n.bankCode) n.bankCode.value = "technobank";
         if (n.rateKind) n.rateKind.value = n.kind?.value === "income" ? "buy" : "sell";
-        if (n.paymentMode) n.paymentMode.value = "valuation";
         uiState[mode] = freshState();
         setHint(mode, "");
         notifyUpdated(mode);
@@ -653,18 +611,6 @@
       uiState[mode].preserveSnapshot = false;
       uiState[mode].policyDirty = true;
       await loadRateOptions(mode, { apply: true });
-    }
-
-    function setPaymentMode(mode, value) {
-      const n = nodes(mode);
-      const nextValue = normalizePaymentMode(value);
-      if (n.kind?.value === "income" && nextValue !== "valuation") {
-        return;
-      }
-      if (n.paymentMode) n.paymentMode.value = nextValue;
-      const toggle = mode === "edit" ? el.editUseFxSettlement : el.opUseFxSettlement;
-      if (toggle) toggle.checked = false;
-      notifyUpdated(mode);
     }
 
     async function refresh(mode) {
@@ -764,9 +710,6 @@
     function payload(mode = "create", options = {}) {
       const context = getContext(mode);
       if (!context.hasForeignCurrency) {
-        // Currency itself is authoritative: both Operation and Plan services
-        // clear foreign-rate policy when it becomes the base currency.  Omitting
-        // the policy here also keeps legacy BYN + fx_settlement edits compatible.
         return {};
       }
       const quote = selectedBankQuote(mode);
@@ -782,13 +725,13 @@
           ? (quote?.channel || descriptor.channel || savedChannel || null)
           : null,
         fx_rate_kind: context.source === "bank" ? context.rateKind : null,
-        fx_payment_mode: context.paymentMode,
+        fx_payment_mode: "valuation",
         fx_manual_rate: context.source === "manual"
           ? core.resolveRateInput(context.displayRate, 1, 6).formatted
           : null,
       };
       if (context.source === "manual" && (!context.displayRateState.valid || !(context.displayRate > 0))) {
-        throw new Error("Проверь ручной курс конверсии");
+        throw new Error("Проверь ручной курс");
       }
       if (mode === "edit" && options.isPlan !== true) {
         result.fx_refresh_rate = uiState[mode].refreshRequested || uiState[mode].policyDirty;
@@ -818,7 +761,7 @@
           ? (quote.channel || descriptor.channel || (savedBankMatches ? snapshot.fx_bank_channel : null) || null)
           : null,
         fx_rate_kind: context.source === "bank" ? context.rateKind : null,
-        fx_payment_mode: context.paymentMode,
+        fx_payment_mode: "valuation",
         fx_quoted_at: snapshot.fx_quoted_at || quote.quoted_at || quote.fetched_at || null,
         fx_fetched_at: snapshot.fx_fetched_at || quote.fetched_at || null,
         fx_rate_stale: snapshot.fx_rate_stale === true || quote.stale === true,
@@ -839,10 +782,6 @@
       n.rateKindSwitch?.addEventListener("click", (event) => {
         const button = event.target.closest("button[data-fx-rate-kind]");
         if (button) setRateKind(mode, button.dataset.fxRateKind).catch(() => {});
-      });
-      n.paymentSwitch?.addEventListener("click", (event) => {
-        const button = event.target.closest("button[data-fx-payment-mode]");
-        if (button) setPaymentMode(mode, button.dataset.fxPaymentMode);
       });
       n.refresh?.addEventListener("click", () => refresh(mode).catch(() => {}));
       n.rate?.addEventListener("input", () => markManual(mode));

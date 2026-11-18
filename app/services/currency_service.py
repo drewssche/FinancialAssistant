@@ -2,7 +2,6 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import re
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.cache import (
@@ -11,7 +10,7 @@ from app.core.cache import (
     invalidate_plans_cache,
 )
 from app.core.logging import log_background_job_event
-from app.db.models import FxTrade, Operation
+from app.db.models import FxTrade
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
 from app.services.activity_service import ActivityService
@@ -112,80 +111,6 @@ class CurrencyService:
         if getattr(trade, "linked_operation_id", None) is not None:
             return False
         return str(getattr(trade, "trade_kind", "manual") or "manual").strip().lower() != "card_payment"
-
-    def backfill_linked_card_payment_trades(
-        self,
-        *,
-        commit: bool = False,
-        max_created_at_delta_seconds: int = 600,
-    ) -> int:
-        trades = list(
-            self.db.scalars(
-                select(FxTrade)
-                .where(
-                    FxTrade.trade_kind.in_(("card_payment", "manual")),
-                    FxTrade.linked_operation_id.is_(None),
-                    FxTrade.side == "sell",
-                )
-                .order_by(FxTrade.user_id.asc(), FxTrade.trade_date.asc(), FxTrade.id.asc())
-            )
-        )
-        if not trades:
-            return 0
-        already_linked_operation_ids = {
-            int(item)
-            for item in self.db.scalars(select(FxTrade.linked_operation_id).where(FxTrade.linked_operation_id.is_not(None)))
-            if item is not None
-        }
-        linked_count = 0
-        for trade in trades:
-            quote_total = self._money(Decimal(trade.quantity or 0) * Decimal(trade.unit_price or 0))
-            candidate_operations = [
-                operation
-                for operation in self.db.scalars(
-                    select(Operation)
-                    .where(
-                        Operation.user_id == trade.user_id,
-                        Operation.kind == "expense",
-                        Operation.operation_date == trade.trade_date,
-                        Operation.amount == quote_total,
-                        Operation.base_currency == str(trade.quote_currency or "BYN").upper(),
-                    )
-                    .order_by(Operation.created_at.asc(), Operation.id.asc())
-                )
-                if int(operation.id) not in already_linked_operation_ids
-            ]
-            if len(candidate_operations) == 1:
-                trade.linked_operation_id = int(candidate_operations[0].id)
-                trade.trade_kind = "card_payment"
-                already_linked_operation_ids.add(int(candidate_operations[0].id))
-                linked_count += 1
-                continue
-            if len(candidate_operations) <= 1 or not max_created_at_delta_seconds:
-                continue
-            trade_created_at = getattr(trade, "created_at", None)
-            if trade_created_at is None:
-                continue
-            nearby_matches = []
-            for operation in candidate_operations:
-                operation_created_at = getattr(operation, "created_at", None)
-                if operation_created_at is None:
-                    continue
-                delta_seconds = abs((operation_created_at - trade_created_at).total_seconds())
-                if delta_seconds <= max_created_at_delta_seconds:
-                    nearby_matches.append((delta_seconds, operation))
-            if len(nearby_matches) == 1:
-                matched_operation = nearby_matches[0][1]
-                trade.linked_operation_id = int(matched_operation.id)
-                trade.trade_kind = "card_payment"
-                already_linked_operation_ids.add(int(matched_operation.id))
-                linked_count += 1
-        if linked_count:
-            if commit:
-                self.db.commit()
-            else:
-                self.db.flush()
-        return linked_count
 
     def _validate_trade_sequence(self, trades: list[FxTrade]) -> None:
         quantities_by_currency: dict[str, Decimal] = {}
@@ -396,7 +321,6 @@ class CurrencyService:
         fee,
         trade_kind: str = "manual",
         linked_operation_id: int | None = None,
-        allow_linked_operation: bool = False,
         trade_date: date,
         note: str | None = None,
         commit: bool = True,
@@ -408,9 +332,9 @@ class CurrencyService:
         normalized_unit_price = self._rate(unit_price)
         normalized_fee = self._money(fee)
         normalized_trade_kind = self._normalize_trade_kind(trade_kind)
-        if normalized_trade_kind != "manual" and not allow_linked_operation:
+        if normalized_trade_kind != "manual":
             raise ValueError("trade_kind is managed by operations")
-        if linked_operation_id is not None and not allow_linked_operation:
+        if linked_operation_id is not None:
             raise ValueError("linked_operation_id is managed by operations")
         if normalized_asset == normalized_quote:
             raise ValueError("asset_currency and quote_currency must differ")
@@ -483,15 +407,14 @@ class CurrencyService:
         linked_operation_id: int | None = None,
         trade_date: date,
         note: str | None = None,
-        allow_linked_trade_update: bool = False,
         commit: bool = True,
     ) -> FxTrade:
         item = self.repo.get_trade(user_id=user_id, trade_id=trade_id)
         if not item:
             raise ValueError("Currency trade not found")
-        if getattr(item, "linked_operation_id", None) is not None and not allow_linked_trade_update:
+        if getattr(item, "linked_operation_id", None) is not None:
             raise ValueError("Linked settlement trade must be edited from the operation")
-        if linked_operation_id is not None and not allow_linked_trade_update:
+        if linked_operation_id is not None:
             raise ValueError("linked_operation_id is managed by operations")
         before_activity = ActivityService.snapshot(item, self.TRADE_FIELDS)
         normalized_side = self._normalize_side(side)
@@ -501,7 +424,7 @@ class CurrencyService:
         normalized_unit_price = self._rate(unit_price)
         normalized_fee = self._money(fee)
         normalized_trade_kind = self._normalize_trade_kind(trade_kind)
-        if normalized_trade_kind != "manual" and not allow_linked_trade_update:
+        if normalized_trade_kind != "manual":
             raise ValueError("trade_kind is managed by operations")
         if normalized_asset == normalized_quote:
             raise ValueError("asset_currency and quote_currency must differ")
@@ -564,53 +487,6 @@ class CurrencyService:
         else:
             self.db.flush()
         return item
-
-    def sync_linked_operation_trade(
-        self,
-        *,
-        user_id: int,
-        operation_id: int,
-        asset_currency: str,
-        quote_currency: str,
-        quantity,
-        unit_price,
-        trade_date: date,
-        note: str | None = None,
-        commit: bool = False,
-    ) -> FxTrade:
-        existing = self.repo.get_trade_by_linked_operation_id(user_id=user_id, operation_id=operation_id)
-        if existing:
-            return self.update_trade(
-                user_id=user_id,
-                trade_id=existing.id,
-                side="sell",
-                asset_currency=asset_currency,
-                quote_currency=quote_currency,
-                quantity=quantity,
-                unit_price=unit_price,
-                fee=Decimal("0"),
-                trade_kind="card_payment",
-                linked_operation_id=operation_id,
-                trade_date=trade_date,
-                note=note,
-                allow_linked_trade_update=True,
-                commit=commit,
-            )
-        return self.create_trade(
-            user_id=user_id,
-            side="sell",
-            asset_currency=asset_currency,
-            quote_currency=quote_currency,
-            quantity=quantity,
-            unit_price=unit_price,
-            fee=Decimal("0"),
-            trade_kind="card_payment",
-            linked_operation_id=operation_id,
-            allow_linked_operation=True,
-            trade_date=trade_date,
-            note=note,
-            commit=commit,
-        )
 
     def delete_trade(self, *, user_id: int, trade_id: int) -> None:
         item = self.repo.get_trade(user_id=user_id, trade_id=trade_id)

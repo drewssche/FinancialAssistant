@@ -147,7 +147,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     op_modal_categories = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-categories.js").read_text(encoding="utf-8")
     op_modal_debt = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-debt-counterparty.js").read_text(encoding="utf-8")
     op_modal_debt_form = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-debt.js").read_text(encoding="utf-8")
-    op_modal_fx_settlement = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-fx-settlement.js").read_text(encoding="utf-8")
     op_modal_currency = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-currency.js").read_text(encoding="utf-8")
     op_modal_preview = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-preview.js").read_text(encoding="utf-8")
     core_actions = (REPO_ROOT / "static" / "js" / "app-core-actions.js").read_text(encoding="utf-8")
@@ -404,10 +403,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'registerRuntimeModule?.("operation-modal-category-factory"' in op_modal_categories
     assert 'registerRuntimeModule?.("operation-modal-debt-counterparty-factory"' in op_modal_debt
     assert 'registerRuntimeModule?.("operation-modal-debt-factory"' in op_modal_debt_form
-    assert 'registerRuntimeModule?.("operation-modal-fx-settlement-factory"' in op_modal_fx_settlement
-    assert "/api/v1/currency/available-balance?" in op_modal_fx_settlement
-    assert "directForeignSettlement" in op_modal_fx_settlement
-    assert "el.editCurrency.disabled = false" in op_modal_fx_settlement
     assert 'registerRuntimeModule?.("operation-modal-currency-factory"' in op_modal_currency
     assert 'registerRuntimeModule?.("operation-modal-preview"' in op_modal_preview
     assert 'getRuntimeModule?.("category-ui")' in categories_js
@@ -545,7 +540,7 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'getRuntimeModule?.("operation-modal-category-factory")' in op_modal
     assert 'getRuntimeModule?.("operation-modal-debt-counterparty-factory")' in op_modal
     assert 'getRuntimeModule?.("operation-modal-debt-factory")' in op_modal
-    assert 'getRuntimeModule?.("operation-modal-fx-settlement-factory")' in op_modal_currency
+    assert "operation-modal-fx-settlement-factory" not in op_modal_currency
     assert 'getRuntimeModule?.("operation-modal-currency-factory")' in op_modal
     assert 'getRuntimeModule?.("operation-modal-preview")' in op_modal
     assert "|| window.App.categoryUi" not in categories_js
@@ -558,7 +553,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "window.App.createOperationModalCategoryFeature" not in op_modal_categories
     assert "window.App.createOperationModalDebtCounterpartyFeature" not in op_modal_debt
     assert "window.App.createOperationModalDebtFeature" not in op_modal_debt_form
-    assert "window.App.createOperationModalFxSettlementFeature" not in op_modal_fx_settlement
     assert "window.App.createOperationModalCurrencyFeature" not in op_modal_currency
     assert "window.App.operationModalPreview" not in op_modal_preview
     assert "|| window.App.bulkUi" not in bulk_bindings_ops

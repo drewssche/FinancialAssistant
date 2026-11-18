@@ -10,7 +10,7 @@ def last_purchase_prices(db, *, user_id, template_ids):
         return {}
     line = OperationReceiptItem
     ranked = select(
-        line.template_id, line.unit_price, Operation.currency, Operation.operation_date,
+        line.template_id, line.unit_price, Operation.item_currency.label("currency"), Operation.operation_date,
         func.row_number().over(
             partition_by=line.template_id,
             order_by=(Operation.operation_date.desc(), Operation.id.desc(), line.id.desc()),
@@ -30,7 +30,7 @@ def offer_price_references(db, *, user_id, template_ids):
     if not template_ids:
         return {}
     rows = db.execute(
-        select(OperationItemPrice, Operation.currency)
+        select(OperationItemPrice, Operation.item_currency)
         .join(OperationItemTemplate, OperationItemTemplate.id == OperationItemPrice.template_id)
         .outerjoin(Operation, and_(Operation.id == OperationItemPrice.source_operation_id,
                                    Operation.user_id == user_id))

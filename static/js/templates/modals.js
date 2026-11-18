@@ -77,11 +77,10 @@
             </select>
             <button id="convertAmountToDiscountReceiptBtn" class="btn btn-secondary convert-discount-receipt-btn btn-icon" type="button" title="Покупка со скидкой" aria-label="Покупка со скидкой">${window.App.icons.svg("discount")}</button>
           </div>
-          <section id="opFxRateField" class="fx-rate-field fx-policy-card hidden" aria-label="Пересчёт валюты в BYN">
+          <section id="opFxRateField" class="fx-rate-field fx-policy-card hidden" aria-labelledby="opFxEquivalentTitle">
             <div class="fx-policy-head">
               <div>
-                <strong>Пересчёт в BYN</strong>
-
+                <strong id="opFxEquivalentTitle">Эквивалент в BYN</strong>
               </div>
               <button id="opFxRateRefreshBtn" class="btn btn-secondary fx-policy-refresh btn-icon" type="button" title="Обновить курс" aria-label="Обновить курс">${window.App.icons.svg("refresh")}</button>
             </div>
@@ -109,21 +108,11 @@
                 <input id="opFxRateKind" type="hidden" value="sell" />
               </div>
             </div>
-            <div class="fx-policy-field">
-              <span class="muted-small">Способ оплаты</span>
-              <div id="opFxPaymentModeSwitch" class="segmented fx-policy-payment-modes" aria-label="Способ оплаты валютной операции">
-                <button class="segmented-btn active" data-fx-payment-mode="valuation" type="button">Только пересчитать</button>
-                <button class="segmented-btn" data-fx-payment-mode="direct_conversion" type="button">Пополнить и оплатить</button>
-                <button class="segmented-btn" data-fx-payment-mode="foreign_balance" type="button">С валютного остатка</button>
-              </div>
-              <input id="opFxPaymentMode" type="hidden" value="valuation" />
-              <span id="opFxPaymentModeHint" class="muted-small fx-policy-mode-hint"></span>
-            </div>
             <div class="fx-policy-rate-row">
               <label class="fx-policy-rate-input">
                 <span id="opFxRateLabel" class="muted-small">Курс BYN за 1 EUR</span>
                 <span class="money-input-wrap money-input-no-suffix" data-money-input-wrap>
-                  <input id="opFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в BYN" title="Курс конверсии в основную валюту" />
+                  <input id="opFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в BYN" title="Курс для расчёта эквивалента" />
                 </span>
               </label>
               <div id="opFxRateMeta" class="fx-policy-rate-meta muted-small" aria-live="polite"></div>
@@ -141,45 +130,6 @@
                 <div class="muted-small"><span id="receiptTotalLabel">Сумма чека</span>: <strong id="receiptTotalValue">0.00</strong></div>
                 <div class="muted-small"><span id="receiptDiffLabel">Расхождение</span>: <strong id="receiptDiffValue">0.00</strong></div>
                 <button id="pullReceiptTotalBtn" class="btn btn-secondary btn-icon" type="button" title="Использовать сумму позиций" aria-label="Использовать сумму позиций">${window.App.icons.svg("save")}</button>
-              </div>
-            </div>
-          </div>
-
-          <div id="opFxSettlementBlock" class="category-modal-form fx-settlement-block hidden">
-            <div class="fx-settlement-switch-row">
-              <div class="fx-settlement-switch-copy">
-                <div class="muted-small fx-settlement-switch-label">Списание из валютного остатка</div>
-                <div id="opFxSettlementBaseTotal" class="muted-small currency-trade-hint fx-settlement-base-total">Операция не изменит валютный остаток</div>
-              </div>
-              <label id="opFxSettlementToggle" class="analytics-visibility-toggle fx-settlement-toggle is-off" for="opUseFxSettlement" role="switch" aria-checked="false" aria-live="polite">
-                <input id="opUseFxSettlement" class="sr-only" type="checkbox" />
-                <span class="analytics-visibility-toggle-track"><span class="analytics-visibility-toggle-thumb"></span></span>
-                <span class="fx-settlement-toggle-copy">
-                  <span class="fx-settlement-toggle-title">Списать</span>
-                  <span id="opFxSettlementState" class="analytics-visibility-toggle-label">Выкл</span>
-                </span>
-              </label>
-            </div>
-            <div id="opFxSettlementFields" class="currency-modal-grid fx-settlement-fields hidden">
-              <div id="opFxSettlementBalance" class="fx-settlement-balance muted-small" aria-live="polite"></div>
-              <div class="currency-modal-row fx-settlement-row-main">
-                <select id="opFxSettlementAsset" aria-label="Валюта списания">
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="RUB">RUB (₽)</option>
-                  <option value="CNY">CNY (¥)</option>
-                  <option value="PLN">PLN (zł)</option>
-                </select>
-                <div id="opFxSettlementQuantityField" class="money-input-wrap" data-money-input-wrap>
-                  <input id="opFxSettlementQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Количество валюты" aria-label="Количество списания в валюте" />
-                </div>
-                <div id="opFxSettlementUnitPriceField" class="money-input-wrap" data-money-input-wrap>
-                  <input id="opFxSettlementUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс" aria-label="Курс списания в базовую валюту" />
-                </div>
-              </div>
-              <div id="opFxSettlementHint" class="muted-small currency-trade-hint"></div>
-              <div class="currency-modal-row currency-modal-row-single">
-                <input id="opFxSettlementNote" type="text" placeholder="Например: оплата USD-картой" class="create-note-field" aria-label="Комментарий валютного списания" />
               </div>
             </div>
           </div>
@@ -469,11 +419,10 @@
               <option value="PLN">PLN (zł)</option>
             </select>
           </div>
-          <section id="editFxRateField" class="fx-rate-field fx-policy-card hidden" aria-label="Пересчёт валюты в BYN">
+          <section id="editFxRateField" class="fx-rate-field fx-policy-card hidden" aria-labelledby="editFxEquivalentTitle">
             <div class="fx-policy-head">
               <div>
-                <strong>Пересчёт в BYN</strong>
-
+                <strong id="editFxEquivalentTitle">Эквивалент в BYN</strong>
               </div>
               <button id="editFxRateRefreshBtn" class="btn btn-secondary fx-policy-refresh btn-icon" type="button" title="Обновить курс" aria-label="Обновить курс">${window.App.icons.svg("refresh")}</button>
             </div>
@@ -501,21 +450,11 @@
                 <input id="editFxRateKind" type="hidden" value="sell" />
               </div>
             </div>
-            <div class="fx-policy-field">
-              <span class="muted-small">Способ оплаты</span>
-              <div id="editFxPaymentModeSwitch" class="segmented fx-policy-payment-modes" aria-label="Способ оплаты валютной операции">
-                <button class="segmented-btn active" data-fx-payment-mode="valuation" type="button">Только пересчитать</button>
-                <button class="segmented-btn" data-fx-payment-mode="direct_conversion" type="button">Пополнить и оплатить</button>
-                <button class="segmented-btn" data-fx-payment-mode="foreign_balance" type="button">С валютного остатка</button>
-              </div>
-              <input id="editFxPaymentMode" type="hidden" value="valuation" />
-              <span id="editFxPaymentModeHint" class="muted-small fx-policy-mode-hint"></span>
-            </div>
             <div class="fx-policy-rate-row">
               <label class="fx-policy-rate-input">
                 <span id="editFxRateLabel" class="muted-small">Курс BYN за 1 EUR</span>
                 <span class="money-input-wrap money-input-no-suffix" data-money-input-wrap>
-                  <input id="editFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в BYN" title="Курс конверсии в основную валюту" />
+                  <input id="editFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в BYN" title="Курс для расчёта эквивалента" />
                 </span>
               </label>
               <div id="editFxRateMeta" class="fx-policy-rate-meta muted-small" aria-live="polite"></div>
@@ -537,44 +476,6 @@
             </div>
           </div>
 
-          <div id="editFxSettlementBlock" class="category-modal-form fx-settlement-block hidden">
-            <div class="fx-settlement-switch-row">
-              <div class="fx-settlement-switch-copy">
-                <div class="muted-small fx-settlement-switch-label">Списание из валютного остатка</div>
-                <div id="editFxSettlementBaseTotal" class="muted-small currency-trade-hint fx-settlement-base-total">Операция не изменит валютный остаток</div>
-              </div>
-              <label id="editFxSettlementToggle" class="analytics-visibility-toggle fx-settlement-toggle is-off" for="editUseFxSettlement" role="switch" aria-checked="false" aria-live="polite">
-                <input id="editUseFxSettlement" class="sr-only" type="checkbox" />
-                <span class="analytics-visibility-toggle-track"><span class="analytics-visibility-toggle-thumb"></span></span>
-                <span class="fx-settlement-toggle-copy">
-                  <span class="fx-settlement-toggle-title">Списать</span>
-                  <span id="editFxSettlementState" class="analytics-visibility-toggle-label">Выкл</span>
-                </span>
-              </label>
-            </div>
-            <div id="editFxSettlementFields" class="currency-modal-grid fx-settlement-fields hidden">
-              <div id="editFxSettlementBalance" class="fx-settlement-balance muted-small" aria-live="polite"></div>
-              <div class="currency-modal-row fx-settlement-row-main">
-                <select id="editFxSettlementAsset" aria-label="Валюта списания">
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="RUB">RUB (₽)</option>
-                  <option value="CNY">CNY (¥)</option>
-                  <option value="PLN">PLN (zł)</option>
-                </select>
-                <div id="editFxSettlementQuantityField" class="money-input-wrap" data-money-input-wrap>
-                  <input id="editFxSettlementQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Количество валюты" aria-label="Количество списания в валюте" />
-                </div>
-                <div id="editFxSettlementUnitPriceField" class="money-input-wrap" data-money-input-wrap>
-                  <input id="editFxSettlementUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс" aria-label="Курс списания в базовую валюту" />
-                </div>
-              </div>
-              <div id="editFxSettlementHint" class="muted-small currency-trade-hint"></div>
-              <div class="currency-modal-row currency-modal-row-single">
-                <input id="editFxSettlementNote" type="text" placeholder="Например: оплата USD-картой" class="create-note-field" aria-label="Комментарий валютного списания" />
-              </div>
-            </div>
-          </div>
         </form>
         <div class="preview-panel">
           <div class="preview-title">Превью строки в таблице</div>

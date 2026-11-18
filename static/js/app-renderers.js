@@ -165,8 +165,6 @@
     const chips = [];
     const hasReceiptItems = Array.isArray(item?.receipt_items) && item.receipt_items.length > 0;
     const operationId = Number(item?.source_id || item?.id || 0);
-    const settlementCurrency = String(item?.fx_settlement?.asset_currency || item?.settlement_asset_currency || "").toUpperCase();
-    const hasFxSettlement = Boolean(item?.fx_settlement) || item?.has_fx_settlement === true;
     if (hasReceiptItems && operationId > 0) {
       chips.push(
         `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-receipt-view-id="${operationId}">${receiptMatch ? "Открыть чек" : "Чек"}</button>`,
@@ -178,9 +176,6 @@
           : `Скидка чека −${Number(discount.percent.toFixed(1))}%`;
         chips.push(renderMetaChip(percentLabel, "positive"));
       }
-    }
-    if (hasFxSettlement) {
-      chips.push(renderMetaChip(settlementCurrency ? `Валютная карта · ${settlementCurrency}` : "Валютная карта", "info"));
     }
     return chips.join("");
   }

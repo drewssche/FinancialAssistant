@@ -319,40 +319,8 @@
     setAutoComputedField(el.currencyUnitPriceField, context.sourceField === "pair" && context.unitPrice > 0);
   }
 
-  let fxPolicy = {};
-  const createOperationModalFxSettlementFeature = window.App.getRuntimeModule?.("operation-modal-fx-settlement-factory");
-  const fxSettlement = createOperationModalFxSettlementFeature
-      ? createOperationModalFxSettlementFeature({
-      state,
-      el,
-      core,
-      updateCreatePreview,
-      updateEditPreview,
-      getCreateReceiptPayload,
-      getEditReceiptPayload,
-      isCreateReceiptMode,
-      isEditReceiptMode,
-      formatTradeRateValue,
-      applyTradeFieldCurrency,
-      setAutoComputedField,
-      getOperationFxContext: (mode) => fxPolicy.getContext?.(mode) || null,
-    })
-    : {};
-  const getCreateFxSettlementPayload = fxSettlement.getCreateFxSettlementPayload || (() => null);
-  const getEditFxSettlementPayload = fxSettlement.getEditFxSettlementPayload || (() => null);
-  const syncCreateFxSettlementFieldUi = fxSettlement.syncCreateFxSettlementFieldUi || (() => {});
-  const syncEditFxSettlementFieldUi = fxSettlement.syncEditFxSettlementFieldUi || (() => {});
-  const resetCreateFxSettlementDrivers = fxSettlement.resetCreateFxSettlementDrivers || (() => {});
-  const resetEditFxSettlementDrivers = fxSettlement.resetEditFxSettlementDrivers || (() => {});
-  const toggleCreateFxSettlement = fxSettlement.toggleCreateFxSettlement || (() => {});
-  const markFxSettlementQuantitySource = fxSettlement.markFxSettlementQuantitySource || (() => {});
-  const markFxSettlementRateSource = fxSettlement.markFxSettlementRateSource || (() => {});
-  const toggleEditFxSettlement = fxSettlement.toggleEditFxSettlement || (() => {});
-  const markEditFxSettlementQuantitySource = fxSettlement.markEditFxSettlementQuantitySource || (() => {});
-  const markEditFxSettlementRateSource = fxSettlement.markEditFxSettlementRateSource || (() => {});
-
   const createOperationModalFxPolicyFeature = window.App.getRuntimeModule?.("operation-modal-fx-policy-factory");
-  fxPolicy = createOperationModalFxPolicyFeature
+  const fxPolicy = createOperationModalFxPolicyFeature
     ? createOperationModalFxPolicyFeature({
       state,
       el,
@@ -361,8 +329,6 @@
       renderReceiptSummary,
       updateCreatePreview,
       updateEditPreview,
-      syncCreateFxSettlementFieldUi,
-      syncEditFxSettlementFieldUi,
     })
     : {};
 
@@ -418,11 +384,6 @@
     populateCurrencySelect(el.currencyAsset, {
       includeBase: false,
       preserveValue: preserve.currencyAsset || el.currencyAsset?.value || firstTracked,
-      fallbackValue: firstTracked,
-    });
-    populateCurrencySelect(el.opFxSettlementAsset, {
-      includeBase: false,
-      preserveValue: preserve.opFxSettlementAsset || el.opFxSettlementAsset?.value || firstTracked,
       fallbackValue: firstTracked,
     });
   }
@@ -658,10 +619,6 @@
       markCurrencyRateManual,
       resetCurrencyRateAutofill,
       syncCurrencyTradeFieldUi,
-      getCreateFxSettlementPayload,
-      getEditFxSettlementPayload,
-      syncCreateFxSettlementFieldUi,
-      syncEditFxSettlementFieldUi,
       buildSelectableCurrencyList,
       populateCurrencySelect,
       syncSelectableCurrencyFields,
@@ -680,14 +637,6 @@
       applyDebtCurrencyUi,
       setCurrencyTradeState,
       resetCurrencyTradeState,
-      resetCreateFxSettlementDrivers,
-      resetEditFxSettlementDrivers,
-      toggleCreateFxSettlement,
-      markFxSettlementQuantitySource,
-      markFxSettlementRateSource,
-      toggleEditFxSettlement,
-      markEditFxSettlementQuantitySource,
-      markEditFxSettlementRateSource,
     };
   }
 

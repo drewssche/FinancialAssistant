@@ -18,7 +18,7 @@ class CatalogPriceChangesService:
 
     def get(self, *, user_id, basis='unit', price_kind='paid', comparison='period',
             direction='all', q=None, date_from=None, date_to=None, page=1, page_size=20):
-        stmt = select(OperationReceiptItem, Operation.operation_date, Operation.currency,
+        stmt = select(OperationReceiptItem, Operation.operation_date, Operation.item_currency,
                       CatalogProduct.id, CatalogProduct.name, OperationItemTemplate.name).join(
             Operation, Operation.id == OperationReceiptItem.operation_id).join(
             OperationItemTemplate, OperationItemTemplate.id == OperationReceiptItem.template_id).join(

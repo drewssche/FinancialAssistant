@@ -236,7 +236,7 @@ def test_receipt_line_total_live_update_keeps_currency_symbol():
     assert "formatReceiptMoney(receiptLineTotal(updated.item), mode)" in interactions
     assert "receiptLineTotal(updated.item), { withCurrency: false }" not in interactions
     assert "syncReceiptNumericInputs(mode);" in receipt
-    assert 'renderReceiptSummary(mode, { amountValue: total });' in receipt
+    assert 'ctx.amountNode.value = core.formatAmount(paid);' in receipt
 
 
 def test_receipt_discount_ui_keeps_reason_separate_and_does_not_guess_regular_price():
@@ -337,7 +337,6 @@ def test_foreign_operation_and_plan_forms_expose_explicit_fx_policy_contract():
             "FxRateSourceSwitch",
             "FxBankOptions",
             "FxRateKindSwitch",
-            "FxPaymentModeSwitch",
             "FxRateRefreshBtn",
             "FxRateMeta",
             "FxComputedAmount",
@@ -345,11 +344,11 @@ def test_foreign_operation_and_plan_forms_expose_explicit_fx_policy_contract():
             assert f'id="{prefix}{suffix}"' in modals
     assert "Покупка банком" in modals
     assert "Продажа банком" in modals
-    assert "Только пересчитать" in modals
-    assert "Пополнить и оплатить" in modals
-    assert "С валютного остатка" in modals
+    assert "Только пересчитать" not in modals
+    assert "Пополнить и оплатить" not in modals
+    assert "С валютного остатка" not in modals
     assert 'value="nbrb"' in modals
-    assert 'value="valuation"' in modals
+    assert 'fx_payment_mode: "valuation"' in policy
 
     assert '"/static/js/app-features-operation-modal-fx-policy.js"' in manifest
     assert manifest.index("app-features-operation-modal-fx-policy.js") < manifest.index(
@@ -366,11 +365,10 @@ def test_foreign_operation_and_plan_forms_expose_explicit_fx_policy_contract():
     assert "fx_bank_channel:" in policy
     assert "uiState[mode].refreshRequested || uiState[mode].policyDirty" in policy
     assert "uiState[mode] === current" in policy
-    assert 'if (n.kind?.value === "income" && nextValue !== "valuation")' in policy
     assert 'return {};' in policy
 
     assert "delete payload.fx_rate;" in mutations
-    assert "payload.fx_settlement = null;" in mutations
+    assert "payload.fx_settlement" not in mutations
     assert "...operationModal.getOperationFxPolicyPayload?.(\"create\", { isPlan: true })" in plans
     assert "item?.current_rate ?? item?.fx_rate ?? 0" in plan_render
     assert "item?.current_rate_date || item?.fx_rate_date" in plan_render

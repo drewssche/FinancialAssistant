@@ -285,7 +285,7 @@ def test_currency_trade_rejects_sell_above_available_balance(client: TestClient)
     assert "Not enough currency balance to sell" in response.json()["detail"]
 
 
-def test_available_balance_reserves_later_sales_and_can_exclude_existing_settlement(client: TestClient):
+def test_available_balance_reserves_later_sales_and_ignores_purchases(client: TestClient):
     funding = client.post(
         "/api/v1/currency/trades",
         json={
@@ -336,8 +336,8 @@ def test_available_balance_reserves_later_sales_and_can_exclude_existing_settlem
         params={"currency": "USD", "as_of": "2026-03-05"},
     )
     assert included.status_code == 200, included.text
-    assert included.json()["available_quantity"] == "50.000000"
-    assert included.json()["current_quantity"] == "50.000000"
+    assert included.json()["available_quantity"] == "70.000000"
+    assert included.json()["current_quantity"] == "70.000000"
 
     excluded = client.get(
         "/api/v1/currency/available-balance",
@@ -352,7 +352,7 @@ def test_available_balance_reserves_later_sales_and_can_exclude_existing_settlem
     assert excluded.json()["current_quantity"] == "70.000000"
 
 
-def test_linked_card_payment_trade_cannot_be_managed_directly(client: TestClient):
+def test_manual_trade_cannot_be_turned_into_a_purchase_debit(client: TestClient):
     funding = client.post(
         "/api/v1/currency/trades",
         json={
@@ -403,11 +403,9 @@ def test_linked_card_payment_trade_cannot_be_managed_directly(client: TestClient
         },
     )
     assert update_response.status_code == 400
-    assert "Linked settlement trade must be edited from the operation" in update_response.json()["detail"]
-
-    delete_response = client.delete(f"/api/v1/currency/trades/{trade_id}")
-    assert delete_response.status_code == 400
-    assert "Linked settlement trade must be deleted from the operation" in delete_response.json()["detail"]
+    assert operation.json()["fx_settlement"] is None
+    assert overview.json()["recent_trades"][0]["trade_kind"] == "manual"
+    assert client.get("/api/v1/currency/overview", params={"currency": "USD"}).json()["positions"][0]["quantity"] == "20.000000"
 
 
 def test_currency_rate_history_returns_chronological_points(client: TestClient):

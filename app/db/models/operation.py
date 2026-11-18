@@ -1,7 +1,8 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, JSON, LargeBinary, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import Boolean, JSON, LargeBinary, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, case, func
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.tags import TagList
@@ -19,6 +20,27 @@ class Operation(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     original_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"))
     currency: Mapped[str] = mapped_column(String(3), default="BYN")
+    # Populated when the receipt is priced in the base currency and the card was charged in another.
+    receipt_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+
+    @hybrid_property
+    def item_currency(self):
+        return self.receipt_currency or self.currency
+
+    @item_currency.inplace.expression
+    @classmethod
+    def _item_currency_expression(cls):
+        return func.coalesce(cls.receipt_currency, cls.currency)
+
+    @hybrid_property
+    def receipt_fx_rate(self):
+        return Decimal(1) if self.receipt_currency == self.base_currency else self.fx_rate
+
+    @receipt_fx_rate.inplace.expression
+    @classmethod
+    def _receipt_fx_rate_expression(cls):
+        return case((cls.receipt_currency == cls.base_currency, Decimal(1)), else_=cls.fx_rate)
+
     base_currency: Mapped[str] = mapped_column(String(3), default="BYN")
     fx_rate: Mapped[Decimal] = mapped_column(Numeric(14, 6), default=Decimal("1.000000"))
     # ``fx_rate`` is always normalized to one unit of ``currency``.  The

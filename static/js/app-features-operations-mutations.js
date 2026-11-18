@@ -9,9 +9,7 @@
       renderCreateCategoryPicker,
       updateCreatePreview,
       getCreateReceiptPayload,
-      getCreateFxSettlementPayload,
       getEditReceiptPayload,
-      getEditFxSettlementPayload,
       getOperationFxPolicyPayload,
       getOperationCurrencyContext,
       closeCreateModal,
@@ -139,11 +137,14 @@
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
       const hasReceiptItems = receiptItems.length > 0;
       const canDeriveAmountFromReceipt = hasReceiptItems && amount.empty;
+      if (canDeriveAmountFromReceipt && mode === "edit" && state.editReceiptCurrency && currency !== state.editReceiptCurrency) {
+        throw new Error(`Укажите сумму оплаты в ${currency}`);
+      }
       if (!canDeriveAmountFromReceipt && (!amount.valid || amount.value <= 0)) {
         throw new Error("Проверь сумму операции");
       }
       if (currency !== baseCurrency && (!fxRate.valid || fxRate.value <= 0)) {
-        throw new Error("Проверь курс конверсии");
+        throw new Error("Проверь курс валюты");
       }
       return {
         kind,
@@ -171,11 +172,9 @@
         currencySelectId: "opCurrency",
         fxRateInputId: "opFxRate",
       });
-      payload.fx_settlement = getCreateFxSettlementPayload ? getCreateFxSettlementPayload() : null;
       Object.assign(payload, getOperationFxPolicyPayload?.("create", { isPlan: false }) || {});
       if (payload.fx_rate_source) {
         delete payload.fx_rate;
-        payload.fx_settlement = null;
       }
       delete payload._mode;
       return payload;
@@ -193,11 +192,9 @@
         currencySelectId: "editCurrency",
         fxRateInputId: "editFxRate",
       });
-      payload.fx_settlement = getEditFxSettlementPayload ? getEditFxSettlementPayload() : null;
       Object.assign(payload, getOperationFxPolicyPayload?.("edit", { isPlan: false }) || {});
       if (payload.fx_rate_source) {
         delete payload.fx_rate;
-        payload.fx_settlement = null;
       }
       delete payload._mode;
       return payload;

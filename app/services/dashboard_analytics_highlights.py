@@ -118,10 +118,11 @@ class DashboardAnalyticsHighlightsService:
                 continue
 
             receipt_total = Decimal("0")
+            receipt_fx_rate = item["receipt_fx_rate"]
             effective_receipt_category_ids: set[int | None] = set()
             receipt_allocation_rows: list[tuple[object, int | None, Decimal]] = []
             for row in receipt_rows:
-                line_total = Decimal(row.line_total or 0)
+                line_total = (Decimal(row.line_total or 0) * receipt_fx_rate).quantize(self.MONEY_Q, rounding=ROUND_HALF_UP)
                 receipt_total += line_total
                 name = str(row.name or "").strip()
                 if name:
@@ -138,7 +139,7 @@ class DashboardAnalyticsHighlightsService:
                         bucket["template_ids"].add(int(row.template_id))
                     price_for_history = self.resolve_receipt_price_for_history(row)
                     if price_for_history is not None:
-                        bucket["comparison_keys"].add((item.get("currency"), getattr(row, "sale_unit", None),
+                        bucket["comparison_keys"].add((item["receipt_currency"], getattr(row, "sale_unit", None),
                             getattr(row, "package_quantity", None), getattr(row, "package_unit", None)))
                         bucket["max_unit_price"] = max(bucket["max_unit_price"], price_for_history)
                         bucket["unit_price_sum"] += price_for_history
@@ -233,7 +234,7 @@ class DashboardAnalyticsHighlightsService:
             receipt_rows = grouped_receipt_items.get(operation_id, []) or []
             if not receipt_rows:
                 continue
-            fx_rate = Decimal(operation.get("fx_rate") or 1)
+            fx_rate = operation["receipt_fx_rate"]
             base_line_totals = [
                 (Decimal(row.line_total or 0) * fx_rate).quantize(
                     self.MONEY_Q,

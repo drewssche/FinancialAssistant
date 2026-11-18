@@ -39,7 +39,7 @@ class ProductPriceHistoryService:
                 CatalogProduct.id == product_id, CatalogProduct.user_id == user_id))
         if offer is None:
             raise LookupError("Product offer not found")
-        stmt = select(OperationReceiptItem, Operation.operation_date, Operation.currency).join(
+        stmt = select(OperationReceiptItem, Operation.operation_date, Operation.item_currency).join(
             Operation, Operation.id == OperationReceiptItem.operation_id
         ).where(OperationReceiptItem.template_id == template_id,
                 OperationReceiptItem.user_id == user_id, Operation.user_id == user_id,

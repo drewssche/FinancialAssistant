@@ -309,7 +309,7 @@ def test_operations_support_currency_scope_filters(client: TestClient):
     assert summary_foreign.json()["expense_total"] == "33.00"
 
 
-def test_operation_create_supports_linked_fx_settlement_without_double_count_in_money_flow(client: TestClient):
+def test_old_card_payment_input_creates_one_valued_expense(client: TestClient):
     funding = client.post(
         "/api/v1/currency/trades",
         json={
@@ -346,9 +346,9 @@ def test_operation_create_supports_linked_fx_settlement_without_double_count_in_
     overview = client.get("/api/v1/currency/overview", params={"currency": "USD"})
     assert overview.status_code == 200, overview.text
     overview_payload = overview.json()
-    assert overview_payload["recent_trades"][0]["trade_kind"] == "card_payment"
-    assert overview_payload["recent_trades"][0]["linked_operation_id"] == created.json()["id"]
-    assert overview_payload["recent_trades"][0]["side"] == "sell"
+    assert overview_payload["recent_trades"][0]["trade_kind"] == "manual"
+    assert overview_payload["recent_trades"][0]["linked_operation_id"] is None
+    assert overview_payload["recent_trades"][0]["side"] == "buy"
 
     money_flow = client.get("/api/v1/operations/money-flow", params={"date_from": "2026-03-05", "date_to": "2026-03-05"})
     assert money_flow.status_code == 200, money_flow.text
@@ -362,7 +362,9 @@ def test_operation_create_supports_linked_fx_settlement_without_double_count_in_
     assert money_flow_summary.json()["expense_total"] == "32.50"
 
 
-def test_operation_receipt_supports_linked_fx_settlement_without_double_count(client: TestClient):
+def test_base_receipt_and_foreign_card_charge_keep_both_currencies(client: TestClient):
+    brand = client.post("/api/v1/operations/item-brands", json={"name": "Кофе"})
+    assert brand.status_code == 201
     funding = client.post(
         "/api/v1/currency/trades",
         json={
@@ -388,6 +390,7 @@ def test_operation_receipt_supports_linked_fx_settlement_without_double_count(cl
             "receipt_items": [
                 {
                     "name": "Кофе",
+                    "brand_id": brand.json()["id"],
                     "quantity": "2",
                     "unit_price": "8.50",
                 },
@@ -410,8 +413,20 @@ def test_operation_receipt_supports_linked_fx_settlement_without_double_count(cl
     payload = created.json()
     assert payload["amount"] == "32.10"
     assert payload["receipt_total"] == "32.10"
-    assert payload["fx_settlement"]["asset_currency"] == "USD"
-    assert payload["fx_settlement"]["quote_total"] == "32.10"
+    assert payload["currency"] == "USD"
+    assert payload["receipt_currency"] == "BYN"
+    assert payload["receipt_discrepancy"] == "0.00"
+    assert payload["fx_settlement"] is None
+
+    updated = client.patch(f"/api/v1/operations/{payload['id']}", json={
+        "amount": "10.00", "currency": "USD", "fx_rate_source": "manual",
+        "fx_manual_rate": "3.21", "note": "Проверено",
+    })
+    assert updated.status_code == 200, updated.text
+    for key in ("amount", "original_amount", "currency", "receipt_currency", "fx_rate",
+                "fx_rate_date", "receipt_items", "receipt_total", "receipt_discrepancy"):
+        assert updated.json()[key] == payload[key]
+    assert [row["unit_price"] for row in payload["receipt_items"]] == ["8.50", "15.10"]
 
     money_flow = client.get("/api/v1/operations/money-flow", params={"date_from": "2026-03-06", "date_to": "2026-03-06"})
     assert money_flow.status_code == 200, money_flow.text
@@ -419,8 +434,21 @@ def test_operation_receipt_supports_linked_fx_settlement_without_double_count(cl
     assert money_flow_payload["total"] == 1
     assert money_flow_payload["items"][0]["source_kind"] == "operation"
     assert money_flow_payload["items"][0]["amount"] == "32.10"
-    assert money_flow_payload["items"][0]["has_fx_settlement"] is True
-    assert money_flow_payload["items"][0]["settlement_asset_currency"] == "USD"
+    assert money_flow_payload["items"][0]["has_fx_settlement"] is False
+    assert money_flow_payload["items"][0]["receipt_currency"] == "BYN"
+
+    # Leave part of the payment unitemized. Capping receipt rows at the payment total
+    # would hide an erroneous second currency conversion for a fully itemized receipt.
+    response = client.patch(f"/api/v1/operations/{payload['id']}", json={"amount": "12.00"})
+    assert response.status_code == 200, response.text
+    assert response.json()["receipt_discrepancy"] == "6.42"
+    brands = client.get("/api/v1/operations/item-brands").json()["items"]
+    assert next(row for row in brands if row["id"] == brand.json()["id"])["spent_total"] == "17.00"
+    highlights = client.get("/api/v1/dashboard/analytics/highlights", params={
+        "month": "2026-03", "category_breakdown_level": "brand",
+    }).json()
+    assert highlights["receipt_amount_total"] == "32.10"
+    assert highlights["branded_amount_total"] == "17.00"
 
 
 def test_operation_receipt_with_linked_fx_settlement_preserves_mixed_receipt_categories_in_list(client: TestClient):
@@ -492,173 +520,23 @@ def test_operation_receipt_with_linked_fx_settlement_preserves_mixed_receipt_cat
     assert [item["category_id"] for item in listed_item["receipt_items"]] == [food.json()["id"], snacks.json()["id"]]
 
 
-def test_operation_update_can_change_and_remove_linked_fx_settlement(client: TestClient):
-    funding = client.post(
-        "/api/v1/currency/trades",
-        json={
-            "side": "buy",
-            "asset_currency": "USD",
-            "quote_currency": "BYN",
-            "quantity": "30.00",
-            "unit_price": "3.20",
-            "fee": "0.00",
-            "trade_date": "2026-03-01",
-        },
-    )
-    assert funding.status_code == 201, funding.text
-
-    created = client.post(
-        "/api/v1/operations",
-        json={
-            "kind": "expense",
-            "amount": "32.50",
-            "operation_date": "2026-03-05",
-            "fx_settlement": {
-                "asset_currency": "USD",
-                "quantity": "10.00",
-                "quote_total": "32.50",
-                "unit_price": "3.25",
-                "note": "USD card",
-            },
-        },
-    )
+def test_stale_settlement_edit_keeps_the_original_expense_and_foreign_balance(client):
+    created = client.post("/api/v1/operations", json={
+        "kind": "expense", "amount": "10.00", "currency": "USD", "fx_rate": "3.25",
+        "operation_date": "2026-03-05",
+    })
     assert created.status_code == 201, created.text
-    operation_id = created.json()["id"]
-    assert created.json()["fx_settlement"]["quantity"] == "10.000"
-
-    updated = client.patch(
-        f"/api/v1/operations/{operation_id}",
-        json={
-            "amount": "33.60",
-            "fx_settlement": {
-                "asset_currency": "USD",
-                "quantity": "10.50",
-                "quote_total": "33.60",
-                "unit_price": "3.20",
-                "note": "Updated card payment",
-            },
-        },
-    )
+    url = f"/api/v1/operations/{created.json()['id']}"
+    stale = client.patch(url, json={"amount": "33.60", "fx_settlement": {
+        "asset_currency": "USD", "quantity": "10.50", "quote_total": "33.60", "unit_price": "3.20",
+    }})
+    assert stale.status_code == 400
+    assert client.get(url).json() == created.json()
+    updated = client.patch(url, json={"amount": "10.50", "fx_rate": "3.20", "fx_settlement": None})
     assert updated.status_code == 200, updated.text
-    updated_payload = updated.json()
-    assert updated_payload["amount"] == "33.60"
-    assert updated_payload["fx_settlement"]["quantity"] == "10.500"
-    assert updated_payload["fx_settlement"]["quote_total"] == "33.60"
-    assert updated_payload["fx_settlement"]["note"] == "Updated card payment"
-
-    fetched = client.get(f"/api/v1/operations/{operation_id}")
-    assert fetched.status_code == 200, fetched.text
-    assert fetched.json()["fx_settlement"]["quantity"] == "10.500"
-
-    removed = client.patch(
-        f"/api/v1/operations/{operation_id}",
-        json={
-            "fx_settlement": None,
-        },
-    )
-    assert removed.status_code == 200, removed.text
-    assert removed.json()["fx_settlement"] is None
-
-    overview = client.get("/api/v1/currency/overview", params={"currency": "USD"})
-    assert overview.status_code == 200, overview.text
-    assert all(item["linked_operation_id"] != operation_id for item in overview.json()["recent_trades"])
-
-
-def test_old_foreign_operation_can_add_update_disable_and_delete_currency_settlement(client: TestClient):
-    funding = client.post(
-        "/api/v1/currency/trades",
-        json={
-            "side": "buy",
-            "asset_currency": "USD",
-            "quote_currency": "BYN",
-            "quantity": "100.00",
-            "unit_price": "3.00",
-            "fee": "0",
-            "trade_date": "2026-03-01",
-        },
-    )
-    assert funding.status_code == 201, funding.text
-
-    operation = client.post(
-        "/api/v1/operations",
-        json={
-            "kind": "expense",
-            "amount": "20.00",
-            "currency": "USD",
-            "fx_rate": "3.00",
-            "operation_date": "2026-03-05",
-            "note": "Historical USD expense",
-        },
-    )
-    assert operation.status_code == 201, operation.text
-    operation_id = operation.json()["id"]
-    assert operation.json()["currency"] == "USD"
-    assert operation.json()["original_amount"] == "20.00"
-    assert operation.json()["amount"] == "60.00"
-    assert operation.json()["fx_settlement"] is None
-
-    linked = client.patch(
-        f"/api/v1/operations/{operation_id}",
-        json={
-            "fx_settlement": {
-                "asset_currency": "USD",
-                "quantity": "20.00",
-                "quote_total": "60.00",
-                "unit_price": "3.00",
-            },
-        },
-    )
-    assert linked.status_code == 200, linked.text
-    assert linked.json()["currency"] == "USD"
-    assert linked.json()["original_amount"] == "20.00"
-    assert linked.json()["fx_settlement"]["quantity"] == "20.000"
-
-    overview = client.get("/api/v1/currency/overview", params={"currency": "USD"})
-    assert overview.status_code == 200, overview.text
-    assert overview.json()["positions"][0]["quantity"] == "80.000000"
-
-    changed = client.patch(
-        f"/api/v1/operations/{operation_id}",
-        json={
-            "amount": "25.00",
-            "currency": "USD",
-            "fx_rate": "3.00",
-            "fx_settlement": {
-                "asset_currency": "USD",
-                "quantity": "25.00",
-                "quote_total": "75.00",
-                "unit_price": "3.00",
-            },
-        },
-    )
-    assert changed.status_code == 200, changed.text
-    assert changed.json()["currency"] == "USD"
-    assert changed.json()["original_amount"] == "25.00"
-    assert changed.json()["fx_settlement"]["quantity"] == "25.000"
-
-    disabled = client.patch(f"/api/v1/operations/{operation_id}", json={"fx_settlement": None})
-    assert disabled.status_code == 200, disabled.text
-    restored = client.get("/api/v1/currency/overview", params={"currency": "USD"})
-    assert restored.status_code == 200, restored.text
-    assert restored.json()["positions"][0]["quantity"] == "100.000000"
-
-    relinked = client.patch(
-        f"/api/v1/operations/{operation_id}",
-        json={
-            "fx_settlement": {
-                "asset_currency": "USD",
-                "quantity": "25.00",
-                "quote_total": "75.00",
-                "unit_price": "3.00",
-            },
-        },
-    )
-    assert relinked.status_code == 200, relinked.text
-    deleted = client.delete(f"/api/v1/operations/{operation_id}")
-    assert deleted.status_code == 204, deleted.text
-    after_delete = client.get("/api/v1/currency/overview", params={"currency": "USD"})
-    assert after_delete.status_code == 200, after_delete.text
-    assert after_delete.json()["positions"][0]["quantity"] == "100.000000"
+    assert updated.json()["amount"] == "33.60"
+    assert updated.json()["fx_settlement"] is None
+    assert client.get("/api/v1/currency/overview").json()["recent_trades"] == []
 
 
 def test_deleted_operation_restore_is_lossless_and_single_use(client: TestClient):
@@ -716,7 +594,7 @@ def test_deleted_operation_restore_is_lossless_and_single_use(client: TestClient
     assert created.status_code == 201, created.text
     operation_id = created.json()["id"]
     receipt_id = created.json()["receipt_items"][0]["id"]
-    settlement_id = created.json()["fx_settlement"]["trade_id"]
+    assert created.json()["fx_settlement"] is None
 
     deleted = client.delete(f"/api/v1/operations/{operation_id}")
     assert deleted.status_code == 204, deleted.text
@@ -734,11 +612,10 @@ def test_deleted_operation_restore_is_lossless_and_single_use(client: TestClient
     assert payload["receipt_items"][0]["id"] == receipt_id
     assert payload["receipt_items"][0]["discount_type"] == "coupon"
     assert payload["receipt_items"][0]["regular_unit_price"] == "7.00"
-    assert payload["fx_settlement"]["trade_id"] == settlement_id
-    assert payload["fx_settlement"]["note"] == "Currency card"
+    assert payload["fx_settlement"] is None
 
     debited_balance = client.get("/api/v1/currency/overview", params={"currency": "USD"})
-    assert debited_balance.json()["positions"][0]["quantity"] == "90.000000"
+    assert debited_balance.json()["positions"][0]["quantity"] == "100.000000"
     duplicate = client.post(f"/api/v1/operations/{operation_id}/restore")
     assert duplicate.status_code == 409
 

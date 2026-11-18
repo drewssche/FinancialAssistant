@@ -256,7 +256,7 @@ def page_with_plans_api_mock(page):
                     "username": "plans_ui",
                     "telegram_id": "880011",
                     "status": "approved",
-                    "is_admin": False,
+                    "is_admin": mock_state.get("is_admin", False),
                 },
             )
         if path == "/api/v1/preferences":
@@ -788,7 +788,8 @@ def test_plan_foreign_currency_amount_meta_wraps_inside_card(static_server_url: 
     assert "Технобанк" in card_text
     assert "продажа банком" in card_text
     assert "наличные" in card_text
-    assert "пополнить и оплатить" in card_text
+    assert "пополнить и оплатить" not in card_text
+    assert "3,1760" in card_text
 
     page.locator('#plansList button[data-plan-action="edit"][data-plan-id="1"]').click()
     page.wait_for_selector("#createModal:not(.hidden)")
@@ -796,7 +797,7 @@ def test_plan_foreign_currency_amount_meta_wraps_inside_card(static_server_url: 
     assert page.locator("#opFxRateSource").input_value() == "bank"
     assert page.locator("#opFxBankCode").input_value() == "technobank"
     assert page.locator("#opFxRateKind").input_value() == "sell"
-    assert page.locator("#opFxPaymentMode").input_value() == "direct_conversion"
+    assert page.locator("#opFxPaymentModeSwitch").count() == 0
     assert "Продажа банком" in page.locator("#opFxRateMeta").inner_text()
     assert "наличные" in page.locator("#opFxRateMeta").inner_text()
 
@@ -809,7 +810,7 @@ def test_plan_foreign_currency_amount_meta_wraps_inside_card(static_server_url: 
     assert payload["fx_bank_code"] == "technobank"
     assert payload["fx_bank_channel"] == "cash"
     assert payload["fx_rate_kind"] == "sell"
-    assert payload["fx_payment_mode"] == "direct_conversion"
+    assert payload["fx_payment_mode"] == "valuation"
     assert "fx_rate" not in payload
 
 
@@ -974,7 +975,8 @@ def test_plans_history_event_type_filters(static_server_url: str, page_with_plan
     assert "Технобанк" in history_text
     assert "продажа банком" in history_text
     assert "наличные" in history_text
-    assert "пополнить и оплатить" in history_text
+    assert "пополнить и оплатить" not in history_text
+    assert "3,5200" in history_text
 
     page.click('button[data-plan-history-event="confirmed"]')
     page.wait_for_function(
@@ -1085,6 +1087,7 @@ def test_dashboard_plans_period_tabs_switch_and_filter(static_server_url: str, p
 @pytest.mark.e2e
 def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_server_url: str, page_with_plans_api_mock):
     page, mock_state = page_with_plans_api_mock
+    mock_state["is_admin"] = True
     page.add_init_script(
         """
         (() => {

@@ -59,10 +59,6 @@
   function setCurrencySide(...args) { return callCurrencyFeature("setCurrencySide", undefined, args); }
   function syncCurrencyTradeFieldUi(...args) { return callCurrencyFeature("syncCurrencyTradeFieldUi", undefined, args); }
   function syncSuggestedCurrencyRate(...args) { return callCurrencyFeature("syncSuggestedCurrencyRate", Promise.resolve(), args); }
-  function syncCreateFxSettlementFieldUi(...args) { return callCurrencyFeature("syncCreateFxSettlementFieldUi", undefined, args); }
-  function syncEditFxSettlementFieldUi(...args) { return callCurrencyFeature("syncEditFxSettlementFieldUi", undefined, args); }
-  function getCreateFxSettlementPayload(...args) { return callCurrencyFeature("getCreateFxSettlementPayload", null, args); }
-  function getEditFxSettlementPayload(...args) { return callCurrencyFeature("getEditFxSettlementPayload", null, args); }
   function syncSelectableCurrencyFields(...args) { return callCurrencyFeature("syncSelectableCurrencyFields", undefined, args); }
   function buildSelectableCurrencyList(...args) { return callCurrencyFeature("buildSelectableCurrencyList", [], args); }
   function setOperationFxRateManual(...args) { return callCurrencyFeature("setOperationFxRateManual", undefined, args); }
@@ -91,8 +87,6 @@
       core,
       updateCreatePreview,
       updateEditPreview,
-      syncCreateFxSettlementFieldUi,
-      syncEditFxSettlementFieldUi,
     })
     : {};
   const createReceiptDraft = receipt.createReceiptDraft;
@@ -191,7 +185,6 @@
     updateCreateCategoryFieldUi();
     renderCreateCategoryPicker();
     renderDebtCounterpartyPicker();
-    syncCreateFxSettlementFieldUi();
     updateCreatePreview();
   }
   function convertCreateAmountToDiscountReceipt() {
@@ -238,7 +231,6 @@
     }
     renderReceiptItems("create");
     renderReceiptSummary("create");
-    syncCreateFxSettlementFieldUi();
     updateCreatePreview();
     const focusTarget = document.querySelector(
       '#receiptItemsList .receipt-item-row:first-child [data-receipt-field="regular_unit_price"], #receiptItemsList .receipt-item-row:first-child [data-receipt-field="unit_price"]',
@@ -258,7 +250,6 @@
     window.App.getRuntimeModule("operation-layout")?.sync("edit");
     updateEditCategoryFieldUi();
     renderEditCategoryPicker();
-    syncEditFxSettlementFieldUi();
     updateEditPreview();
   }
   async function setCreateEntryMode(mode) {
@@ -347,7 +338,6 @@
       updateCreateCategoryFieldUi();
       await syncOperationCurrencyFields("create").catch(() => {});
     }
-    syncCreateFxSettlementFieldUi();
     updateCreatePreview();
   }
   function setOperationKind(mode, kind) {
@@ -458,18 +448,6 @@
     if (el.currencyNote) {
       el.currencyNote.value = "";
     }
-    if (el.opUseFxSettlement) {
-      el.opUseFxSettlement.checked = false;
-    }
-    if (el.opFxSettlementQuantity) {
-      el.opFxSettlementQuantity.value = "";
-    }
-    if (el.opFxSettlementUnitPrice) {
-      el.opFxSettlementUnitPrice.value = "";
-    }
-    if (el.opFxSettlementNote) {
-      el.opFxSettlementNote.value = "";
-    }
     if (el.opCurrency) {
       delete el.opCurrency.dataset.receiptCurrencyChosen;
       el.opCurrency.value = core.getCurrencyConfig?.().code || "BYN";
@@ -525,9 +503,7 @@
     el.planRecurrenceMonthEndWrap?.classList.add("hidden");
     await setCurrencySide("buy");
     currencyFeature.resetCurrencyTradeState?.();
-    currencyFeature.resetCreateFxSettlementDrivers?.();
     syncCurrencyTradeFieldUi();
-    syncCreateFxSettlementFieldUi();
     syncOperationCurrencyFields("create").catch(() => {});
     await setCreateEntryMode(initialEntryMode);
     renderCreateCategoryPicker();
@@ -644,6 +620,7 @@
     window.App.getRuntimeModule?.("debt-movement-editor")?.reset();
     await ensureCategoryCatalogReady("edit");
     state.editOperationId = item.id;
+    state.editReceiptCurrency = item.receipt_currency || "";
     window.App.getRuntimeModule?.("receipt-scan")?.editOperation?.(item);
     setEditModalActivity("operation", item.id);
     document.getElementById("editAmount").value = item.original_amount || item.amount;
@@ -701,25 +678,6 @@
     syncOperationCurrencyFields("edit");
     selectEditCategory(item.category_id ? Number(item.category_id) : null);
     setEditOperationMode(hasReceipt ? "receipt" : "common");
-    if (el.editUseFxSettlement) {
-      const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
-      el.editUseFxSettlement.checked = String(item.currency || baseCurrency).toUpperCase() === baseCurrency
-        && Boolean(item.fx_settlement);
-    }
-    if (el.editFxSettlementAsset) {
-      el.editFxSettlementAsset.value = String(item.fx_settlement?.asset_currency || buildSelectableCurrencyList(false)[0] || "USD").toUpperCase();
-    }
-    if (el.editFxSettlementQuantity) {
-      el.editFxSettlementQuantity.value = item.fx_settlement?.quantity ? core.formatAmount(item.fx_settlement.quantity) : "";
-    }
-    if (el.editFxSettlementUnitPrice) {
-      el.editFxSettlementUnitPrice.value = item.fx_settlement?.unit_price ? formatTradeRateValue(item.fx_settlement.unit_price) : "";
-    }
-    if (el.editFxSettlementNote) {
-      el.editFxSettlementNote.value = item.fx_settlement?.note || "";
-    }
-    currencyFeature.resetEditFxSettlementDrivers?.();
-    syncEditFxSettlementFieldUi();
     updateEditPreview();
     window.App.getRuntimeModule("operation-layout")?.sync("edit", true);
     el.editModal.classList.remove("hidden");
@@ -728,6 +686,7 @@
     window.App.getRuntimeModule?.("debt-movement-editor")?.reset();
     window.App.getRuntimeModule?.("finance-calculator")?.closeIfAttachedToModal?.(el.editModal);
     state.editOperationId = null;
+    state.editReceiptCurrency = "";
     setEditModalActivity(null, null);
     if (el.editModalReceiptBtn) {
       el.editModalReceiptBtn.classList.add("hidden");
@@ -735,21 +694,6 @@
     }
     clearReceiptItems("edit");
     setEditOperationMode("common");
-    if (el.editUseFxSettlement) {
-      el.editUseFxSettlement.checked = false;
-    }
-    if (el.editFxSettlementQuantity) {
-      el.editFxSettlementQuantity.value = "";
-    }
-    if (el.editFxSettlementUnitPrice) {
-      el.editFxSettlementUnitPrice.value = "";
-    }
-    if (el.editFxSettlementNote) {
-      el.editFxSettlementNote.value = "";
-    }
-    setAutoComputedField(el.editFxSettlementQuantityField, false);
-    setAutoComputedField(el.editFxSettlementUnitPriceField, false);
-    currencyFeature.resetEditFxSettlementDrivers?.();
     closeEditCategoryPopover();
     el.editModal.classList.remove("modal-front");
     el.editModal.classList.add("hidden");
@@ -880,9 +824,7 @@
     convertCreateAmountToDiscountReceipt,
     setReceiptEnabled,
     getCreateReceiptPayload,
-    getCreateFxSettlementPayload,
     getEditReceiptPayload,
-    getEditFxSettlementPayload,
     renderReceiptSummary,
     onCategoryCreated,
     selectCreateCategory,
@@ -920,8 +862,6 @@
     resetCreateOperationFxRateAutofill: () => setOperationFxRateManual("create", false),
     resetEditOperationFxRateAutofill: () => setOperationFxRateManual("edit", false),
     syncCurrencyTradeFieldUi,
-    syncCreateFxSettlementFieldUi,
-    syncEditFxSettlementFieldUi,
     syncSelectableCurrencyFields,
     getCurrencyTradeContext,
     syncSuggestedCurrencyRate,
@@ -929,12 +869,6 @@
     markCurrencyQuantitySource,
     markCurrencyQuoteSource,
     resetCurrencyRateAutofill,
-    toggleCreateFxSettlement: () => currencyFeature.toggleCreateFxSettlement?.(),
-    markFxSettlementQuantitySource: () => currencyFeature.markFxSettlementQuantitySource?.(),
-    markFxSettlementRateSource: () => currencyFeature.markFxSettlementRateSource?.(),
-    toggleEditFxSettlement: () => currencyFeature.toggleEditFxSettlement?.(),
-    markEditFxSettlementQuantitySource: () => currencyFeature.markEditFxSettlementQuantitySource?.(),
-    markEditFxSettlementRateSource: () => currencyFeature.markEditFxSettlementRateSource?.(),
     applyDebtCurrencyUi,
     updateDebtDueHint,
     openCreateModal,

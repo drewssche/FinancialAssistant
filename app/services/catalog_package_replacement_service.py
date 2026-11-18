@@ -45,7 +45,7 @@ class CatalogPackageReplacementService:
             candidates[row.new_variant_id].append((row, 'new', row.new_snapshot))
         pairs = defaultdict(dict)
         if rows:
-            stmt = select(OperationReceiptItem, Operation.operation_date, Operation.currency).join(
+            stmt = select(OperationReceiptItem, Operation.operation_date, Operation.item_currency).join(
                 Operation, Operation.id == OperationReceiptItem.operation_id).join(
                 OperationItemTemplate, OperationItemTemplate.id == OperationReceiptItem.template_id).where(
                 OperationReceiptItem.user_id == user_id, Operation.user_id == user_id,

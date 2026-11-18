@@ -195,7 +195,7 @@ class ItemBrandRepository:
                 Operation.id,
                 Operation.operation_date,
                 Operation.amount,
-                Operation.fx_rate,
+                Operation.receipt_fx_rate,
                 OperationReceiptItem.line_total,
                 func.coalesce(CatalogProduct.brand_id, OperationItemTemplate.brand_id).label("brand_id"),
             )

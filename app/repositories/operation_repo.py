@@ -244,6 +244,7 @@ class OperationRepository:
         category_id: int | None,
         note: str | None,
         tags: list[str] | None = None,
+        receipt_currency: str | None = None,
     ) -> Operation:
         operation = Operation(
             user_id=user_id,
@@ -251,6 +252,7 @@ class OperationRepository:
             amount=amount,
             original_amount=original_amount,
             currency=currency,
+            receipt_currency=receipt_currency,
             base_currency=base_currency,
             fx_rate=fx_rate,
             fx_rate_source=fx_rate_source,
@@ -281,6 +283,7 @@ class OperationRepository:
             amount=Decimal(snapshot["amount"]),
             original_amount=Decimal(snapshot["original_amount"]),
             currency=snapshot["currency"],
+            receipt_currency=snapshot.get("receipt_currency"),
             base_currency=snapshot["base_currency"],
             fx_rate=Decimal(snapshot["fx_rate"]),
             fx_rate_source=snapshot.get("fx_rate_source"),
@@ -979,7 +982,7 @@ class OperationRepository:
                 display_shop.label("shop_name"),
                 Operation.operation_date,
                 Operation.id.label("operation_id"),
-                Operation.currency,
+                Operation.item_currency.label("currency"),
                 OperationReceiptItem.sale_unit,
                 OperationReceiptItem.package_quantity,
                 OperationReceiptItem.package_unit,
@@ -1012,7 +1015,7 @@ class OperationRepository:
                 display_shop,
                 Operation.operation_date,
                 Operation.id,
-                Operation.currency,
+                Operation.item_currency,
                 OperationReceiptItem.sale_unit,
                 OperationReceiptItem.package_quantity,
                 OperationReceiptItem.package_unit,
@@ -1058,10 +1061,11 @@ class OperationRepository:
                 Operation.id,
                 Operation.kind,
                 Operation.amount,
-                Operation.fx_rate,
+                Operation.receipt_fx_rate,
                 Operation.operation_date,
                 Operation.category_id,
                 Operation.note,
+                Operation.item_currency,
             )
             .where(
                 and_(
@@ -1078,10 +1082,11 @@ class OperationRepository:
                 "id": int(row[0]),
                 "kind": str(row[1]),
                 "amount": Decimal(row[2] or 0),
-                "fx_rate": Decimal(row[3] or 1),
+                "receipt_fx_rate": Decimal(row[3] or 1),
                 "operation_date": row[4],
                 "category_id": int(row[5]) if row[5] is not None else None,
                 "note": row[6],
+                "receipt_currency": row[7],
             }
             for row in rows
         ]

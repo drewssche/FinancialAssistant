@@ -31,9 +31,7 @@
   const renderCreateCategoryPicker = operationModal.renderCreateCategoryPicker;
   const updateCreatePreview = operationModal.updateCreatePreview;
   const getCreateReceiptPayload = operationModal.getCreateReceiptPayload;
-  const getCreateFxSettlementPayload = operationModal.getCreateFxSettlementPayload;
   const getEditReceiptPayload = operationModal.getEditReceiptPayload;
-  const getEditFxSettlementPayload = operationModal.getEditFxSettlementPayload;
   const getOperationFxPolicyPayload = operationModal.getOperationFxPolicyPayload;
   const getOperationCurrencyContext = operationModal.getOperationCurrencyContext;
   const closeCreateModal = operationModal.closeCreateModal;
@@ -931,9 +929,7 @@
       renderCreateCategoryPicker,
       updateCreatePreview,
       getCreateReceiptPayload,
-      getCreateFxSettlementPayload,
       getEditReceiptPayload,
-      getEditFxSettlementPayload,
       getOperationFxPolicyPayload,
       getOperationCurrencyContext,
       closeCreateModal,
