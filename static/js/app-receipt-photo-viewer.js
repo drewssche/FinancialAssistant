@@ -100,8 +100,31 @@
     zoomIn.onclick = () => zoom(scale * 1.5);
     zoomOut.onclick = () => zoom(scale / 1.5);
     fit.onclick = reset;
+    const viewer = dialog.querySelector('#scanPhotoDialog');
+    const openPhoto = dialog.querySelector('#scanShowPhoto');
+    const column = frame.closest('.scan-image-column'), workspace = column.parentNode;
+    const mobile = window.matchMedia('(max-width: 700px)');
+    let reviewScroll = 0;
+    openPhoto.onclick = () => {
+      if (!mobile.matches || photo.hidden || viewer.open) return;
+      reviewScroll = dialog.scrollTop;
+      viewer.append(column);
+      viewer.showModal();
+      viewer.querySelector('#scanPhotoClose').focus({preventScroll: true});
+    };
+    viewer.querySelector('#scanPhotoClose').onclick = () => viewer.close();
+    viewer.addEventListener('close', () => {
+      if (viewer.open) return;
+      workspace.prepend(column);
+      if (dialog.open) {
+        if (mobile.matches) openPhoto.focus({preventScroll: true});
+        dialog.scrollTop = reviewScroll;
+      }
+    });
+    const close = () => { if (viewer.open) viewer.close(); };
+    mobile.addEventListener('change', () => { if (!mobile.matches) close(); });
     new ResizeObserver(() => { if (scale > 1) position(); }).observe(frame);
     reset();
-    return {reset};
+    return {reset, close};
   };
 })();

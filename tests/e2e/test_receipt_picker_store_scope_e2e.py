@@ -1333,6 +1333,7 @@ def test_mobile_create_modal_preview_stays_above_sticky_cta(static_server_url: s
 
     page.fill("#opDate", "2026-03-08")
     page.fill("#opAmount", "123.45")
+    page.locator('#createModal .operation-note-details summary').click()
     page.fill("#opNote", "Мобильная проверка превью")
     page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
     page.wait_for_selector("#opReceiptFields:not(.hidden)")

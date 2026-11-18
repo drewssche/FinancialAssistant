@@ -12,6 +12,55 @@
     node.append(heading);
     return node;
   }
+  function setupSimpleForm(mode, prefix, form) {
+    const fields = document.createElement('div');
+    fields.className = 'operation-basic-fields';
+    fields.innerHTML = `<div class="basic-amount"><label for="${prefix}Amount">Сумма</label></div>
+      <div class="basic-kind"></div>
+      <div class="basic-category"><label for="${prefix}CategorySearch">Категория</label></div>
+      <div class="basic-date"><label for="${prefix}Date">Дата</label><div class="basic-date-controls">
+        <button type="button" class="btn btn-secondary btn-icon" data-date-step-target="${prefix}Date" data-date-step="today" title="Сегодня" aria-label="Сегодня">${window.App.icons.svg('calendarToday')}</button>
+      </div></div>`;
+    form.prepend(fields);
+    const actions = document.createElement('div');
+    actions.className = 'operation-item-actions';
+    const details = document.createElement('details');
+    details.className = 'operation-note-details';
+    details.innerHTML = '<summary>Комментарий и теги</summary>';
+    form.append(actions, details);
+    const kind = byId(mode + 'KindSwitch'), date = byId(prefix + 'DateField'), format = byId(mode + 'OperationModeSwitch');
+    const slots = [kind, date, format].map(control => {
+      const anchor = document.createComment(control.id);
+      control.before(anchor);
+      return {control, anchor};
+    });
+    const addItem = format.querySelector('[data-operation-mode="receipt"]');
+    const exchange = form.querySelector('[data-entry-mode="currency"]');
+    return (simple, view, reset) => {
+      fields.hidden = actions.hidden = details.hidden = !simple;
+      const scan = mode === 'create' && byId('openReceiptScan');
+      addItem.textContent = simple ? 'Добавить товар' : 'Чек с товарами';
+      if (exchange) exchange.textContent = simple ? 'Обмен валюты' : 'Валюта';
+      if (!simple) {
+        for (const {control, anchor} of slots) anchor.after(control);
+        if (scan && actions.contains(scan)) form.before(scan);
+        return;
+      }
+      fields.querySelector('.basic-amount').append(view.amount);
+      fields.querySelector('.basic-kind').append(kind);
+      fields.querySelector('.basic-category').append(view.category);
+      fields.querySelector('.basic-date-controls').prepend(date);
+      for (const option of view.currency.options) option.label = option.value;
+      actions.append(format);
+      if (scan) actions.append(scan);
+      view.extra.before(actions, details);
+      view.noteLabel.append(byId(prefix + 'Note'));
+      details.append(view.noteLabel, byId(prefix + 'TagsField'));
+      if (reset) details.open = Boolean(byId(prefix + 'Note').value.trim() || byId(prefix + 'Tags').value.trim());
+      if (view.entry) view.extra.after(view.entry);
+      view.sidebar.remove();
+    };
+  }
   function setup(mode) {
     const create = mode === 'create', prefix = create ? 'op' : 'edit';
     const modal = byId(`${mode}Modal`), form = byId(`${mode}OperationForm`);
@@ -98,7 +147,8 @@
     noteLabel.innerHTML = `<span>Комментарий</span>`;
     sidebar.append(noteLabel);
     const receiptSummary = receipt.querySelector('.receipt-summary');
-    const layout = {modal, form, extra, payment, entry, check, amount, amountAnchor, category, categoryAnchor, currency, currencyAnchor, receiptCurrency, prefix, sidebar, noteLabel, receipt, receiptSummary, previewDetails, syncPreview};
+    const simpleForm = setupSimpleForm(mode, prefix, form);
+    const layout = {modal, form, extra, payment, entry, check, amount, amountAnchor, category, categoryAnchor, currency, currencyAnchor, receiptCurrency, prefix, sidebar, noteLabel, receipt, receiptSummary, previewDetails, syncPreview, simpleForm};
     layouts.set(mode, layout);
     return layout;
   }
@@ -140,6 +190,8 @@
     byId(`${prefix}Amount`).placeholder = receipt ? (desktop.matches ? 'Необязательно' : 'Сумма в бумажном чеке (необязательно)') : 'Сумма';
     if (reset) { view.previewDetails.hidden = true; view.payment.open = false; view.syncPreview(); }
     const plan = mode === 'create' && window.App.state.createFlowMode === 'plan';
+    const simple = operation && !receipt && !plan && !modal.classList.contains('editing-debt-movement');
+    modal.classList.toggle('is-simple-operation', simple);
     if (mode === 'create' && byId('openReceiptScan')) byId('openReceiptScan').hidden = !operation || plan;
     const tagsField = byId(`${prefix}TagsField`);
     tagsField.hidden = !operation || modal.classList.contains("editing-debt-movement");
@@ -156,7 +208,7 @@
       if (entry) view.form.prepend(entry);
       view.form.insertBefore(view.sidebar, extra);
       view.noteLabel.append(note);
-      view.sidebar.append(tagsField);
+      view.sidebar.append(view.noteLabel, tagsField);
       view.sidebar.classList.toggle('hidden', !operation);
       if (receipt) {
         view.sidebar.prepend(view.receiptSummary, check);
@@ -170,6 +222,7 @@
       view.sidebar.remove();
       if (plan) extra.before(note, tagsField); else extra.prepend(note, tagsField);
     }
+    view.simpleForm(simple, view, reset);
   }
   desktop.addEventListener('change', () => {
     for (const mode of layouts.keys()) {

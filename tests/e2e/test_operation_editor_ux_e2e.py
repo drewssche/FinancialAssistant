@@ -47,7 +47,9 @@ def test_simple_and_receipt_editors_keep_main_path_short(static_server_url, page
     page = page_with_receipt_api_mock
     open_editor(page, static_server_url, width)
     assert page.locator('#opAmount').is_visible()
-    assert page.locator('#opNote').is_visible()
+    assert page.locator('#opNote').is_hidden()
+    page.locator('#createModal .operation-note-details summary').click()
+    assert page.locator('#opTags').is_visible()
     assert page.locator('#opFxSettlementBlock').is_hidden()
     assert page.locator('#createModal .panel-head').bounding_box()['height'] < 90
     page.locator('#opAmount').fill('5.85')
@@ -58,6 +60,7 @@ def test_simple_and_receipt_editors_keep_main_path_short(static_server_url, page
     page.locator('#receiptItemsList [data-receipt-field="name"]').first.fill('Сыр Голландский')
     page.locator('#createTitle').click()
     first = page.locator('#receiptItemsList .receipt-item-row').first
+    assert float(first.locator('[data-receipt-field="unit_price"]').input_value()) == 5.85
     first.locator('[data-receipt-field="quantity"]').fill('0.242')
     first.locator('[data-receipt-field="unit_price"]').fill('15.64')
     first.locator('[data-receipt-discount-toggle]').click()
@@ -448,3 +451,40 @@ def test_receipt_price_and_currency_selected_together(static_server_url, page_wi
     expect(select).to_have_value('BYN')
     expect(price).to_have_value('')
     expect(first.locator('.receipt-foreign-price')).to_contain_text('EUR')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width', [320, 1440])
+def test_quick_entry_preserves_currency_date_and_populated_edit_details(static_server_url, page_with_receipt_api_mock, width):
+    from playwright.sync_api import expect
+
+    page = page_with_receipt_api_mock
+    open_editor(page, static_server_url, width)
+    basic = page.locator('#createModal .operation-basic-fields')
+    basic.get_by_role('button', name='Доход').click()
+    expect(page.locator('#opKind')).to_have_value('income')
+    basic.get_by_role('button', name='Расход').click()
+    page.locator('#opDate').fill('2025-02-04')
+    basic.get_by_role('button', name='Сегодня').click()
+    expect(page.locator('#opDate')).to_have_value(page.evaluate("window.App.core.getPeriodBounds('day').dateFrom"))
+    page.locator('#opCurrency').select_option('USD')
+    page.locator('#opAmount').fill('23')
+    page.get_by_role('button', name='Добавить товар', exact=True).click()
+    row = page.locator('#receiptItemsList .receipt-item-row').first
+    row.locator('[data-receipt-field=name]').fill('Подписка')
+    page.locator('#createTitle').click()
+    assert float(row.locator('[data-receipt-field=unit_price]').input_value()) == 23
+    expect(row.locator('#opCurrency')).to_have_value('USD')
+    assert float(page.locator('#opAmount').input_value()) == 23
+    expect(page.locator('#createModal .operation-note-details')).to_be_hidden()
+    page.click('#closeCreateModalBtn')
+
+    page.evaluate("""() => window.App.getRuntimeModule('operation-modal').openEditModal({
+        id: 73, kind: 'expense', currency: 'BYN', amount: '15.00', operation_date: '2026-10-03',
+        category_id: 101, note: 'Фильтр для кофе', tags: ['кофемашина']
+    })""")
+    expect(page.locator('#editNote')).to_be_visible()
+    expect(page.locator('#editTags')).to_have_value('кофемашина')
+    page.locator('#editModal .operation-note-details summary').click()
+    expect(page.locator('#editNote')).to_be_hidden()
+    expect(page.locator('#editNote')).to_have_value('Фильтр для кофе')

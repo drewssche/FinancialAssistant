@@ -1,7 +1,7 @@
 import pytest
 from playwright.sync_api import expect
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url,page_with_receipt_api_mock
-from tests.e2e.test_receipt_scan_e2e import start,stub,upload
+from tests.e2e.test_receipt_scan_e2e import open_scan_row, start,stub,upload
 
 TEXT='''Корона
 № ДОК 123
@@ -24,6 +24,7 @@ def test_name_match_requires_confirmation_and_preserves_receipt_money(static_ser
         calls.append(route.request.post_data_json);route.fulfill(json={'items':[ITEM],'auto_match':False,'state':'found','source':'Корона'})
     p.route('**/api/v1/operations/catalog-products/lookup-site-codes',site)
     start(p,static_server_url,width);stub(p,TEXT);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     p.locator('#scanShop').fill('Корона')
     row=p.locator('.scan-row').first
     row.get_by_role('button',name='Найти на сайте по названию').click()
@@ -57,6 +58,7 @@ def test_search_without_code_and_no_match_does_not_block_transfer(static_server_
         calls.append(route.request.post_data_json);route.fulfill(json={'items':[],'auto_match':False,'state':'not_found','source':'Корона'})
     p.route('**/api/v1/operations/catalog-products/lookup-site-codes',site)
     start(p,static_server_url,390);stub(p,TEXT.replace('2276384 ',''));upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     p.locator('#scanShop').fill('Корона')
     row=p.locator('.scan-row').first
     row.get_by_role('button',name='Найти на сайте по названию').click()

@@ -5,7 +5,7 @@ from PIL import Image
 import pytest
 from playwright.sync_api import expect
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, page_with_receipt_api_mock
-from tests.e2e.test_receipt_scan_e2e import start, stub, upload
+from tests.e2e.test_receipt_scan_e2e import open_scan_row, start, stub, upload
 
 TEXT='''ООО «Либретик»
 4811040140757 Пельмени 430г
@@ -18,6 +18,7 @@ def setup(page, url, results):
     page.route('**/catalog-products/lookup-codes', lambda r: r.fulfill(json={'items': [], 'auto_match': False}))
     page.route('**/catalog-products/lookup-site-codes', lambda r: r.fulfill(json=results))
     start(page, url); stub(page, TEXT); upload(page); page.click('#scanRun')
+    open_scan_row(page.locator('.scan-row').first)
 
 
 @pytest.mark.e2e
@@ -89,6 +90,7 @@ def test_old_store_response_is_ignored_after_manual_source_change(static_server_
         else: route.fulfill(json={'items':[{'name':'Пельмени Green 430 г','site_selection':'green-selection'}],'auto_match':True})
     p.route('**/catalog-products/lookup-site-codes',site_route)
     start(p,static_server_url);stub(p,TEXT);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     p.wait_for_event('request',predicate=lambda r:r.url.endswith('/lookup-site-codes'))
     p.fill('#scanShop','Green')
     expect(p.locator('.receipt-product-preview')).to_contain_text('Пельмени Green 430 г')
@@ -116,6 +118,7 @@ def test_preview_is_read_only_responsive_and_other_store_never_links(static_serv
     photo_data='data:image/jpeg;base64,'+base64.b64encode(photo.getvalue()).decode()
     p.route('**/catalog-products/receipt-thumbnail',lambda r:r.fulfill(json={'image':photo_data if width==390 else None}))
     start(p,static_server_url,width);stub(p,TEXT);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     card=p.locator('.receipt-product-preview')
     expect(card).to_contain_text('Штрихкод совпадает')
     expect(card).to_contain_text('Фасовка на сайте: 430 г')
@@ -153,6 +156,7 @@ def test_article_only_preview_stays_inside_selected_store(static_server_url,page
         r.fulfill(json={'state':'found','items':[{'name':'Пицца Микс 170 г','url':'https://edostavka.by/product/2229644','source':'Е-доставка','matched_by':'retailer','matched_code':'2229644','site_selection':'article-selection'}]})
     p.route('**/catalog-products/lookup-site-codes',site)
     start(p,static_server_url,390);stub(p,'ООО Евроторг\n№ ДОК 123\n2229644 Пицца Микс 170г\n3.99 x1.000 3.99\nИТОГО К ОПЛАТЕ 3.99\n23.10.2026 12:00:00');upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     expect(p.locator('.receipt-product-preview')).to_contain_text('Артикул совпадает · 2229644')
     assert requests[0]['shop_name']=='Евроопт' and requests[0]['codes']==[{'kind':'retailer','code':'2229644'}]
     expect(p.get_by_role('button',name='Другие магазины',exact=True)).to_have_count(0)
@@ -175,6 +179,7 @@ def test_site_package_autofill_and_price_discount_are_separate_from_receipt(stat
     p.route('**/lookup-codes',lambda r:r.fulfill(json={'items':[],'auto_match':False}))
     p.route('**/lookup-site-codes',lambda r:r.fulfill(json={'items':[found]}))
     start(p,static_server_url,width);stub(p,TEXT);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row').first
     size=row.get_by_role('spinbutton',name='Размер одной упаковки',exact=True)
     expect(size).to_have_value('430')
@@ -208,6 +213,7 @@ def test_site_autofill_does_not_replace_catalog_or_use_ambiguous_results(static_
     p.route('**/lookup-codes',lambda r:r.fulfill(json={'items':[catalog] if case in ('catalog','catalog_empty','weighted') else [],'auto_match':case in ('catalog','catalog_empty','weighted')}))
     p.route('**/lookup-site-codes',lambda r:r.fulfill(json=data))
     start(p,static_server_url);stub(p,TEXT.replace('Пельмени 430г','Пельмени'));upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row').first
     expect(row.locator('.receipt-product-preview').first).to_be_visible()
     if case=='catalog_empty':
@@ -242,6 +248,7 @@ def test_missing_site_price_can_be_refreshed_without_changing_receipt(static_ser
     p.route('**/lookup-codes',lambda r:r.fulfill(json={'items':[],'auto_match':False}))
     p.route('**/lookup-site-codes',lookup)
     start(p,static_server_url,320);stub(p,TEXT);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     expect(p.locator('.receipt-preview-price')).to_contain_text('Не удалось получить цену')
     p.get_by_role('button',name='Обновить цену',exact=True).click()
     expect(p.locator('.receipt-preview-price')).to_contain_text('3,89 BYN')

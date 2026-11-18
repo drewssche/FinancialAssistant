@@ -363,15 +363,17 @@
       });
     }
 
-    if (el.createOperationModeSwitch) {
-      el.createOperationModeSwitch.addEventListener("click", (event) => {
-        const btn = event.target.closest("button[data-operation-mode]");
-        if (!btn || !actions.setCreateOperationMode) {
-          return;
-        }
-        actions.setCreateOperationMode(btn.dataset.operationMode);
+    function bindFormatSwitch(control, setMode, list) {
+      control?.addEventListener("click", event => {
+        const button = event.target.closest("button[data-operation-mode]");
+        if (!button || !setMode) return;
+        const addItem = button.dataset.operationMode === "receipt" && Boolean(button.closest(".is-simple-operation"));
+        setMode(button.dataset.operationMode, addItem);
+        if (addItem) list?.querySelector('.receipt-item-row:last-child [data-receipt-field="name"]')?.focus();
       });
     }
+    bindFormatSwitch(el.createOperationModeSwitch, actions.setCreateOperationMode, el.receiptItemsList);
+    bindFormatSwitch(el.editOperationModeSwitch, actions.setEditOperationMode, el.editReceiptItemsList);
 
     const convertAmountToDiscountReceiptBtn = el.convertAmountToDiscountReceiptBtn
       || document.getElementById("convertAmountToDiscountReceiptBtn");
@@ -408,16 +410,6 @@
       }
       actions.setOperationKind("edit", btn.dataset.kind);
     });
-
-    if (el.editOperationModeSwitch) {
-      el.editOperationModeSwitch.addEventListener("click", (event) => {
-        const btn = event.target.closest("button[data-operation-mode]");
-        if (!btn || !actions.setEditOperationMode) {
-          return;
-        }
-        actions.setEditOperationMode(btn.dataset.operationMode);
-      });
-    }
 
     el.operationsBody.addEventListener("click", (event) => {
       const menuTrigger = event.target.closest("button[data-table-menu-trigger]");

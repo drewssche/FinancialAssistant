@@ -826,7 +826,28 @@
       if (!first || normalizeReceiptName(first.shop_name || '') === normalizeReceiptName(store.value)) return;
       updateReceiptItemField(first.draft_id, 'shop_name', store.value, mode);
       inheritReceiptShopFromFirstRow(first.draft_id, mode);
-      renderReceiptItems(mode);
+      // A native change fires before focus reaches the next field. Replacing the
+      // clicked row here can send the next product name into the store input.
+      function refreshStoreRows() {
+        const list = getReceiptContext(mode).listNode;
+        if (getReceiptItems(mode)[0] !== first || !list?.isConnected) return;
+        if (list.querySelector('button:active')) {
+          requestAnimationFrame(refreshStoreRows);
+          return;
+        }
+        const active = document.activeElement;
+        const field = list.contains(active) && active.dataset.receiptField;
+        const id = field && active.closest('[data-receipt-item-id]')?.dataset.receiptItemId;
+        const start = id ? active.selectionStart : null, end = id ? active.selectionEnd : null;
+        renderReceiptItems(mode);
+        if (id) {
+          const target = list.querySelector(`[data-receipt-item-id="${CSS.escape(id)}"] [data-receipt-field="${CSS.escape(field)}"]`);
+          target?.focus({preventScroll: true});
+          if (start != null) target?.setSelectionRange(start, end);
+        }
+      }
+      if (event.isTrusted) requestAnimationFrame(refreshStoreRows);
+      else refreshStoreRows();
       renderReceiptSummary(mode);
       if (mode === 'create') updateCreatePreview(); else updateEditPreview();
     });
@@ -982,7 +1003,7 @@
     const handleReceiptItemsListClick = interactions.handleReceiptItemsListClick || (() => {});
     const handleReceiptOutsidePointer = interactions.handleReceiptOutsidePointer || (() => {});
 
-    function setReceiptEnabled(enabled, mode = "create") {
+    function setReceiptEnabled(enabled, mode = "create", fromAmount = false) {
       const ctx = getReceiptContext(mode);
       const isEnabled = enabled === true;
       if (ctx.fieldsNode) {
@@ -993,6 +1014,13 @@
       }
       if (isEnabled) {
         ensureTrailingReceiptRow(mode);
+        const rows = getReceiptItems(mode);
+        if (fromAmount && rows.length === 1 && isReceiptRowEmpty(rows[0])) {
+          const amount = core.resolveMoneyInput(ctx.amountNode?.value || "");
+          if (amount.valid && Number(amount.previewValue) > 0) {
+            Object.assign(rows[0], {quantity: 1, unit_price: asMoney(amount.previewValue), price_touched: true});
+          }
+        }
         loadReceiptTemplateHints().catch(() => {});
       } else {
         hideAllReceiptPickers();

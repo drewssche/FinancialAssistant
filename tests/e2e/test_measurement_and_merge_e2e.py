@@ -1,7 +1,7 @@
 import pytest
 from playwright.sync_api import expect
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, page_with_receipt_api_mock, _login, _ensure_categories_loaded
-from tests.e2e.test_receipt_scan_e2e import start, stub, upload
+from tests.e2e.test_receipt_scan_e2e import open_scan_row, start, stub, upload
 
 
 @pytest.mark.e2e
@@ -9,6 +9,7 @@ from tests.e2e.test_receipt_scan_e2e import start, stub, upload
 def test_same_package_editor_in_scan_operation_and_catalog(static_server_url,page_with_receipt_api_mock,width):
     page=page_with_receipt_api_mock
     start(page,static_server_url,width);stub(page);upload(page);page.click('#scanRun')
+    open_scan_row(page.locator('.scan-row').first)
     row=page.locator('#scanRows .scan-row').first
     editor=row.locator('.measurement-editor')
     editor.locator('[data-scan-unit=pack]').click()

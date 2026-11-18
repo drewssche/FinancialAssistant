@@ -1,7 +1,7 @@
 import pytest
 from playwright.sync_api import expect
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, page_with_receipt_api_mock
-from tests.e2e.test_receipt_scan_e2e import start, stub, upload
+from tests.e2e.test_receipt_scan_e2e import open_scan_row, start, stub, upload
 from tests.e2e.test_receipt_scan_catalog_e2e import seed_catalog, PIZZA
 
 
@@ -13,6 +13,7 @@ def test_edit_linked_scan_fields_keeps_identity_and_money_until_operation_save(s
     writes=[]
     p.on('request',lambda r:writes.append(r.url) if r.method in ['PATCH','PUT','POST'] and ('catalog-products' in r.url or r.url.endswith('/operations')) else None)
     stub(p,PIZZA);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row').first;name=row.locator('[data-scan-field=name]')
     name.focus();row.locator('.receipt-template-suggestion').first.click()
     name.fill('Пицца Черри-чеддер новая 180г')

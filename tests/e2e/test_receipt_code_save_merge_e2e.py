@@ -1,7 +1,7 @@
 import pytest
 from playwright.sync_api import expect
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url,page_with_receipt_api_mock
-from tests.e2e.test_receipt_scan_e2e import start,stub,upload
+from tests.e2e.test_receipt_scan_e2e import open_scan_row, start,stub,upload
 from tests.e2e.test_receipt_codes_e2e import TEXT,FOUND,respond
 
 REPEATS='000 "ЕВРОТОРГ"\n№ ДОК\n2186323 Пельмени Бульварские\nслив. масл. 430г 4811040140757\n5.99 x1.000 5.99\n'+('1751767 Сырок Ясь Белоус\nфундук-какао 16% 45г 4810729017151\n1.10 x1.000 1.10\n'*4)+'ИТОГО К ОПЛАТЕ 10.39\n15.10.2026 21:23:00'
@@ -12,6 +12,7 @@ REPEATS='000 "ЕВРОТОРГ"\n№ ДОК\n2186323 Пельмени Бульв
 def test_codes_save_with_receipt_and_invalid_barcode_blocks_transfer(static_server_url,page_with_receipt_api_mock,width):
     p=page_with_receipt_api_mock;start(p,static_server_url,width);respond(p,[],False)
     stub(p,TEXT.replace('Молоко 900 мл','2186323 Молоко 900 мл'));upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row');hint=row.locator('.receipt-code-error')
     expect(row.locator('.receipt-code-save')).to_have_count(0)
     expect(row.get_by_role('combobox',name='Тип кода').first).to_have_value('retailer')
@@ -33,6 +34,7 @@ def test_pending_auto_lookup_cannot_replace_manually_edited_code(static_server_u
     p.route('**/catalog-products/lookup-codes',lambda r:pending.append(r))
     stub(p,TEXT);upload(p)
     with p.expect_request(lambda r:r.url.endswith('/lookup-codes')):p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row');field=row.get_by_role('textbox',name='Код товара',exact=True)
     field.fill('4811040140757')
     pending[0].fulfill(json={'items':[FOUND],'auto_match':True,'warnings':[],'unmatched':[]})
@@ -46,6 +48,7 @@ def test_pending_auto_lookup_cannot_replace_manually_edited_code(static_server_u
 def test_merge_four_barcoded_items_preserves_receipt_total_and_transfer(static_server_url,page_with_receipt_api_mock,width):
     p=page_with_receipt_api_mock;start(p,static_server_url,width);respond(p,[],False)
     stub(p,REPEATS);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').filter(has=p.locator('[data-scan-split]')))
     expect(p.locator('.scan-row')).to_have_count(2)
     expect(p.locator('#scanMergeDuplicates')).to_have_count(0)
     row=p.locator('.scan-row').last
@@ -69,6 +72,7 @@ def test_merge_four_barcoded_items_preserves_receipt_total_and_transfer(static_s
 def test_automatic_merge_can_split_without_remerging_or_losing_catalog_edits(static_server_url,page_with_receipt_api_mock,width):
     p=page_with_receipt_api_mock;start(p,static_server_url,width);respond(p,[],False)
     stub(p,REPEATS);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').filter(has=p.locator('[data-scan-split]')))
     expect(p.locator('.scan-row')).to_have_count(2)
     row=p.locator('.scan-row').last
     row.locator('.scan-category input').fill('Еда')
@@ -81,6 +85,7 @@ def test_automatic_merge_can_split_without_remerging_or_losing_catalog_edits(sta
     expect(p.locator('#scanConfirmed')).not_to_be_checked()
     expect(p.locator('[data-scan-split]')).to_have_count(0)
     for restored in p.locator('.scan-row').all()[1:]:
+        open_scan_row(restored)
         expect(restored.locator('[data-scan-field=quantity]')).to_have_value('1')
         expect(restored.locator('[data-scan-field=total]')).to_have_value('1.10')
         expect(restored.locator('[data-scan-category]')).to_have_value('101')
@@ -101,6 +106,7 @@ def test_automatic_merge_can_split_without_remerging_or_losing_catalog_edits(sta
 def test_split_modified_money_explains_restore_and_cancel_preserves_edits(static_server_url,page_with_receipt_api_mock):
     p=page_with_receipt_api_mock;start(p,static_server_url,390);respond(p,[],False)
     stub(p,REPEATS);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').filter(has=p.locator('[data-scan-split]')))
     row=p.locator('.scan-row').last
     row.locator('[data-scan-field=quantity]').fill('3')
     row.locator('[data-scan-split]').click()
@@ -121,6 +127,7 @@ def test_split_restores_interleaved_receipt_order_and_reparse_groups_again(stati
     p=page_with_receipt_api_mock;start(p,static_server_url);respond(p,[],False)
     text='ООО Тест\n№ ДОК\nСырок\n4810729017151 1.10 x1.000 1.10\nПельмени\n4811040140757 5.99 x1.000 5.99\nСырок\n4810729017151 1.10 x1.000 1.10\nИТОГО К ОПЛАТЕ 8.19\n15.10.2026 21:23:00'
     stub(p,text);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').filter(has=p.locator('[data-scan-split]')))
     expect(p.locator('.scan-row')).to_have_count(2)
     p.locator('[data-scan-split]').click()
     expect(p.locator('.scan-row')).to_have_count(3)
@@ -134,6 +141,7 @@ def test_split_restores_interleaved_receipt_order_and_reparse_groups_again(stati
 def test_merged_quantity_is_the_only_multiplier_when_edited(static_server_url,page_with_receipt_api_mock):
     p=page_with_receipt_api_mock;start(p,static_server_url);respond(p,[],False)
     stub(p,REPEATS);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').filter(has=p.locator('[data-scan-split]')))
     row=p.locator('.scan-row').last
     row.locator('[data-scan-field=quantity]').fill('3')
     expect(row.locator('[data-scan-field=total]')).to_have_value('3.30')
@@ -150,6 +158,7 @@ def test_internal_code_is_accepted_without_workarounds_or_money_changes(static_s
     p=page_with_receipt_api_mock;start(p,static_server_url,width);respond(p,[],False)
     text='ООО ГРИНРОЗНИЦА\n№ ДОК 118861\nЛук репчатый красный вес\n22373102227750 3.66 x0.370 1.35\nИТОГО К ОПЛАТЕ 1.35\n22.10.2026 20:33:06'
     stub(p,text);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row');button=row.locator('[data-receipt-code-as-retailer]')
     expect(row.get_by_role('combobox',name='Тип кода')).to_have_value('internal')
     expect(row.get_by_role('textbox',name='Код товара',exact=True)).to_have_value('22373102227750')
@@ -191,6 +200,7 @@ def test_repeat_internal_code_auto_selects_catalog_product_without_changing_mone
     requests=respond(p,[found],True)
     text='ООО ГРИНРОЗНИЦА\n№ ДОК 118861\nЛук репчатый красный вес\n22373102227750 3.66 x0.370 1.35\nИТОГО К ОПЛАТЕ 1.35\n22.10.2026 20:33:06'
     stub(p,text);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row')
     expect(row.locator('.scan-match')).to_contain_text('Найден по внутреннему штрихкоду')
     assert requests[0]['shop_name']=='Green'

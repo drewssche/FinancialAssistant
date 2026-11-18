@@ -25,6 +25,12 @@ def start(page,url,width=1440):
     page.click('#addOperationCta');page.click('#createOperationModeSwitch [data-operation-mode=receipt]');page.click('#openReceiptScan')
     expect(page.locator('#receiptScanDialog')).to_be_visible()
 
+def open_scan_row(row):
+    if not row.evaluate('el => el.open'):
+        row.locator('summary').click()
+    return row
+
+
 def image(page, height=1600):
     value=page.evaluate('''height => {const c=document.createElement('canvas');c.width=1200;c.height=height;const x=c.getContext('2d');x.fillStyle='white';x.fillRect(0,0,1200,height);x.fillStyle='black';x.font='36px Arial';const lines=['ООО ТЕСТОВЫЙ МАГАЗИН','№ ДОК 123','МОЛОКО','3.00 x2.000 6.00','ХЛЕБ','2.00 x1.000 2.00','ИТОГО К ОПЛАТЕ 8.00','12.10.2026 18:24:04'];lines.forEach((s,i)=>x.fillText(s,80,120+i*90));return c.toDataURL('image/png').split(',')[1];}''',height)
     return {'name':'receipt.png','mimeType':'image/png','buffer':base64.b64decode(value)}
@@ -46,6 +52,11 @@ def test_long_receipt_zoom_and_pan(static_server_url, page_with_receipt_api_mock
     expect(page.locator('#scanRun')).to_be_enabled()
     expect(page.locator('#scanZoomIn')).to_be_hidden()
     page.click('#scanRun')
+    page.fill('#scanTotal', '7.51')
+    if width == 320:
+        page.get_by_role('button', name='Посмотреть чек').click()
+    else:
+        open_scan_row(page.locator('.scan-row').first)
     frame = page.locator('#scanImageFrame')
     photo = page.locator('#scanCanvas')
     level = page.locator('#scanZoomLevel')
@@ -54,7 +65,6 @@ def test_long_receipt_zoom_and_pan(static_server_url, page_with_receipt_api_mock
     expect(level).to_have_text('100%')
     get_pixels = 'c => c.toDataURL("image/webp", 0.9)'
     original = photo.evaluate(get_pixels)
-    page.fill('#scanTotal', '7.51')
     frame.scroll_into_view_if_needed()
     bounds = frame.bounding_box()
     x = bounds['x'] + bounds['width'] / 2
@@ -104,6 +114,8 @@ def test_long_receipt_zoom_and_pan(static_server_url, page_with_receipt_api_mock
     expect(page.locator('#scanTotal')).to_have_value('7.51')
     photo.click()
     expect(level).to_have_text('200%')
+    if width == 320:
+        page.get_by_role('button', name='Вернуться к позициям').click()
     page.click('#scanBack')
     expect(level).to_be_hidden()
     assert photo.evaluate('c => getComputedStyle(c).transform') == 'none'
@@ -160,6 +172,13 @@ def test_scan_review_to_unsaved_operation(static_server_url,page_with_receipt_ap
     expect(page.locator('#scanRows .scan-row')).to_have_count(2)
     expect(page.locator('#scanTransfer')).to_be_disabled()
     expect(page.locator('#scanDate')).to_have_value('2026-10-12')
+    rows = page.locator('#scanRows .scan-row')
+    expect(rows.locator('summary').first).to_contain_text('2 × 3,00 · скидка 0,50 BYN')
+    expect(rows.locator('summary').first).to_contain_text('5,50 BYN')
+    expect(page.locator('#scanRows details[open]')).to_have_count(0)
+    expect(page.locator('#scanNextIssue')).to_be_hidden()
+    assert rows.first.bounding_box()['height'] < 100
+    assert rows.first.bounding_box()['y'] < page.viewport_size['height']
     page.screenshot(path=f'/tmp/fa-ocr-review-{width}.png')
     assert page.locator('#receiptScanDialog').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
     page.locator('#scanConfirmed').check();expect(page.locator('#scanTransfer')).to_be_enabled()
@@ -369,6 +388,7 @@ def test_scan_numeric_expressions_and_invalid_results(static_server_url,page_wit
 ИТОГО К ОПЛАТЕ 6.40
 13.10.2026 18:24:04''');upload(page);page.click('#scanRun')
     row=page.locator('.scan-row').first
+    open_scan_row(row)
     paid=row.locator('[data-scan-field=total]')
     paid.fill('7,11−0,71');paid.press('Enter')
     expect(paid).to_have_value('6.40')
@@ -408,6 +428,7 @@ def test_scan_missing_paid_total_and_manual_paid_recalculate_discount(static_ser
       ]});}""")
     stub(page);upload(page);page.click('#scanRun')
     row=page.locator('.scan-row').first;paid=row.locator('[data-scan-field=total]')
+    open_scan_row(row)
     expect(paid).to_have_value('6.40')
     paid.focus();paid.press('Tab')
     row.locator('[data-scan-field=discount]').fill('0,70')
@@ -467,6 +488,26 @@ def test_scan_errors_stay_with_their_rows_and_reindex_after_delete(static_server
     stub(p,'\n'.join(lines));upload(p);p.click('#scanRun')
     rows=p.locator('#scanRows .scan-row')
     expect(rows).to_have_count(9)
+    expect(p.locator('#scanRows details[open]')).to_have_count(2)
+    jump = p.locator('#scanNextIssue')
+    expect(jump).to_contain_text('2')
+    jump.click()
+    expect(rows.nth(1).locator('[data-scan-field=price]')).to_be_focused()
+    jump.click()
+    expect(rows.nth(8).locator('[data-scan-field=price]')).to_be_focused()
+    if width == 320:
+        photo = p.get_by_role('button', name='Посмотреть чек')
+        before = p.locator('#receiptScanDialog').evaluate('d => d.scrollTop')
+        photo.click()
+        expect(p.locator('#scanPhotoDialog')).to_be_visible()
+        p.click('#scanZoomIn')
+        expect(p.locator('#scanZoomLevel')).to_have_text('150%')
+        p.keyboard.press('Escape')
+        expect(p.locator('#scanPhotoDialog')).to_be_hidden()
+        expect(photo).to_be_focused()
+        assert p.locator('#receiptScanDialog').evaluate('d => d.scrollTop') == pytest.approx(before, abs=2)
+    jump.click()
+    expect(rows.nth(1).locator('[data-scan-field=price]')).to_be_focused()
     expect(p.locator('.scan-row-error:visible')).to_have_count(2)
     expect(rows.nth(1).locator('.scan-row-error')).to_contain_text('позиции 2')
     expect(rows.nth(8).locator('.scan-row-error')).to_contain_text('позиции 9')
@@ -477,7 +518,12 @@ def test_scan_errors_stay_with_their_rows_and_reindex_after_delete(static_server
     assert p.locator('#receiptScanDialog').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
     rows.nth(1).locator('[data-scan-field=price]').fill('4')
     expect(rows.nth(1).locator('.scan-row-error')).to_be_hidden()
+    expect(rows.nth(1).locator('[data-scan-field=price]')).to_be_focused()
+    expect(jump).to_contain_text('1')
+    jump.click()
+    expect(rows.nth(8).locator('[data-scan-field=price]')).to_be_focused()
     expect(p.locator('.scan-row-error:visible')).to_have_count(1)
+    open_scan_row(rows.first)
     p.get_by_role('button',name='Удалить позицию 1',exact=True).click()
     expect(rows).to_have_count(8)
     expect(rows.nth(7).locator('.scan-row-error')).to_contain_text('позиции 8')
@@ -486,6 +532,7 @@ def test_scan_errors_stay_with_their_rows_and_reindex_after_delete(static_server
     rows.nth(7).locator('[data-scan-field=price]').fill('4')
     p.fill('#scanTotal','26.00')
     expect(p.locator('.scan-row-error:visible')).to_have_count(0)
+    expect(jump).to_be_hidden()
     expect(p.locator('#scanArithmetic')).to_contain_text('Суммы сходятся')
     p.locator('#scanConfirmed').check()
     expect(p.locator('#scanTransfer')).to_be_enabled()

@@ -349,3 +349,35 @@ button[data-purchase-tag] { max-width: 100%; white-space: normal; overflow-wrap:
 .operation-payment-details { grid-column: 1 / -1; }
 .operation-payment-details summary { cursor: pointer; padding-block: 8px; }
 .operation-payment-details[hidden] { display: none; }
+
+/* Quick entry uses the same controls as the full editor. */
+:is(#createModal, #editModal).operation-editor.is-simple-operation .operation-modal-card { max-width: 640px; }
+.operation-basic-fields, .operation-item-actions, .operation-note-details { grid-column: 1 / -1; min-width: 0; }
+.operation-basic-fields { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px 16px; }
+.operation-basic-fields > div { min-width: 0; }
+.operation-basic-fields label, .operation-note-details label { display: block; margin-bottom: 4px; color: var(--muted); font-size: .8rem; }
+.basic-date-controls, .operation-item-actions { display: flex; align-items: center; gap: 6px; }
+.basic-date-controls .date-input-wrap { flex: 1; min-width: 0; }
+.operation-basic-fields .basic-category input, .operation-basic-fields .basic-date-controls input { width: 100%; }
+:is(#createModal, #editModal).is-simple-operation .basic-amount .amount-currency-combo { display: flex; align-items: center; flex-wrap: nowrap; }
+:is(#createModal, #editModal).is-simple-operation .basic-amount .money-input-wrap { min-width: 0; }
+:is(#createModal, #editModal).is-simple-operation .basic-amount .inline-currency-select { width: 68px; min-width: 64px; padding-inline: 6px; }
+:is(#createModal, #editModal).is-simple-operation #convertAmountToDiscountReceiptBtn { flex: none; width: 40px; justify-content: center; }
+.operation-item-actions { flex-wrap: wrap; }
+:is(#createModal, #editModal).is-simple-operation :is(#createOperationModeSwitch, #editOperationModeSwitch) { width: auto; }
+.is-simple-operation :is([data-operation-mode=common], [data-entry-mode=operation]) { display: none; }
+.is-simple-operation .operation-item-actions .receipt-scan-entry { margin: 0; }
+.operation-note-details { border-block-start: 1px solid var(--border); }
+.operation-note-details summary { padding: 12px 0; cursor: pointer; color: var(--text); }
+.operation-note-details input { width: 100%; }
+.operation-note-details[open] > label + label { margin-top: 8px; }
+.operation-basic-fields[hidden], .operation-item-actions[hidden], .operation-note-details[hidden] { display: none; }
+@media (max-width: 600px) {
+  .operation-basic-fields { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .operation-basic-fields .basic-kind { justify-self: start; }
+  .basic-date-controls .btn-icon { min-width: 44px; min-height: 44px; }
+}
+:is(#createModal, #editModal).is-simple-operation .operation-item-actions :is(#createOperationModeSwitch, #editOperationModeSwitch),
+#createModal.is-simple-operation #createEntryModeSwitch { display: inline-flex; width: auto; padding: 0; border: 0; gap: 6px; background: none; }
+:is(#createModal, #editModal).is-simple-operation :is(.operation-item-actions, .operation-entry) .segmented-btn { min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: 9px; color: var(--text); background: var(--surface); }
+#createModal.is-simple-operation .operation-item-actions #openReceiptScan { margin: 0; height: 44px; }

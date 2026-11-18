@@ -1,7 +1,7 @@
 import pytest
 from playwright.sync_api import expect
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, page_with_receipt_api_mock, _expand_receipt_row
-from tests.e2e.test_receipt_scan_e2e import start, stub, upload
+from tests.e2e.test_receipt_scan_e2e import open_scan_row, start, stub, upload
 from tests.e2e.test_picker_creation_footers_e2e import check_footer
 
 
@@ -23,6 +23,7 @@ def test_scan_product_category_search_create_and_transfer(static_server_url,page
     p.route('**/api/v1/categories',cats);p.route('**/api/v1/categories?*',cats)
     p.evaluate("cats=>{window.App.state.categories=cats;window.App.state.receiptProductHints=[{id:1,name:'Пицца Маргарита',category_id:500},{id:2,name:'Пицца овощная',category_id:600},{id:3,name:'Пицца архивная',category_id:501,is_archived:true}];}",categories)
     stub(p);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row').first;field=row.locator('.scan-category input');picker=p.locator('#'+field.get_attribute('aria-controls'))
     field.fill('пицца');expect(picker.get_by_role('option')).to_have_count(4) # none, two categories, create
     expect(picker).to_contain_text('Есть товары: Пицца Маргарита');expect(picker).to_contain_text('Перекус')
@@ -41,7 +42,7 @@ def test_scan_product_category_search_create_and_transfer(static_server_url,page
     modal.locator('button[type=submit]').click()
     expect(modal).to_be_hidden();expect(field).to_have_value('Суши');expect(row.locator('[data-scan-category]')).to_have_value('700')
     assert modal.evaluate("n=>!n.closest('dialog')")
-    other=p.locator('.scan-row').nth(1);other_field=other.locator('.scan-category input');other_field.fill('Суши')
+    other=open_scan_row(p.locator('.scan-row').nth(1));other_field=other.locator('.scan-category input');other_field.fill('Суши')
     p.locator('#'+other_field.get_attribute('aria-controls')).get_by_role('option',name='Суши',exact=True).click()
     expect(other.locator('[data-scan-category]')).to_have_value('700')
     field.click();p.keyboard.press('Escape');expect(picker).to_be_hidden();expect(p.locator('#receiptScanDialog')).to_be_visible()
@@ -76,7 +77,7 @@ def test_korona_source_link_in_catalogue_and_scan(static_server_url,page_with_re
     p.evaluate("window.App.getRuntimeModule('operation-modal').receiptCatalog.load()")
     stub(p);upload(p);p.click('#scanRun')
     p.locator('#scanShop').fill('Корона');p.locator('#scanShop').press('Tab')
-    row=p.locator('.scan-row').first
+    row=open_scan_row(p.locator('.scan-row').first)
     row.get_by_role('button',name='Найти по коду',exact=True).click()
     expect(row.get_by_role('link',name='Каталог источника')).to_have_attribute('href',source['website_url'])
     p.click('#scanClose')

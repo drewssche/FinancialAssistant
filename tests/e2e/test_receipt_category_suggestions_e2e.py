@@ -1,7 +1,7 @@
 import pytest
 from playwright.sync_api import expect
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, page_with_receipt_api_mock
-from tests.e2e.test_receipt_scan_e2e import start, stub, upload
+from tests.e2e.test_receipt_scan_e2e import open_scan_row, start, stub, upload
 
 TEXT='''ООО Соседи
 № ДОК 123
@@ -20,6 +20,7 @@ def prepare(p, url, width):
       window.App.state.receiptTemplateHints=[];
     }''')
     stub(p,TEXT);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     return p.locator('.scan-row').first
 
 

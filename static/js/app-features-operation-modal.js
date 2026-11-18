@@ -176,7 +176,7 @@
   const resetCreateDebtFields = debtFeature.resetCreateDebtFields || (() => {});
   const prepareDebtEntryMode = debtFeature.prepareDebtEntryMode || (() => {});
   const openCreateModalForDebtEdit = debtFeature.openCreateModalForDebtEdit || (async () => {});
-  function setCreateOperationMode(mode) {
+  function setCreateOperationMode(mode, fromAmount = false) {
     const nextMode = mode === "receipt" ? "receipt" : "common";
     if (el.opOperationMode) {
       el.opOperationMode.value = nextMode;
@@ -186,7 +186,7 @@
     }
     el.opReceiptBlock?.classList.toggle("hidden", el.opEntryMode?.value === "debt" || el.opEntryMode?.value === "currency" || nextMode !== "receipt");
     el.convertAmountToDiscountReceiptBtn?.classList.toggle("hidden", nextMode !== "common");
-    setReceiptEnabled(nextMode === "receipt", "create");
+    setReceiptEnabled(nextMode === "receipt", "create", fromAmount);
     window.App.getRuntimeModule("operation-layout")?.sync("create");
     updateCreateCategoryFieldUi();
     renderCreateCategoryPicker();
@@ -245,7 +245,7 @@
     );
     focusTarget?.focus();
   }
-  function setEditOperationMode(mode) {
+  function setEditOperationMode(mode, fromAmount = false) {
     const nextMode = mode === "receipt" ? "receipt" : "common";
     if (el.editOperationMode) {
       el.editOperationMode.value = nextMode;
@@ -254,7 +254,7 @@
       core.syncSegmentedActive(el.editOperationModeSwitch, "operation-mode", nextMode);
     }
     el.editReceiptBlock?.classList.toggle("hidden", nextMode !== "receipt");
-    setReceiptEnabled(nextMode === "receipt", "edit");
+    setReceiptEnabled(nextMode === "receipt", "edit", fromAmount);
     window.App.getRuntimeModule("operation-layout")?.sync("edit");
     updateEditCategoryFieldUi();
     renderEditCategoryPicker();

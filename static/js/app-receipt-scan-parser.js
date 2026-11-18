@@ -149,8 +149,14 @@
     if (!draft.rows.length || draft.rows.length > 150) add('В чеке должно быть от 1 до 150 позиций');
     let sum = 0;
     draft.rows.forEach((r, i) => {
-      if (!r.name.trim() || r.name.length > 160 || !Number.isFinite(r.quantity) || r.quantity <= 0 || r.quantity > 100000 || Math.abs(r.quantity * 1000 - Math.round(r.quantity * 1000)) > 1e-6 || !Number.isInteger(r.price) || r.price <= 0 || !Number.isInteger(r.discount) || r.discount < 0 || !Number.isInteger(r.total) || r.total <= 0) add(`Проверьте поля позиции ${i + 1}`,i);
-      else if (subtotal(r.price, r.quantity) - r.discount !== r.total) add(`Проверьте цену, количество и скидку позиции ${i + 1}`,i);
+      const fields = [];
+      if (!r.name.trim() || r.name.length > 160) fields.push('name');
+      if (!Number.isInteger(r.price) || r.price <= 0) fields.push('price');
+      if (!Number.isFinite(r.quantity) || r.quantity <= 0 || r.quantity > 100000 || Math.abs(r.quantity * 1000 - Math.round(r.quantity * 1000)) > 1e-6) fields.push('quantity');
+      if (!Number.isInteger(r.discount) || r.discount < 0) fields.push('discount');
+      if (!Number.isInteger(r.total) || r.total <= 0) fields.push('total');
+      if (fields.length) errors.push({message: `Проверьте поля позиции ${i + 1}`, rowIndex: i, fields});
+      else if (subtotal(r.price, r.quantity) - r.discount !== r.total) add(`Проверьте цену, количество и скидку позиции ${i + 1}`, i);
       sum += r.total || 0;
     });
     if (sum !== draft.total) add(`Сумма позиций ${(sum / 100).toFixed(2)} не совпадает с итогом чека`);

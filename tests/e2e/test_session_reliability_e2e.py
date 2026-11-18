@@ -302,6 +302,7 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
     page.fill("#opAmount", "129.90")
+    page.locator('#createModal .operation-note-details summary').click()
     page.fill("#opNote", "Большой чек не должен закрыться")
     expect(page.locator("#createSessionRefreshBtn")).to_be_hidden()
     page.evaluate("""() => {

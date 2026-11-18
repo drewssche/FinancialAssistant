@@ -53,6 +53,9 @@ def _json_response(route, payload: dict | list, status: int = 200):
 
 
 def _set_mock_telegram(page):
+    page.route("https://telegram.org/js/telegram-web-app.js", lambda route: route.fulfill(
+        content_type="application/javascript", body="/* The init script provides the test WebApp. */"
+    ))
     page.add_init_script(
         """
         window.Telegram = {

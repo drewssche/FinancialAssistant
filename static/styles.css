@@ -25,7 +25,7 @@
 @import url("/static/css/responsive-sm-tables.css?v=20260716j");
 @import url("/static/css/responsive-sm-core.css?v=20261016-no-structure-chart");
 @import url("/static/css/responsive-sm-modals.css?v=20261118-purchase-entry");
-@import url("/static/css/operation-editor.css?v=20261118-purchase-entry");
+@import url("/static/css/operation-editor.css?v=20261118-compact-review");
 @import url("/static/css/catalog-compact.css?v=20261026-catalog-debt-alignment");
 @import url("/static/css/daily-lists.css?v=20261118-purchase-entry");
 @import url("/static/css/work-compact.css?v=20261016-scan-work-banks");
@@ -35,7 +35,7 @@
 @import url("./css/secondary-editors.css?v=20261118-purchase-entry");
 @import url("./css/ui-final-audit.css?v=20261014-audit1");
 @import url("./css/ui-simplification.css?v=20261118-purchase-entry");
-@import url("/static/css/receipt-scan.css?v=20261116-scan-zoom");
+@import url("/static/css/receipt-scan.css?v=20261118-compact-review");
 @import url("/static/css/ui-consistency.css?v=20261103-picker-layout-audit");
 /* Work timesheet */
 .work-section-head { gap: 16px; align-items: flex-start; }

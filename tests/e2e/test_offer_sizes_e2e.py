@@ -51,9 +51,9 @@ def test_scan_is_visible_before_choosing_receipt_mode(static_server_url,page_wit
     p.goto(static_server_url+'/static/index.html');_login(p);_ensure_categories_loaded(p)
     p.locator('#addOperationCta').click()
     button=p.locator('#openReceiptScan')
-    expect(button).to_be_visible();expect(button).to_contain_text('Сканировать чек');expect(button).to_contain_text('буфера')
+    expect(button).to_be_visible();expect(button).to_contain_text('Сканировать чек')
     expect(p.locator('#opOperationMode')).to_have_value('common')
-    assert button.bounding_box()['y']<p.locator('#createOperationForm').bounding_box()['y']
+    assert button.bounding_box()['y'] > p.locator('#opAmount').bounding_box()['y']
     p.screenshot(path=f'/tmp/fa-scan-entry-{width}.png')
     button.click();expect(p.locator('#receiptScanDialog')).to_be_visible()
     p.locator('#scanClose').click();expect(p.locator('#opOperationMode')).to_have_value('common')
@@ -63,7 +63,7 @@ def test_scan_is_visible_before_choosing_receipt_mode(static_server_url,page_wit
 
 @pytest.mark.e2e
 def test_scan_catalog_selection_uses_source_size_and_preserves_paid_price(static_server_url,page_with_receipt_api_mock):
-    from tests.e2e.test_receipt_scan_e2e import start,stub,upload
+    from tests.e2e.test_receipt_scan_e2e import open_scan_row, start,stub,upload
     from tests.e2e.test_receipt_scan_catalog_e2e import seed_catalog,PIZZA
     p=page_with_receipt_api_mock;start(p,static_server_url);seed_catalog(p)
     p.evaluate("""() => {
@@ -72,6 +72,7 @@ def test_scan_catalog_selection_uses_source_size_and_preserves_paid_price(static
       Object.assign(product.offers[0],{measurement_source:'offer',sale_unit:'pack',package_quantity:200,package_unit:'g',variant_id:55});
     }""")
     stub(p,PIZZA);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     p.locator('.scan-row [data-scan-field=name]').focus();p.locator('.scan-row .receipt-template-suggestion').first.click()
     p.locator('#scanConfirmed').check();p.click('#scanTransfer')
     row=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")

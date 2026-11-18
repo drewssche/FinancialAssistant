@@ -4,7 +4,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 from playwright.sync_api import expect
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, page_with_receipt_api_mock
-from tests.e2e.test_receipt_scan_e2e import start, stub, upload, image
+from tests.e2e.test_receipt_scan_e2e import open_scan_row, start, stub, upload, image
 
 PIZZA='''ООО Соседи
 № ДОК 1
@@ -30,6 +30,7 @@ def seed_catalog(page):
 @pytest.mark.parametrize('width',[320,390,1440])
 def test_catalog_suggestion_preserves_money_and_identity_on_transfer(static_server_url,page_with_receipt_api_mock,width):
     p=page_with_receipt_api_mock;start(p,static_server_url,width);seed_catalog(p);stub(p,PIZZA);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row').first
     row.locator('[data-scan-field=name]').focus()
     expect(row.locator('.receipt-template-suggestion').first).to_contain_text('Черри-чеддер')
@@ -50,6 +51,7 @@ def test_catalog_suggestion_preserves_money_and_identity_on_transfer(static_serv
 @pytest.mark.parametrize("width",[320,390,1440])
 def test_manual_row_search_keyboard_and_change_shop_unlinks(static_server_url,page_with_receipt_api_mock,width):
     p=page_with_receipt_api_mock;start(p,static_server_url,width);seed_catalog(p);stub(p,PIZZA);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     p.get_by_role('button',name='Удалить позицию 1',exact=True).click();p.click('#scanAddRow')
     row=p.locator('.scan-row');name=row.locator('[data-scan-field=name]')
     name.click()
@@ -94,6 +96,7 @@ def test_manual_row_search_keyboard_and_change_shop_unlinks(static_server_url,pa
 @pytest.mark.e2e
 def test_other_store_and_unknown_price_never_import_catalog_price(static_server_url,page_with_receipt_api_mock):
     p=page_with_receipt_api_mock;start(p,static_server_url);seed_catalog(p);stub(p,PIZZA);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     p.fill('#scanShop','Новый магазин')
     row=p.locator('.scan-row').first;row.locator('[data-scan-field=price]').fill('')
     row.locator('[data-scan-field=name]').focus();row.locator('.receipt-template-suggestion').first.click()
@@ -149,6 +152,7 @@ def test_upload_crop_fit_content_and_keyword_empty_state(static_server_url,page_
     p.screenshot(path=f'/tmp/fa-scan-crop-compact-{width}.png')
     stub(p,PIZZA.replace('ПИЦЦА КУСОК ЧЕРРИ ЧЕДЕР 200Г','Абрикосовый джем'))
     p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     p.locator('[data-scan-field=name]').focus()
     expect(p.locator('.scan-catalog-list [data-receipt-create-name]')).to_contain_text('Создать позицию')
     expect(p.locator('[data-scan-field=name]')).to_have_value('Абрикосовый джем')
@@ -182,6 +186,7 @@ def test_catalog_failure_is_not_reported_as_no_matches(static_server_url,page_wi
     p.route('**/api/v1/operations/catalog-products?**',lambda route:route.fulfill(status=503,json={'detail':'Unavailable'}))
     p.route('**/api/v1/operations/item-templates?**',lambda route:route.fulfill(status=503,json={'detail':'Unavailable'}))
     start(p,static_server_url);stub(p,PIZZA);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     p.locator('[data-scan-field=name]').focus()
     expect(p.locator('.scan-catalog-list')).to_contain_text('Каталог загружен не полностью')
     expect(p.locator('.scan-match')).not_to_contain_text('нет совпадений')
@@ -224,6 +229,7 @@ def test_new_scan_weighted_unit_transfer_and_live_operation_labels(static_server
     p=page_with_receipt_api_mock;start(p,static_server_url,width)
     p.route('**/lookup-codes',lambda r:r.fulfill(json={'items':[],'auto_match':False,'warnings':[],'unmatched':[]}))
     stub(p,WEIGHTED);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row')
     expect(row.locator('[data-scan-unit=""]')).to_have_attribute('aria-pressed','true')
     row.locator('[data-scan-unit=kg]').click()
@@ -237,11 +243,11 @@ def test_new_scan_weighted_unit_transfer_and_live_operation_labels(static_server
     assert payload[0]['sale_unit']=='kg' and payload[0]['package_unit'] is None
     assert float(payload[0]['quantity'])==.53 and float(payload[0]['unit_price'])==18.69
     row=p.locator('#receiptItemsList .receipt-item-row').first
-    expect(row.locator('.receipt-known-price-label')).to_have_text('Цена за кг')
+    expect(row.locator('[data-receipt-price-label]')).to_have_text('Цена за кг')
     expect(row.locator('.receipt-quantity-cell > span')).to_have_text('Вес, кг')
     # Change the unit without rebuilding the editor; labels must update immediately.
     row.locator('[data-receipt-field=sale_unit]').evaluate("n=>{n.value='g';n.dispatchEvent(new Event('input',{bubbles:true}));}")
-    expect(row.locator('.receipt-known-price-label')).to_have_text('Цена за г')
+    expect(row.locator('[data-receipt-price-label]')).to_have_text('Цена за г')
     expect(row.locator('.receipt-quantity-cell > span')).to_have_text('Вес, г')
 
 @pytest.mark.e2e
@@ -249,6 +255,7 @@ def test_scan_catalog_unit_default_manual_override_and_unlink(static_server_url,
     p=page_with_receipt_api_mock;start(p,static_server_url);seed_catalog(p)
     p.evaluate("Object.assign(window.App.state.receiptProductHints[0],{sale_unit:'piece',package_quantity:200,package_unit:'g'})")
     stub(p,PIZZA);upload(p);p.click('#scanRun');row=p.locator('.scan-row')
+    open_scan_row(p.locator('.scan-row').first)
     row.locator('[data-scan-field=name]').focus();row.locator('.receipt-template-suggestion').first.click()
     expect(row.locator('[data-scan-unit=piece]')).to_have_attribute('aria-pressed','true')
     row.get_by_role('button',name='Отвязать товар каталога').click()
@@ -264,6 +271,7 @@ def test_scan_catalog_unit_default_manual_override_and_unlink(static_server_url,
 @pytest.mark.parametrize('width',[320,1440])
 def test_scan_category_search_manual_priority_and_transfer(static_server_url,page_with_receipt_api_mock,width):
     p=page_with_receipt_api_mock;start(p,static_server_url,width);seed_catalog(p);stub(p,PIZZA);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row').first
     category=row.locator('[data-scan-category]')
     expect(category).to_have_value('')
@@ -306,6 +314,7 @@ def test_explicit_new_scan_product_preserves_fields_and_can_resume_search(static
     p.on('request',lambda r:writes.append(r.url) if r.method in ('PUT','PATCH','DELETE') or (r.method=='POST' and not r.url.endswith('/lookup-codes')) else None)
     p.route('**/lookup-codes',lambda r:r.fulfill(json={'items':[],'auto_match':False,'warnings':[],'unmatched':[]}))
     stub(p,PIZZA.replace('4.99 x1.000','4816058610995 4.99 x1.000'));upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row');name=row.locator('[data-scan-field=name]')
     name.fill('Пицца новая 200г')
     expect(row.locator('.receipt-template-suggestion[role=option]')).to_have_count(2)
@@ -346,6 +355,7 @@ def test_scan_search_includes_products_from_other_stores(static_server_url,page_
     p=page_with_receipt_api_mock;start(p,static_server_url);seed_catalog(p)
     p.evaluate("window.App.state.receiptProductHints.push({id:903,name:'Пицца только Green',offers:[{id:704,template_id:704,source_id:302,shop_name:'Green',name:'Пицца только Green',latest_unit_price:99}]})")
     stub(p,PIZZA);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row');row.locator('[data-scan-field=name]').fill('Пицца только Green')
     row.locator('.receipt-template-suggestion[role=option]').filter(has_text='Пицца только Green').click()
     expect(row.locator('[data-scan-field=price]')).to_have_value('4.99')
@@ -361,6 +371,7 @@ def test_new_product_choice_survives_pending_barcode_lookup(static_server_url,pa
     p.route('**/lookup-codes',lambda route:pending.append(route))
     stub(p,TEXT);upload(p)
     with p.expect_request(lambda r:r.url.endswith('/lookup-codes')):p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row');name=row.locator('[data-scan-field=name]');original=name.input_value()
     name.focus();row.locator('[data-receipt-create-name]').click()
     pending[0].fulfill(json={'items':[FOUND],'auto_match':True,'warnings':[],'unmatched':[]})
@@ -385,6 +396,7 @@ def test_scan_catalog_reference_and_named_size_leave_receipt_money_intact(static
     respond(p,items=[found])
     text=f'ООО ГРИНРОЗНИЦА\nУкроп 40г\n{CODE} 2.29 x1.000 2.29\nИТОГО К ОПЛАТЕ 2.29\n24.10.2026 14:31:41'
     stub(p,text);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row').first
     expect(row.locator('.scan-catalog-reference')).to_contain_text('2,99 BYN')
     expect(row.locator('.scan-catalog-reference')).to_contain_text('16.10.2026')
@@ -414,6 +426,7 @@ def test_name_selection_shows_only_selected_stores_catalog_price(static_server_u
       product.offers[0].catalog_price={amount:'9.99',currency:'BYN',recorded_at:'2026-10-01'};
     }""")
     stub(p,PIZZA);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row').first
     row.locator('[data-scan-field=name]').focus();row.locator('.receipt-template-suggestion').first.click()
     expect(row.locator('.scan-catalog-reference')).to_contain_text('9,99 BYN')
@@ -444,6 +457,7 @@ def test_loaded_catalog_preserves_price_and_size_when_template_hints_overlap(sta
     p.evaluate("window.App.getRuntimeModule('operation-modal').receiptCatalog.load()")
     stub(p,'ООО ГРИНРОЗНИЦА\n№ ДОК 123\nКапуч\n4816413213090 3.39\nИТОГО К ОПЛАТЕ 3.39\n25.10.2026 12:00:00')
     upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row').first
     expect(p.locator('#scanShop')).to_have_value('Green')
     row.locator('[data-scan-field=name]').focus();row.locator('.receipt-template-suggestion').first.click()
@@ -464,6 +478,7 @@ def test_quantity_rescales_discount_per_unit_and_total(static_server_url,page_wi
     p=page_with_receipt_api_mock;start(p,static_server_url,390)
     stub(p,PIZZA.replace('4.99 x1.000 4.99','1.85 x1.000 1.85\nСкидка -0.36').replace('К ОПЛАТЕ 4.99','К ОПЛАТЕ 1.49'))
     upload(p);p.click('#scanRun');row=p.locator('.scan-row').first
+    open_scan_row(p.locator('.scan-row').first)
     expect(row.locator('[data-scan-field=discount]')).to_have_value('0.36')
     qty=row.locator('[data-scan-field=quantity]');qty.fill('2')
     expect(row.locator('[data-scan-field=discount]')).to_have_value('0.72')
@@ -492,6 +507,7 @@ def test_same_name_products_show_distinct_sources_without_merging(static_server_
           {id:602,source_id:24,shop_name:'Источник с очень длинным названием для проверки переноса',name}]}];
     }''')
     stub(p,PIZZA);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row').first
     row.locator('[data-scan-field=name]').fill('Рулет')
     options=row.locator('.receipt-template-suggestion')
@@ -517,6 +533,7 @@ def test_create_product_footer_stays_visible_while_results_scroll(static_server_
       id:1000+i,name:'Пицца вариант '+i+' с длинным названием и начинкой 200г',offers:[{
         id:2000+i,template_id:2000+i,source_id:301,shop_name:'Соседи',name:'Пицца вариант '+i}]}));}''')
     stub(p,PIZZA);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     p.set_viewport_size({'width':width,'height':height})
     row=p.locator('.scan-row').first;name=row.locator('[data-scan-field=name]')
     query='Пицца новая с очень длинным названием, курицей, грибами и сыром 200г'
@@ -557,6 +574,7 @@ def test_apply_catalog_price_is_explicit_and_preserves_missing_quantity_total(
         'amount': '3.39', 'currency': 'BYN', 'recorded_at': '2026-03-31'}}])
     stub(p, f'ООО ГРИНРОЗНИЦА\nКапучино\n{CODE} 2.29 x1.000 2.29\nИТОГО К ОПЛАТЕ 2.29\n24.10.2026 14:31:41')
     upload(p); p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row = p.locator('.scan-row').first
     price = row.locator('[data-scan-field=price]')
     quantity = row.locator('[data-scan-field=quantity]')

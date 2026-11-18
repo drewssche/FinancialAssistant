@@ -296,12 +296,14 @@ def test_create_operation_receipt_discount_math_and_type_payload(static_server_u
             page.wait_for_selector("#opReceiptFields:not(.hidden)")
 
             first_row = page.locator(".receipt-item-row").first
-            first_row.locator('[data-receipt-field="shop_name"]').fill("Соседи")
+            page.locator('[data-receipt-store="create"]').fill("Соседи")
             first_row.locator('[data-receipt-field="name"]').fill("Кофе")
+            page.locator("#createTitle").click()
             first_row.locator('[data-receipt-field="quantity"]').fill("1")
             unit_price = first_row.locator('[data-receipt-field="unit_price"]')
             unit_price.fill("129.90-15")
             first_row.locator('button[data-receipt-discount-toggle]').click()
+            first_row.locator('[data-receipt-field="discount_mode"]').select_option("")
             first_row.locator('button[data-receipt-discount-type="coupon"]').click()
             regular_price = first_row.locator('[data-receipt-field="regular_unit_price"]')
             regular_price.fill("129.90+0")
@@ -310,7 +312,7 @@ def test_create_operation_receipt_discount_math_and_type_payload(static_server_u
             assert unit_price.input_value() == "114.90"
             assert regular_price.input_value() == "129.90"
             assert first_row.locator('button[data-receipt-discount-type="coupon"]').get_attribute("aria-pressed") == "true"
-            assert first_row.locator('button[data-receipt-discount-toggle]').inner_text() == "Скидка −11.5%"
+            assert 'Скидка −11.5%' in first_row.locator('button[data-receipt-discount-toggle]').get_attribute('aria-label')
 
             page.click("#submitCreateOperationBtn")
             page.wait_for_timeout(300)
@@ -318,6 +320,14 @@ def test_create_operation_receipt_discount_math_and_type_payload(static_server_u
             assert len(created_payloads) == 1
             assert created_payloads[0]["receipt_items"] == [
                 {
+                    "catalog_codes": [],
+                    "receipt_codes": [],
+                    "site_selection": None,
+                    "catalog_name_touched": False,
+                    "catalog_measurement_touched": False,
+                    "catalog_edit_variant_id": None,
+                    "variant_id": None,
+                    "variant_snapshot": None,
                     "category_id": None,
                     "category_touched": False,
                     "sale_unit": None,
@@ -446,7 +456,7 @@ def test_common_operation_amount_can_convert_to_single_discount_receipt(static_s
             assert first_row.locator('[data-receipt-field="unit_price"]').input_value() == "114.90"
             assert first_row.locator('button[data-receipt-discount-type="promo"]').get_attribute("aria-pressed") == "true"
 
-            first_row.locator('[data-receipt-field="shop_name"]').fill("Green")
+            page.locator('[data-receipt-store="create"]').fill("Green")
             first_row.locator('[data-receipt-field="name"]').fill("Капучино")
             first_row.locator('[data-receipt-field="regular_unit_price"]').fill("129.90")
             page.click("#submitCreateOperationBtn")
@@ -455,6 +465,14 @@ def test_common_operation_amount_can_convert_to_single_discount_receipt(static_s
             assert created_payloads[0]["amount"] is None
             assert created_payloads[0]["receipt_items"] == [
                 {
+                    "catalog_codes": [],
+                    "receipt_codes": [],
+                    "site_selection": None,
+                    "catalog_name_touched": False,
+                    "catalog_measurement_touched": False,
+                    "catalog_edit_variant_id": None,
+                    "variant_id": None,
+                    "variant_snapshot": None,
                     "category_id": None,
                     "category_touched": False,
                     "sale_unit": None,

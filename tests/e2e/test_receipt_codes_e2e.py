@@ -4,7 +4,7 @@ import pytest
 from playwright.sync_api import expect
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url,page_with_receipt_api_mock
 from tests.e2e.test_operation_editor_ux_e2e import open_editor
-from tests.e2e.test_receipt_scan_e2e import start,stub,upload
+from tests.e2e.test_receipt_scan_e2e import open_scan_row, start,stub,upload
 
 CODE='4006381333931'
 FOUND={'product_id':901,'product_name':'Молоко из каталога','name':'Молоко из каталога','template_id':701,'source_id':301,'category_id':101,'brand_id':None,
@@ -32,6 +32,7 @@ def respond(page,items=None,auto=True):
 @pytest.mark.parametrize('width',[320,1440])
 def test_scan_exact_code_auto_match_preserves_money_and_transfers_variant(static_server_url,page_with_receipt_api_mock,width):
     p=page_with_receipt_api_mock;start(p,static_server_url,width);requests=respond(p);stub(p,TEXT);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row')
     expect(row.locator('.scan-match')).to_contain_text('Найден по штрихкоду')
     expect(row.locator('[data-scan-field=name]')).to_have_value('Молоко из каталога')
@@ -94,6 +95,7 @@ def test_scan_code_ambiguity_and_shop_change_require_new_choice(static_server_ur
     p=page_with_receipt_api_mock;start(p,static_server_url)
     other={**FOUND,'product_id':902,'product_name':'Другой товар','template_id':702,'variant_id':42}
     requests=respond(p,[FOUND,other],False);stub(p,TEXT);upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row')
     expect(row.locator('.receipt-code-result')).to_have_count(2)
     expect(row.locator('[data-scan-field=name]')).to_have_value('Молоко 900 мл')
@@ -108,6 +110,7 @@ def test_scan_code_ambiguity_and_shop_change_require_new_choice(static_server_ur
 @pytest.mark.e2e
 def test_scan_code_package_conflict_requires_explicit_selection(static_server_url,page_with_receipt_api_mock):
     p=page_with_receipt_api_mock;start(p,static_server_url);respond(p);stub(p,TEXT.replace('900 мл','1000 мл'));upload(p);p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     row=p.locator('.scan-row')
     expect(row.locator('.receipt-code-result')).to_contain_text('Другая фасовка')
     expect(row.locator('[data-scan-field=name]')).to_have_value('Молоко 1000 мл')
@@ -123,6 +126,7 @@ def test_late_code_lookup_cannot_replace_edited_scan_name(static_server_url,page
     stub(p,TEXT);upload(p)
     with p.expect_request(lambda request:request.url.endswith('/lookup-codes')):
         p.click('#scanRun')
+    open_scan_row(p.locator('.scan-row').first)
     expect(p.locator('#receiptScanDialog .receipt-codes [role=status]').first).to_contain_text('Ищу')
     assert pending
     row=p.locator('.scan-row');row.locator('[data-scan-field=name]').fill('Ручное исправление')

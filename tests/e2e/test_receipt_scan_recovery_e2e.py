@@ -2,7 +2,7 @@ import json
 
 import pytest
 from playwright.sync_api import expect
-from tests.e2e.test_receipt_scan_e2e import start, stub, upload, TEXT
+from tests.e2e.test_receipt_scan_e2e import open_scan_row, start, stub, upload, TEXT
 from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, page_with_receipt_api_mock
 
 
@@ -15,6 +15,7 @@ def reviewed(page):
 def test_new_form_resets_and_closed_review_resumes(static_server_url, page_with_receipt_api_mock):
     page=page_with_receipt_api_mock
     start(page, static_server_url);reviewed(page)
+    open_scan_row(page.locator('.scan-row').first)
     page.locator('#scanRows [data-scan-field=name]').first.fill('Исправленное молоко')
     page.click('#scanClose')
     page.evaluate("window.App.getRuntimeModule('operation-modal').closeCreateModal()")
