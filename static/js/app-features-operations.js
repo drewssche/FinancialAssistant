@@ -902,6 +902,7 @@
     }
     if (sourceKind === "fx") {
       navigation.pushSectionBackContext?.();
+      currencyFeature.setCurrencyView?.("portfolio", { load: false });
       await navigation.switchSection?.("currency", { preserveBackStack: true, scrollToTop: true });
       await currencyFeature.openCurrencyTradeEdit?.(Number(sourceId || 0));
     }

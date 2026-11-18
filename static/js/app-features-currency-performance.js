@@ -3,17 +3,17 @@
     const { state, el, core, pickerUtils, escapeHtml, reload } = deps;
 
     function getRange() {
-      const today = core.getTodayIso();
+      const today = core.getPeriodBounds("day").dateTo;
       if (state.currencyPerformancePeriod === "all_time") {
         return { dateFrom: "", dateTo: today };
       }
       const days = { "30d": 30, "90d": 90, "365d": 365 }[state.currencyPerformancePeriod] || 90;
-      const end = new Date(`${today}T00:00:00`);
+      const end = new Date(`${today}T12:00:00Z`);
       const start = new Date(end);
       if (state.currencyPerformancePeriodAnchor === "previous") {
-        end.setDate(end.getDate() - days);
+        end.setUTCDate(end.getUTCDate() - days);
       }
-      start.setDate(start.getDate() - (days - 1));
+      start.setUTCDate(start.getUTCDate() - (days - 1));
       return {
         dateFrom: start.toISOString().slice(0, 10),
         dateTo: end.toISOString().slice(0, 10),

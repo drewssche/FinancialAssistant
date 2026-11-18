@@ -76,7 +76,7 @@
         }
         if (autoRateField && actions.syncSuggestedCurrencyRate) {
           node.addEventListener("change", async () => {
-            actions.resetCurrencyRateAutofill?.();
+            if (id === "currencyAsset") actions.resetCurrencyRateAutofill?.();
             await actions.syncSuggestedCurrencyRate().catch(() => {});
             actions.syncCurrencyTradeFieldUi?.();
             actions.updateCreatePreview?.();

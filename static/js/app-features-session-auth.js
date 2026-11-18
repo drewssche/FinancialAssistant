@@ -505,11 +505,14 @@
     state.plansSectionHydrated = false;
     state.debtsSectionHydrated = false;
     state.operationsSectionHydrated = false;
-    state.currencySectionHydrated = false;
     state.currencyFilter = "all";
     state.analyticsStructureHydrated = false;
     state.analyticsCalendarHydrated = false;
     state.analyticsCurrencyHydrated = false;
+    state.currencyView = "rates";
+    state.currencyQuoteAsset = "";
+    state.currencyTradesPeriod = "all_time";
+    state.currencyFilter = "all";
     state.total = 0;
     state.uiRequestCache.clear();
     renderUserAvatar("Пользователь", "");

@@ -235,11 +235,13 @@
       return;
     }
     if (item.entity_type === "currency_trade") {
+      window.App.getRuntimeModule?.("currency")?.setCurrencyView?.("portfolio", { load: false });
       await navigation.switchSection?.("currency");
       await window.App.getRuntimeModule?.("currency")?.openCurrencyTradeEdit?.(Number(item.entity_id));
       return;
     }
     if (item.entity_type === "currency_portfolio") {
+      window.App.getRuntimeModule?.("currency")?.setCurrencyView?.("portfolio", { load: false });
       await navigation.switchSection?.("currency");
       return;
     }

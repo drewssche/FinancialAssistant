@@ -112,7 +112,7 @@
       return;
     }
     state.itemCatalogView = snapshot.itemCatalogView || "products";
-    state.currencyView = snapshot.currencyView || "portfolio";
+    state.currencyView = snapshot.currencyView || "rates";
     state.period = snapshot.period || "day";
     state.customDateFrom = snapshot.customDateFrom || "";
     state.customDateTo = snapshot.customDateTo || "";

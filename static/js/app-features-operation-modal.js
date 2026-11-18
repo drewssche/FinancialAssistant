@@ -264,7 +264,7 @@
       createTitle.textContent = isDebt
         ? "Новый долг"
         : isCurrency
-          ? "Новая валютная сделка"
+          ? "Записать обмен"
           : "Новая операция";
     }
     el.createKindSwitch.classList.toggle("hidden", isDebt || isCurrency);
@@ -321,12 +321,12 @@
     } else if (isCurrency) {
       prepareDebtEntryMode({ isDebt: false, submit });
       if (el.currencyTradeDateModal && !el.currencyTradeDateModal.value) {
-        core.syncDateFieldValue(el.currencyTradeDateModal, core.getTodayIso());
+        core.syncDateFieldValue(el.currencyTradeDateModal, core.getPeriodBounds("day").dateTo);
       }
       syncCurrencyTradeFieldUi();
-      await syncSuggestedCurrencyRate().catch(() => {});
+      syncSuggestedCurrencyRate().catch(() => {});
       if (submit) {
-        window.App.icons.apply(submit, "save", state.editCurrencyTradeId ? "Сохранить валютную сделку" : "Создать валютную сделку");
+        window.App.icons.apply(submit, "save", state.editCurrencyTradeId ? "Сохранить валютную сделку" : "Записать обмен");
       }
     } else if (submit) {
       window.App.icons.apply(submit, "save", "Добавить операцию");
@@ -405,6 +405,7 @@
     state.editPlanId = null;
     state.editDebtCreateId = null;
     state.editCurrencyTradeId = null;
+    state.editCurrencyTradeFee = null;
     setCreateModalActivity(null, null);
     const createTitle = document.getElementById("createTitle");
     if (createTitle) {
@@ -427,13 +428,14 @@
     closeCreateCategoryPopover();
     resetCreateDebtFields();
     if (el.currencyAsset) {
-      el.currencyAsset.value = buildSelectableCurrencyList(false)[0] || "USD";
+      const currencies = buildSelectableCurrencyList(false);
+      el.currencyAsset.value = currencies.includes(options.currencyAsset) ? options.currencyAsset : currencies[0] || "USD";
     }
     if (el.currencyQuote) {
       el.currencyQuote.value = core.getCurrencyConfig?.().code || "BYN";
     }
     if (el.currencyTradeDateModal) {
-      core.syncDateFieldValue(el.currencyTradeDateModal, core.getTodayIso());
+      core.syncDateFieldValue(el.currencyTradeDateModal, core.getPeriodBounds("day").dateTo);
     }
     if (el.currencyQuantity) {
       el.currencyQuantity.value = "";
@@ -501,8 +503,7 @@
     el.planRecurrenceWeeklyBlock?.classList.add("hidden");
     el.planRecurrenceWorkdaysWrap?.classList.add("hidden");
     el.planRecurrenceMonthEndWrap?.classList.add("hidden");
-    await setCurrencySide("buy");
-    currencyFeature.resetCurrencyTradeState?.();
+    setCurrencySide("buy");
     syncCurrencyTradeFieldUi();
     syncOperationCurrencyFields("create").catch(() => {});
     await setCreateEntryMode(initialEntryMode);
@@ -554,16 +555,17 @@
     state.editPlanId = null;
     state.editDebtCreateId = null;
     state.editCurrencyTradeId = null;
+    state.editCurrencyTradeFee = null;
     setCreateModalActivity(null, null);
     const createTitle = document.getElementById("createTitle");
     if (createTitle) {
       createTitle.textContent = "Новая операция";
     }
+    currencyFeature.resetCurrencyTradeState?.();
     el.createModal.classList.add("hidden");
   }
-  async function openCreateModalForCurrency() {
-    await openCreateModal({ entryMode: "currency" });
-    currencyFeature.resetCurrencyTradeState?.();
+  async function openCreateModalForCurrency(currencyAsset) {
+    await openCreateModal({ entryMode: "currency", currencyAsset });
     syncCurrencyTradeFieldUi();
     updateCreatePreview();
   }
@@ -573,26 +575,29 @@
     }
     await openCreateModal({ entryMode: "currency" });
     state.editCurrencyTradeId = Number(payload.id);
+    state.editCurrencyTradeFee = payload.fee;
+    currencyFeature.resetCurrencyTradeState?.();
     setCreateModalActivity("currency_trade", payload.id);
     if (el.createEntryModeSwitch) {
       el.createEntryModeSwitch.classList.add("hidden");
     }
     const createTitle = document.getElementById("createTitle");
     if (createTitle) {
-      createTitle.textContent = "Редактировать валютную сделку";
+      createTitle.textContent = "Редактировать обмен";
     }
     const submit = document.getElementById("submitCreateOperationBtn");
     if (submit) {
       window.App.icons.apply(submit, "save", "Сохранить валютную сделку");
     }
     if (el.currencyAsset) {
+      currencyFeature.populateCurrencySelect(el.currencyAsset, { includeBase: false, preserveValue: payload.asset_currency });
       el.currencyAsset.value = String(payload.asset_currency || buildSelectableCurrencyList(false)[0] || "USD").toUpperCase();
     }
     if (el.currencyQuote) {
       el.currencyQuote.value = String(payload.quote_currency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
     }
-    core.syncDateFieldValue(el.currencyTradeDateModal, payload.trade_date || core.getTodayIso());
-    await setCurrencySide(payload.side || "buy");
+    core.syncDateFieldValue(el.currencyTradeDateModal, payload.trade_date || core.getPeriodBounds("day").dateTo);
+    setCurrencySide(payload.side || "buy");
     if (el.currencyNote) {
       el.currencyNote.value = payload.note || "";
     }
@@ -605,7 +610,8 @@
     }
     if (el.currencyQuantity) {
       const quantityValue = Number(payload.quantity || 0);
-      el.currencyQuantity.value = quantityValue > 0 ? core.formatAmount(quantityValue) : "";
+      el.currencyQuantity.value = quantityValue > 0
+        ? quantityValue.toLocaleString("en-US", { useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 6 }) : "";
     }
     currencyFeature.setCurrencyTradeState?.({
       sourceField: "quantity",

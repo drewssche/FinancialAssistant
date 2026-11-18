@@ -448,6 +448,10 @@ def test_currency_rate_history_returns_chronological_points(client: TestClient):
     ranged_payload = ranged.json()
     assert [item["rate_date"] for item in ranged_payload] == ["2026-03-21", "2026-03-22"]
 
+    chosen = client.get("/api/v1/currency/rates/history", params={"currency": "USD", "date_to": "2026-03-21", "limit": 1})
+    assert chosen.json() == [dict(currency="USD", rate="3.250000", rate_date="2026-03-21", source="manual")]
+    assert client.get("/api/v1/currency/rates/history", params={"currency": "USD", "date_to": "2026-03-19", "limit": 1}).json() == []
+
     all_time = client.get(
         "/api/v1/currency/rates/history",
         params={"currency": "USD", "limit": 1000},
@@ -804,6 +808,26 @@ def test_currency_trades_endpoint_returns_paginated_items_in_desc_order(client: 
     assert page_two_payload["items"][0]["note"] == "trade-5"
     assert page_two_payload["items"][-1]["trade_date"] == "2026-03-01"
     assert page_two_payload["items"][-1]["note"] == "trade-1"
+
+    bounds = {"currency": "USD", "date_from": "2026-03-04", "date_to": "2026-03-06", "page_size": 2}
+    first = client.get("/api/v1/currency/trades", params=bounds).json()
+    assert first["total"] == 3
+    assert [item["trade_date"] for item in first["items"]] == ["2026-03-06", "2026-03-05"]
+    second = client.get("/api/v1/currency/trades", params={**bounds, "page": 2}).json()
+    assert second["total"] == 3
+    assert [item["trade_date"] for item in second["items"]] == ["2026-03-04"]
+    assert client.get("/api/v1/currency/trades", params={**bounds, "date_to": "2026-03-01"}).status_code == 400
+
+
+def test_exchange_result_includes_fully_sold_currency_and_fees(client):
+    common = {"asset_currency": "EUR", "quote_currency": "BYN", "quantity": "10", "fee": "1"}
+    for side, price, day in [("buy", "3", "2026-01-10"), ("sell", "4", "2026-01-11")]:
+        response = client.post("/api/v1/currency/trades", json={**common, "side": side, "unit_price": price, "trade_date": day})
+        assert response.status_code == 201, response.text
+    data = client.get("/api/v1/currency/overview", params={"currency": "EUR"}).json()
+    assert data["positions"] == []
+    assert data["exchange_results"] == [{"currency": "EUR", "average_buy_rate": "3.000000", "realized_result_value": "8.00"}]
+
 
 
 def test_currency_trades_endpoint_applies_currency_filter(client: TestClient):

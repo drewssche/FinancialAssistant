@@ -50,14 +50,20 @@ class CurrencyRepository:
         asset_currency: str | None = None,
         page: int,
         page_size: int,
+        date_from: date | None = None,
+        date_to: date | None = None,
         sort_by: str = "trade_date",
         sort_dir: str = "desc",
     ) -> tuple[list[FxTrade], int]:
-        stmt = select(FxTrade).where(FxTrade.user_id == user_id)
-        count_stmt = select(func.count()).select_from(FxTrade).where(FxTrade.user_id == user_id)
+        filters = [FxTrade.user_id == user_id]
         if asset_currency:
-            stmt = stmt.where(FxTrade.asset_currency == asset_currency)
-            count_stmt = count_stmt.where(FxTrade.asset_currency == asset_currency)
+            filters.append(FxTrade.asset_currency == asset_currency)
+        if date_from:
+            filters.append(FxTrade.trade_date >= date_from)
+        if date_to:
+            filters.append(FxTrade.trade_date <= date_to)
+        stmt = select(FxTrade).where(*filters)
+        count_stmt = select(func.count()).select_from(FxTrade).where(*filters)
         columns = {
             "trade_date": FxTrade.trade_date,
             "side": case(

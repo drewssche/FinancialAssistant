@@ -18,14 +18,6 @@
   let bankBackfillStatusChecked = false;
   let bankBackfillCoverageNote = "";
 
-  function getLoadingSkeletons() {
-    return window.App.getRuntimeModule?.("loading-skeletons") || {};
-  }
-
-  function getInlineRefreshState() {
-    return window.App.getRuntimeModule?.("inline-refresh-state") || {};
-  }
-
   function getTrackedCurrencies() {
     const raw = state.preferences?.data?.currency?.tracked_currencies;
     if (!Array.isArray(raw) || !raw.length) {
@@ -57,7 +49,7 @@
   }
 
   function getHistoryRange() {
-    const today = core.getTodayIso();
+    const today = core.getPeriodBounds("day").dateTo;
     if (state.analyticsCurrencyPeriod === "all_time") {
       return { dateFrom: "", dateTo: today };
     }
@@ -167,33 +159,6 @@
     loadAnalyticsCurrency({ force: true }).catch((err) => core.setStatus(String(err)));
   }
 
-  function getResultPresentation(rawValue) {
-    const value = Number(rawValue || 0);
-    if (value > 0) {
-      return { cardClass: "analytics-kpi-income", label: "Прибыль", chipClass: "analytics-kpi-chip-positive" };
-    }
-    if (value < 0) {
-      return { cardClass: "analytics-kpi-expense", label: "Убыток", chipClass: "analytics-kpi-chip-negative" };
-    }
-    return { cardClass: "analytics-kpi-neutral", label: "Результат", chipClass: "analytics-kpi-chip-neutral" };
-  }
-
-  function formatRateWithQuote(rate, quoteCurrency) {
-    const quote = core.normalizeCurrencyCode?.(quoteCurrency, "BYN") || "BYN";
-    return `${core.formatRateDisplay?.(rate || 0, 4, 6) || Number(rate || 0).toFixed(6)} ${core.formatCurrencySymbol?.(quote) || quote}`;
-  }
-
-  const createTradesFeature = window.App.getRuntimeModule?.("analytics-currency-trades-factory");
-  const tradesFeature = createTradesFeature?.({
-    state,
-    el,
-    core,
-    escapeHtml,
-    formatRateWithQuote,
-  }) || {};
-  const loadAnalyticsCurrencyTradesPage = tradesFeature.loadTradesPage || (async () => {});
-  const loadMoreAnalyticsCurrencyTrades = tradesFeature.loadMoreTrades || (async () => {});
-  const bindAnalyticsCurrencyTradesInfiniteScroll = tradesFeature.bindInfiniteScroll || (() => {});
   const createChartFeature = window.App.getRuntimeModule?.("analytics-currency-chart-factory");
   const chartFeature = createChartFeature?.({
     el,
@@ -548,70 +513,6 @@
     };
   }
 
-  function renderSummary(overview) {
-    const unrealizedTone = getResultPresentation(overview.total_unrealized_result_value || overview.total_result_value || 0);
-    const realizedTone = getResultPresentation(overview.total_realized_result_value || 0);
-    const combinedTone = getResultPresentation(overview.total_combined_result_value || overview.total_result_value || 0);
-    if (el.analyticsCurrencyCurrentValue) {
-      el.analyticsCurrencyCurrentValue.textContent = core.formatMoney(overview.total_current_value || 0);
-    }
-    if (el.analyticsCurrencyBookValue) {
-      el.analyticsCurrencyBookValue.textContent = core.formatMoney(overview.total_book_value || 0);
-    }
-    if (el.analyticsCurrencyResultValue) {
-      el.analyticsCurrencyResultValue.textContent = core.formatMoney(overview.total_unrealized_result_value || overview.total_result_value || 0);
-    }
-    if (el.analyticsCurrencyResultCard) {
-      el.analyticsCurrencyResultCard.classList.remove("analytics-kpi-income", "analytics-kpi-expense", "analytics-kpi-neutral");
-      el.analyticsCurrencyResultCard.classList.add(unrealizedTone.cardClass);
-    }
-    if (el.analyticsCurrencyResultLabel) {
-      el.analyticsCurrencyResultLabel.textContent = "Нереализованный результат";
-    }
-    if (el.analyticsCurrencyRealizedValue) {
-      el.analyticsCurrencyRealizedValue.textContent = core.formatMoney(overview.total_realized_result_value || 0);
-    }
-    if (el.analyticsCurrencyRealizedCard) {
-      el.analyticsCurrencyRealizedCard.classList.remove("analytics-kpi-income", "analytics-kpi-expense", "analytics-kpi-neutral");
-      el.analyticsCurrencyRealizedCard.classList.add(realizedTone.cardClass);
-    }
-    if (el.analyticsCurrencyRealizedLabel) {
-      el.analyticsCurrencyRealizedLabel.textContent = "Реализованный результат";
-    }
-    if (el.analyticsCurrencyCombinedValue) {
-      el.analyticsCurrencyCombinedValue.textContent = core.formatMoney(overview.total_combined_result_value || overview.total_result_value || 0);
-    }
-    if (el.analyticsCurrencyCombinedCard) {
-      el.analyticsCurrencyCombinedCard.classList.remove("analytics-kpi-income", "analytics-kpi-expense", "analytics-kpi-neutral");
-      el.analyticsCurrencyCombinedCard.classList.add(combinedTone.cardClass);
-    }
-    if (el.analyticsCurrencyCombinedLabel) {
-      el.analyticsCurrencyCombinedLabel.textContent = "Итоговый результат";
-    }
-    if (el.analyticsCurrencyActiveCount) {
-      el.analyticsCurrencyActiveCount.textContent = String(overview.active_positions || 0);
-    }
-    if (el.analyticsCurrencyRangeLabel) {
-      const periodLabels = {
-        "7d": state.analyticsCurrencyPeriodAnchor === "previous" ? "за предыдущие 7 дней" : "за 7 дней",
-        "30d": state.analyticsCurrencyPeriodAnchor === "previous" ? "за предыдущие 30 дней" : "за 30 дней",
-        "90d": state.analyticsCurrencyPeriodAnchor === "previous" ? "за предыдущие 3 месяца" : "за 3 месяца",
-        "365d": state.analyticsCurrencyPeriodAnchor === "previous" ? "за предыдущие 12 месяцев" : "за 12 месяцев",
-        all_time: "за все время",
-      };
-      el.analyticsCurrencyRangeLabel.textContent = state.analyticsCurrencyFilter === "all"
-        ? "Сводка по всем отслеживаемым валютам"
-        : `Курс, позиция и сделки по ${core.formatCurrencyLabel(state.analyticsCurrencyFilter)} ${periodLabels[state.analyticsCurrencyPeriod] || ""}`.trim();
-    }
-    if (el.analyticsCurrencyBalancesRow) {
-      el.analyticsCurrencyBalancesRow.replaceChildren();
-      el.analyticsCurrencyBalancesRow.classList.add("hidden");
-    }
-    if (el.analyticsCurrencySecondary) {
-      el.analyticsCurrencySecondary.innerHTML = `<div class="table-wrap"><table class="table compact-trade-summary"><thead><tr><th>Сделки</th><th>Объём</th><th>Количество</th></tr></thead><tbody>${[["Покупки", "buy"],["Продажи", "sell"]].map(([label,key]) => `<tr><td>${label}</td><td>${core.formatMoney(overview[key + "_volume_base"] || 0)}</td><td>${Number(overview[key + "_trades_count"] || 0)}</td></tr>`).join("")}</tbody></table></div>`;
-    }
-  }
-
   function updateBankBackfillProgress(job) {
     const processed = Math.max(0, Number(job?.processed_steps || 0));
     const total = Math.max(0, Number(job?.total_steps || 0));
@@ -769,7 +670,7 @@
   }
 
   async function fetchCurrencyHistory(currency, range) {
-    const historyParams = new URLSearchParams({ currency, limit: range.dateFrom ? "365" : "3660" });
+    const historyParams = new URLSearchParams({ currency, official_only: "true", limit: range.dateFrom ? "365" : "3660" });
     if (range.dateFrom) {
       historyParams.set("date_from", range.dateFrom);
     }
@@ -781,69 +682,42 @@
     });
   }
 
-  async function loadAnalyticsCurrency(options = {}) {
+  async function loadAnalyticsCurrency() {
     const chartLoadSequence = ++currencyChartLoadSequence;
-    const skeletons = getLoadingSkeletons();
-    const refreshState = getInlineRefreshState();
-    const coldLoad = !state.analyticsCurrencyHydrated && state.activeSection === "currency" && state.currencyView === "rates";
-    if (coldLoad) {
-      skeletons.renderAnalyticsCurrencySkeleton?.();
-    }
-    const shouldRefreshInline = !coldLoad && state.analyticsCurrencyHydrated && state.activeSection === "currency" && state.currencyView === "rates";
-    if (shouldRefreshInline) {
-      refreshState.begin?.(el.analyticsCurrencyPanel, "Обновляется");
-    }
+    if (state.activeSection !== "currency" || state.currencyView !== "rates" || !document.getElementById("currencyChartDetails")?.open) return;
     syncCurrencyTabs();
     syncCurrencyPeriodTabs();
     syncBankChartControls();
-    try {
-      const params = new URLSearchParams({ trades_limit: "1" });
-      if (state.analyticsCurrencyFilter && state.analyticsCurrencyFilter !== "all") {
-        params.set("currency", state.analyticsCurrencyFilter);
+    el.analyticsCurrencyTabs?.classList.toggle("hidden", state.analyticsCurrencyChartMode === "banks");
+    const range = getHistoryRange();
+    if (el.analyticsCurrencyRangeLabel) el.analyticsCurrencyRangeLabel.textContent = range.dateFrom
+      ? `${core.formatDateRu(range.dateFrom)} — ${core.formatDateRu(range.dateTo)}` : "За всё время";
+    if (state.analyticsCurrencyChartMode === "banks") {
+      await renderBankCurrencyChart(range, chartLoadSequence);
+    } else if (state.analyticsCurrencyFilter === "all") {
+      const tracked = getTrackedCurrencies();
+      const histories = await Promise.all(tracked.map(async (currency, index) => ({
+        currency,
+        index,
+        points: normalizeHistoryPoints(await fetchCurrencyHistory(currency, range), range.dateTo),
+      })));
+      const seriesList = histories.map((item) => buildNbrbChartSeries(item.currency, item.points, item.index));
+      if (chartLoadSequence === currencyChartLoadSequence) {
+        currentChartSnapshot = { mode: "nbrb", series: seriesList, single: false };
+        renderCurrentChartSnapshot();
       }
-      const overview = await core.requestJson(`/api/v1/currency/overview?${params.toString()}`, {
-        headers: core.authHeaders(),
-      });
-      renderSummary(overview);
-      await loadAnalyticsCurrencyTradesPage(1, { reset: true });
-      const range = getHistoryRange();
-      if (state.analyticsCurrencyChartMode === "banks") {
-        await renderBankCurrencyChart(range, chartLoadSequence);
-      } else if (state.analyticsCurrencyFilter === "all") {
-        const tracked = getTrackedCurrencies();
-        const histories = await Promise.all(tracked.map(async (currency, index) => ({
-          currency,
-          index,
-          points: normalizeHistoryPoints(await fetchCurrencyHistory(currency, range), range.dateTo),
-        })));
-        const seriesList = histories.map((item) => buildNbrbChartSeries(item.currency, item.points, item.index));
-        if (chartLoadSequence === currencyChartLoadSequence) {
-          currentChartSnapshot = { mode: "nbrb", series: seriesList, single: false };
-          renderCurrentChartSnapshot();
-        }
-      } else {
-        const history = normalizeHistoryPoints(await fetchCurrencyHistory(state.analyticsCurrencyFilter, range), range.dateTo);
-        if (chartLoadSequence === currencyChartLoadSequence) {
-          currentChartSnapshot = {
-            mode: "nbrb",
-            series: [buildNbrbChartSeries(state.analyticsCurrencyFilter, history, 0)],
-            single: true,
-          };
-          renderCurrentChartSnapshot();
-        }
-      }
-      skeletons.clearAnalyticsCurrencySkeletonState?.();
-      state.analyticsCurrencyHydrated = true;
-      if (options.force !== false) {
-        syncCurrencyTabs();
-      }
-      bindAnalyticsCurrencyTradesInfiniteScroll();
-      return overview;
-    } finally {
-      if (shouldRefreshInline) {
-        refreshState.end?.(el.analyticsCurrencyPanel);
+    } else {
+      const history = normalizeHistoryPoints(await fetchCurrencyHistory(state.analyticsCurrencyFilter, range), range.dateTo);
+      if (chartLoadSequence === currencyChartLoadSequence) {
+        currentChartSnapshot = {
+          mode: "nbrb",
+          series: [buildNbrbChartSeries(state.analyticsCurrencyFilter, history, 0)],
+          single: true,
+        };
+        renderCurrentChartSnapshot();
       }
     }
+    if (chartLoadSequence === currencyChartLoadSequence) state.analyticsCurrencyHydrated = true;
   }
 
   function bind() {
@@ -969,7 +843,6 @@
 
   window.App.registerRuntimeModule?.("analytics-currency-module", {
     loadAnalyticsCurrency,
-    loadMoreAnalyticsCurrencyTrades,
     syncCurrencyTabs,
   });
 })();

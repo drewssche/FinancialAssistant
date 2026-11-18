@@ -268,16 +268,29 @@
               </select>
             </div>
             <input id="currencyQuote" type="hidden" value="BYN" />
-            <div class="currency-modal-row currency-modal-row-triple">
-              <div id="currencyQuantityField" class="money-input-wrap" data-money-input-wrap>
-                <input id="currencyQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="100.00" aria-label="Количество валютной сделки" />
-              </div>
+            <div id="currencyExchangeAmounts" class="currency-modal-row">
+              <label class="field">
+                <span id="currencyQuoteTotalLabel"></span>
               <div id="currencyQuoteTotalField" class="money-input-wrap" data-money-input-wrap>
                 <input id="currencyQuoteTotal" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="0.00" aria-label="Сумма в базовой валюте" />
               </div>
+              </label>
+              <label class="field">
+                <span id="currencyQuantityLabel"></span>
+              <div id="currencyQuantityField" class="money-input-wrap" data-money-input-wrap>
+                <input id="currencyQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="100.00" aria-label="Количество валютной сделки" />
+              </div>
+              </label>
+            </div>
+            <div class="currency-exchange-rate">
+              <label class="field">
+                <span id="currencyUnitPriceLabel"></span>
               <div id="currencyUnitPriceField" class="money-input-wrap" data-money-input-wrap>
                 <input id="currencyUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="3.2700" aria-label="Курс валютной сделки" />
               </div>
+              </label>
+              <span id="currencyTradeRateOrigin" class="muted-small" aria-live="polite"></span>
+              <button id="currencyUsePriorRate" class="btn btn-secondary btn-xs hidden" type="button"></button>
             </div>
             <div id="currencyTradeHint" class="muted-small currency-trade-hint"></div>
             <div class="currency-modal-row currency-modal-row-single">

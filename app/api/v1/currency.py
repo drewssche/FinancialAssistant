@@ -260,6 +260,8 @@ def refresh_currency_rate_options(
 @router.get("/trades", response_model=CurrencyTradeListOut)
 def list_currency_trades(
     currency: str | None = Query(default=None, min_length=3, max_length=3),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     sort_by: str = Query(default="trade_date", pattern="^(trade_date|side|asset_currency|quantity|unit_price|note)$"),
@@ -271,6 +273,7 @@ def list_currency_trades(
     try:
         return service.list_trades(
             user_id=user_id, currency=currency, page=page, page_size=page_size,
+            date_from=date_from, date_to=date_to,
             sort_by=sort_by, sort_dir=sort_dir,
         )
     except ValueError as exc:
@@ -320,6 +323,14 @@ def create_currency_trade(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/trades/{trade_id}", response_model=CurrencyTradeOut)
+def get_currency_trade(trade_id: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    trade = CurrencyService(db).get_trade(user_id=user_id, trade_id=trade_id)
+    if trade is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Обмен не найден")
+    return trade
 
 
 @router.patch("/trades/{trade_id}", response_model=CurrencyTradeOut)
@@ -391,6 +402,7 @@ def get_currency_rate_history(
     limit: int = Query(default=120, ge=1, le=3660),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
+    official_only: bool = Query(default=False),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -402,6 +414,7 @@ def get_currency_rate_history(
             limit=limit,
             date_from=date_from,
             date_to=date_to,
+            official_only=official_only,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

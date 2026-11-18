@@ -7,7 +7,7 @@ import sys
 import time
 import urllib.request
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -92,6 +92,11 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
             return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
         if path == "/api/v1/operations/item-templates" and method == "GET":
             return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
+        if path == "/api/v1/currency/rates/history":
+            params = parse_qs(query)
+            currency = params["currency"][0]
+            rate = "0.037044" if currency == "RUB" else "2.9652"
+            return json_response(route, [{"currency": currency, "rate": rate, "source": "manual", "rate_date": params["date_to"][0]}])
         if path == "/api/v1/currency/overview" and method == "GET":
             currency = "USD"
             if "currency=EUR" in query:
@@ -151,6 +156,8 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
             page.click("#addOperationCta")
             page.wait_for_selector("#createModal:not(.hidden)")
             page.locator('#createEntryModeSwitch button[data-entry-mode="currency"]').click()
+            if not page.locator("#createPreviewHeadCurrency").is_visible():
+                page.click("#createModal .operation-preview-action")
             page.wait_for_selector("#createPreviewHeadCurrency:not(.hidden)")
             assert page.locator("#currencyTradeDateField .date-step-btn").count() == 2
             page.locator("#currencyTradeDateModal").fill("2026-03-27")
@@ -171,9 +178,8 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
 
             quantity_value = page.locator("#currencyQuantity").input_value()
             assert quantity_value.startswith("1.01")
-            hint_text = page.locator("#currencyTradeHint").text_content().strip()
-            assert hint_text.startswith("Будет получено примерно 3,00")
-            assert "за 1.01 USD" in hint_text
+            assert page.locator("#currencyQuoteTotalLabel").inner_text() == "Получил BYN"
+            assert page.locator("#currencyQuantityLabel").inner_text() == "Отдал USD"
             assert preview_rows.count() == 1
             assert "Продажа" in page.locator("#createPreviewBody").text_content()
             assert "1.01 USD" in page.locator("#createPreviewBody").text_content()
@@ -190,6 +196,8 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
             page.click("#addOperationCta")
             page.wait_for_selector("#createModal:not(.hidden)")
             page.locator('#createEntryModeSwitch button[data-entry-mode="currency"]').click()
+            if not page.locator("#createPreviewHeadCurrency").is_visible():
+                page.click("#createModal .operation-preview-action")
             page.wait_for_selector("#createPreviewHeadCurrency:not(.hidden)")
             page.locator('#createCurrencySideSwitch button[data-currency-side="sell"]').click()
 
@@ -200,9 +208,7 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
 
             rate_value = page.locator("#currencyUnitPrice").input_value()
             assert rate_value.startswith("3.0000")
-            hint_text = page.locator("#currencyTradeHint").text_content().strip()
-            assert hint_text.startswith("Будет получено примерно 60,00")
-            assert "за 20.00 USD" in hint_text
+            assert page.locator("#currencyTradeRateOrigin").inner_text() == "Рассчитан по введённым суммам"
 
             page.locator("#currencyQuantity").fill("10")
             page.locator("#currencyQuoteTotal").fill("40")

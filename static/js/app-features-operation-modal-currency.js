@@ -18,6 +18,8 @@
     let currencyTradeRateDriver = false;
     let currencyTradeManualOrder = [];
     let currencyRateRequestSeq = 0;
+    let priorTradeRate = null;
+    let tradeRateDescription = "";
     let createOperationFxRateManual = false;
     let editOperationFxRateManual = true;
     const operationFxRateRequestSeq = {
@@ -25,7 +27,7 @@
       edit: 0,
     };
 
-  async function setCurrencySide(side) {
+  function setCurrencySide(side) {
     const nextSide = side === "sell" ? "sell" : "buy";
     if (el.currencySide) {
       el.currencySide.value = nextSide;
@@ -33,12 +35,7 @@
     if (el.createCurrencySideSwitch) {
       core.syncSegmentedActive(el.createCurrencySideSwitch, "currency-side", nextSide);
     }
-    currencyUnitPriceManual = false;
-    currencyTradeSourceField = "quantity";
-    currencyTradeRateDriver = false;
-    currencyTradeManualOrder = [];
     syncCurrencyTradeFieldUi();
-    await syncSuggestedCurrencyRate({ force: true }).catch(() => {});
     updateCreatePreview();
   }
 
@@ -107,7 +104,7 @@
     const quoteCurrency = String(el.currencyQuote?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
     const assetLabel = core.formatCurrencyLabel?.(assetCurrency) || assetCurrency;
     const quoteLabel = core.formatCurrencyLabel?.(quoteCurrency) || quoteCurrency;
-    const quantityResolved = core.resolveMoneyInput(el.currencyQuantity?.value || 0);
+    const quantityResolved = core.resolveRateInput(el.currencyQuantity?.value || 0, 0, 6);
     const quoteResolved = core.resolveMoneyInput(el.currencyQuoteTotal?.value || 0);
     const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
     const enteredQuantity = Number(quantityResolved.previewValue || 0);
@@ -164,11 +161,12 @@
       enteredQuoteTotal,
       unitPrice,
       effectiveQuantity,
+      quantityToSave: resolvedSource === "quote" ? core.formatAmount(effectiveQuantity) : quantityResolved.formatted,
       estimatedQuoteTotal,
       derivedRateFromAmounts,
       sourceField: resolvedSource,
-      amountLabel: side === "buy" ? `Покупаю ${assetLabel}` : `Продаю ${assetLabel}`,
-      quoteAmountLabel: side === "buy" ? `Плачу ${quoteLabel}` : `Получаю ${quoteLabel}`,
+      amountLabel: side === "buy" ? `Получил ${assetCurrency}` : `Отдал ${assetCurrency}`,
+      quoteAmountLabel: side === "buy" ? `Отдал ${quoteCurrency}` : `Получил ${quoteCurrency}`,
       amountSuffixCurrency: assetCurrency,
       amountColumnLabel: "Количество",
       amountPreviewText: core.formatAmount(effectiveQuantity || 0),
@@ -179,36 +177,74 @@
     };
   }
 
-  async function syncSuggestedCurrencyRate(options = {}) {
-    if (!el.currencyUnitPrice || !el.currencyAsset || !el.currencyTradeDateModal) {
+  function hasEnteredExchangeRate() {
+    return currencyUnitPriceManual || currencyTradeRateDriver || (
+      currencyTradeManualOrder.includes("quantity") && currencyTradeManualOrder.includes("quote")
+      && Number(core.resolveRateInput(el.currencyQuantity.value, 0, 6).previewValue) > 0
+      && Number(core.resolveMoneyInput(el.currencyQuoteTotal.value).previewValue) > 0
+    );
+  }
+
+  function clearSuggestedTradeRate() {
+    if (el.currencyQuantityField?.classList.contains("money-input-auto")) el.currencyQuantity.value = "";
+    if (el.currencyQuoteTotalField?.classList.contains("money-input-auto")) el.currencyQuoteTotal.value = "";
+    el.currencyUnitPrice.value = "";
+  }
+
+  async function syncSuggestedCurrencyRate() {
+    const seq = ++currencyRateRequestSeq;
+    priorTradeRate = null;
+    tradeRateDescription = "";
+    if (!el.currencyUnitPrice || !el.currencyAsset || !el.currencyTradeDateModal) return;
+    if (hasEnteredExchangeRate()) {
+      syncCurrencyTradeFieldUi();
       return;
     }
-    if (currencyUnitPriceManual && options.force !== true) {
-      return;
+    clearSuggestedTradeRate();
+    const currency = el.currencyAsset.value;
+    const dateTo = core.parseDateInputValue(el.currencyTradeDateModal.value);
+    const params = new URLSearchParams({ currency, date_to: dateTo || "", limit: "1" });
+    syncCurrencyTradeFieldUi();
+    updateCreatePreview();
+    if (!currency || !dateTo || el.currencyQuote?.value !== "BYN") return;
+    try {
+      const rows = await core.requestJson(`/api/v1/currency/rates/history?${params}`, { headers: core.authHeaders() });
+      if (seq !== currencyRateRequestSeq || hasEnteredExchangeRate()) return;
+      const row = rows?.[0];
+      if (row?.currency === currency && Number(row.rate) > 0 && row.rate_date && row.rate_date <= dateTo) {
+        const source = row.source?.startsWith("nbrb") ? "НБРБ" : row.source === "manual" ? "Ручной курс" : row.source || "Сохранённый курс";
+        const description = `${source} · ${core.formatDateRu(row.rate_date)}`;
+        if (row.rate_date === dateTo) {
+          el.currencyUnitPrice.value = formatTradeRateValue(row.rate);
+          tradeRateDescription = description;
+        } else {
+          priorTradeRate = { rate: row.rate, description };
+          tradeRateDescription = "На выбранную дату курса нет.";
+        }
+      } else {
+        tradeRateDescription = "На выбранную дату курса нет.";
+      }
+    } catch {
+      if (seq !== currencyRateRequestSeq || hasEnteredExchangeRate()) return;
+      tradeRateDescription = "Не удалось загрузить курс. Можно ввести суммы обмена.";
     }
-    const requestSeq = ++currencyRateRequestSeq;
-    const currency = String(el.currencyAsset.value || "").trim().toUpperCase();
-    const dateTo = core.parseDateInputValue(el.currencyTradeDateModal.value) || core.getTodayIso();
-    if (!currency || !dateTo) {
-      return;
-    }
-    const overview = await core.requestJson(
-      `/api/v1/currency/overview?currency=${encodeURIComponent(currency)}&trades_limit=1`,
-      { headers: core.authHeaders() },
-    ).catch(() => null);
-    if (requestSeq !== currencyRateRequestSeq || currencyUnitPriceManual || currencyTradeRateDriver) {
-      return;
-    }
-    const currentRate = Array.isArray(overview?.current_rates) ? overview.current_rates[0] : null;
-    if (!currentRate?.rate) {
-      return;
-    }
-    el.currencyUnitPrice.value = formatTradeRateValue(currentRate.rate || 0);
     syncCurrencyTradeFieldUi();
     updateCreatePreview();
   }
 
+  document.getElementById("currencyUsePriorRate")?.addEventListener("click", () => {
+    if (!priorTradeRate || hasEnteredExchangeRate()) return;
+    el.currencyUnitPrice.value = formatTradeRateValue(priorTradeRate.rate);
+    tradeRateDescription = priorTradeRate.description;
+    priorTradeRate = null;
+    syncCurrencyTradeFieldUi();
+    updateCreatePreview();
+  });
+
   function markCurrencyRateManual() {
+    ++currencyRateRequestSeq;
+    priorTradeRate = null;
+    tradeRateDescription = "";
     const wasAutoComputed = el.currencyUnitPriceField?.classList.contains("money-input-auto");
     if (wasAutoComputed) {
       currencyTradeManualOrder = currencyTradeManualOrder.filter((item) => item !== "quote");
@@ -286,20 +322,30 @@
       el.currencyUnitPrice.setAttribute("aria-label", context.unitPriceLabel);
       el.currencyUnitPrice.title = context.unitPriceLabel;
     }
+    const quantityLabel = document.getElementById("currencyQuantityLabel");
+    const quoteLabel = document.getElementById("currencyQuoteTotalLabel");
+    const rateLabel = document.getElementById("currencyUnitPriceLabel");
+    if (quantityLabel && quoteLabel && rateLabel) {
+      quantityLabel.textContent = context.amountLabel;
+      quoteLabel.textContent = context.quoteAmountLabel;
+      rateLabel.textContent = context.unitPriceLabel;
+      const amounts = document.getElementById("currencyExchangeAmounts");
+      const first = (context.side === "buy" ? quoteLabel : quantityLabel).closest("label");
+      if (amounts.firstElementChild !== first) amounts.prepend(first);
+    }
+    const origin = document.getElementById("currencyTradeRateOrigin");
+    const offer = document.getElementById("currencyUsePriorRate");
+    if (origin) origin.textContent = context.derivedRateFromAmounts ? "Рассчитан по введённым суммам"
+      : currencyUnitPriceManual ? (state.editCurrencyTradeId && !currencyTradeRateDriver ? "Курс записанного обмена" : "Курс введён вручную")
+      : tradeRateDescription;
+    if (offer) {
+      offer.classList.toggle("hidden", !priorTradeRate || hasEnteredExchangeRate());
+      if (priorTradeRate) offer.textContent = `Применить ${formatTradeRateValue(priorTradeRate.rate)} · ${priorTradeRate.description}`;
+    }
     if (el.currencyTradeHint) {
-      const hasRate = context.unitPrice > 0;
-      const hasQuantity = context.effectiveQuantity > 0;
-      if (context.side === "buy") {
-        const computed = hasRate && hasQuantity
-          ? `Будет списано примерно ${core.formatMoney(context.estimatedQuoteTotal, { currency: context.quoteCurrency })} за ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency}.`
-          : `Можно заполнить любые две величины: количество в ${context.assetCurrency}, сумму в ${context.quoteCurrency} или курс. Третье поле пересчитается автоматически.`;
-        el.currencyTradeHint.textContent = computed;
-      } else {
-        const computed = hasRate && hasQuantity
-          ? `Будет получено примерно ${core.formatMoney(context.estimatedQuoteTotal, { currency: context.quoteCurrency })} за ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency}.`
-          : `Можно заполнить любые две величины: количество в ${context.assetCurrency}, сумму в ${context.quoteCurrency} или курс. Третье поле пересчитается автоматически.`;
-        el.currencyTradeHint.textContent = computed;
-      }
+      el.currencyTradeHint.textContent = Number(state.editCurrencyTradeFee) > 0
+        ? `Суммы без комиссии. Комиссия обмена ${core.formatMoney(state.editCurrencyTradeFee, { currency: context.quoteCurrency })}.`
+        : "";
     }
     if (el.currencyAsset) {
       el.currencyAsset.setAttribute("aria-label", `Валюта сделки: ${context.assetLabel}`);
@@ -601,6 +647,9 @@
     }
 
     function resetCurrencyTradeState() {
+      ++currencyRateRequestSeq;
+      priorTradeRate = null;
+      tradeRateDescription = "";
       currencyUnitPriceManual = false;
       currencyTradeSourceField = "quantity";
       currencyTradeRateDriver = false;

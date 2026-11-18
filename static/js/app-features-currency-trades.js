@@ -5,6 +5,7 @@
       el,
       core,
       pickerUtils,
+      escapeHtml,
       formatTradeQuoteTotal,
       formatRateWithQuote,
       openCurrencyTradeEdit,
@@ -16,7 +17,7 @@
     let tradesObserver = null;
     let requestSeq = 0;
     const sorting = window.App.getRuntimeModule("table-sort");
-    const columns = ["trade_date", "side", "asset_currency", "quantity", "unit_price", "note"].map((key) => ({ key }));
+    const columns = ["trade_date", "quantity", "unit_price", "note"].map((key) => ({ key }));
     const fallback = { by: "trade_date", dir: "desc" };
     function bindSorting() {
       sorting.bind(el.currencyTradesBody?.closest("table"), { key: "currency-trades", columns, fallback,
@@ -76,17 +77,15 @@
         }
       });
       if (!trades.length) {
-        const emptyLabel = state.currencyFilter && state.currencyFilter !== "all"
-          ? `Сделок по ${core.formatCurrencyLabel(state.currencyFilter)} пока нет`
-          : "Сделок по отслеживаемым валютам пока нет";
-        el.currencyTradesBody.innerHTML = `<tr><td colspan="7" class="muted-small">${emptyLabel}</td></tr>`;
+        const emptyLabel = state.currencyTradesPeriod !== "all_time" ? "За выбранный период обменов нет"
+          : state.currencyFilter !== "all" ? `Обменов по ${core.formatCurrencyLabel(state.currencyFilter)} пока нет` : "Обменов пока нет";
+        el.currencyTradesBody.innerHTML = `<tr><td colspan="5" class="muted-small">${emptyLabel}</td></tr>`;
         el.currencyTradesInfiniteSentinel?.classList.add("hidden");
         return;
       }
       el.currencyTradesBody.innerHTML = trades.map((item) => {
         const isLinkedSettlement = item.trade_kind === "card_payment" && Number(item.linked_operation_id || 0) > 0;
-        const sideClass = isLinkedSettlement || item.side === "sell" ? "expense" : "income";
-        const sideLabel = isLinkedSettlement ? "Оплата картой" : item.side === "sell" ? "Продажа" : "Покупка";
+        const sideLabel = isLinkedSettlement ? "Оплата картой" : item.side === "sell" ? "Продал" : "Купил";
         const linkedMeta = isLinkedSettlement
           ? `<div class="currency-trade-meta"><button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-open-linked-operation-id="${Number(item.linked_operation_id)}">Связанная операция</button></div>`
           : "";
@@ -104,11 +103,9 @@
         return `
           <tr class="table-record-open-row" data-currency-trade-row-id="${Number(item.id)}">
             <td data-label="Дата">${core.formatDateRu(item.trade_date)}</td>
-            <td data-label="Действие"><span class="kind-pill kind-pill-${sideClass}">${sideLabel}</span></td>
-            <td data-label="Валюта">${core.escapeHtml?.(core.formatCurrencyLabel(item.asset_currency)) || core.formatCurrencyLabel(item.asset_currency)}</td>
-            <td data-label="Количество">${core.formatAmount(item.quantity || 0)} ${core.escapeHtml?.(item.asset_currency || "") || (item.asset_currency || "")}<div class="muted-small">≈ ${formatTradeQuoteTotal(item)}</div></td>
+            <td data-label="Обмен">${sideLabel} ${Number(item.quantity).toLocaleString("ru-RU", { maximumFractionDigits: 6 })} ${escapeHtml(item.asset_currency)} за ${formatTradeQuoteTotal(item)}</td>
             <td data-label="Курс">${formatRateWithQuote(item.unit_price || 0, item.quote_currency || "BYN")}</td>
-            <td class="mobile-note-cell" data-label="Комментарий"><div class="currency-trade-note">${linkedMeta}${core.escapeHtml?.(item.note || "") || (item.note || "")}</div></td>
+            <td class="mobile-note-cell" data-label="Комментарий"><div class="currency-trade-note">${linkedMeta}${escapeHtml(item.note || "")}</div></td>
             <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
               ${core.renderInlineKebabMenu?.(`currency-trade-${Number(item.id)}`, menuItems, "Действия валютной сделки", "operation-row-kebab") || '<span class="muted-small">Через операцию</span>'}
             </td>
@@ -143,6 +140,13 @@
       }
       state.currencyTradesLoading = true;
       const seq = ++requestSeq;
+      if (reset) {
+        state.currencyTradesItems = [];
+        state.currencyTradesHasMore = false;
+        tradeItemsById.clear();
+        el.currencyTradesBody.innerHTML = '<tr><td colspan="5" class="muted-small">Загружаются обмены…</td></tr>';
+        el.currencyTradesInfiniteSentinel?.classList.add("hidden");
+      }
       bindSorting();
       try {
         const choice = sorting.get("currency-trades", fallback);
@@ -154,6 +158,14 @@
         });
         if (state.currencyFilter && state.currencyFilter !== "all") {
           params.set("currency", state.currencyFilter);
+        }
+        const days = Number(state.currencyTradesPeriod);
+        if (days > 0) {
+          const today = core.getPeriodBounds("day").dateTo;
+          const start = new Date(`${today}T12:00:00Z`);
+          start.setUTCDate(start.getUTCDate() - days + 1);
+          params.set("date_from", start.toISOString().slice(0, 10));
+          params.set("date_to", today);
         }
         const data = await core.requestJson(`/api/v1/currency/trades?${params.toString()}`, {
           headers: core.authHeaders(),
@@ -168,6 +180,10 @@
         state.currencyTradesTotal = Number(data.total || 0);
         state.currencyTradesHasMore = state.currencyTradesItems.length < state.currencyTradesTotal;
         renderTrades({ recent_trades: state.currencyTradesItems });
+      } catch (error) {
+        if (seq !== requestSeq) return;
+        if (reset) el.currencyTradesBody.innerHTML = '<tr><td colspan="5" class="muted-small">Не удалось загрузить обмены.</td></tr>';
+        throw error;
       } finally {
         if (seq === requestSeq) state.currencyTradesLoading = false;
       }
@@ -186,7 +202,7 @@
       }
       tradesObserver?.disconnect();
       tradesObserver = new IntersectionObserver((entries) => {
-        if (!entries[0]?.isIntersecting || state.activeSection !== "currency") {
+        if (!entries[0]?.isIntersecting || state.activeSection !== "currency" || state.currencyView !== "portfolio") {
           return;
         }
         if (!state.currencyTradesHasMore || state.currencyTradesLoading) {

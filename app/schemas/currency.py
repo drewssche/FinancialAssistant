@@ -76,6 +76,7 @@ class CurrencyTelegramDigestSendOut(BaseModel):
 
 
 class CurrencyRateHistoryPointOut(BaseModel):
+    source: str
     currency: str
     rate: Decimal
     rate_date: date
@@ -208,7 +209,14 @@ class CurrencyAvailableBalanceOut(BaseModel):
     current_quantity: Decimal
 
 
+class CurrencyExchangeResultOut(BaseModel):
+    currency: str
+    average_buy_rate: Decimal | None
+    realized_result_value: Decimal
+
+
 class CurrencyOverviewOut(BaseModel):
+    exchange_results: list[CurrencyExchangeResultOut] = Field(default_factory=list)
     base_currency: str
     tracked_currencies: list[str]
     active_positions: int

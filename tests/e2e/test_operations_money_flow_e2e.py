@@ -669,7 +669,7 @@ def test_operations_money_flow_mode_supports_source_filter_and_drilldown(static_
     )
     page.wait_for_selector("#currencySection:not(.hidden)")
     page.wait_for_selector("#createModal:not(.hidden)")
-    assert page.locator("#createTitle").inner_text().strip() == "Редактировать валютную сделку"
+    assert page.locator("#createTitle").inner_text().strip() == "Редактировать обмен"
     assert page.locator("#currencyAsset").input_value() == "USD"
 
 

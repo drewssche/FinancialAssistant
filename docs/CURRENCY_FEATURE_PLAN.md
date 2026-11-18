@@ -9,18 +9,25 @@ This document is the compact current contract for the currency feature. Historic
 
 ## Implemented
 
-- Dedicated `Валюта` section with tracked-currency filters, positions, current rates, trade history, and performance timeline.
+- The currency workspace opens on `Курсы`. `Мои обмены` contains the editable exchange journal. Both tabs share `Записать обмен`.
 - Shared create modal mode `Валюта` for `Покупка / Продажа`.
 - Weighted-average position calculation from FX trade history.
 - Realized, unrealized, and total currency result in backend summary and UI.
 - Endpoint for currency performance history: `GET /api/v1/currency/performance/history`.
 - Dashboard currency panel with portfolio valuation, per-currency cards, rate refresh actions, and last-known-rate fallback.
-- Analytics tab `Валюта` with KPI, rate/history chart, deal list, and period controls.
+- Market history and personal exchange results are independently expandable and fetched on demand.
 - Settings for tracked currencies, dashboard visibility, and currency digest preferences.
 - Daily tracked-rate refresh and Telegram currency digest.
 - Currency threshold alerts.
 - Multi-currency operations, plans, and debts with base-currency conversion display.
 - Debt forgiveness flow with dedicated action, API endpoint, closure reason, and UI chips.
+
+## Согласованный план от 19 ноября 2026 года
+
+1. Показывать курсы выбранных банков для одной валюты. «Я покупаю» использует цену продажи банка, «Я продаю» использует цену покупки банка. Указывать количество единиц, канал, дату и свежесть котировки. Обновление котировок и ручной ввод доступны отдельно.
+2. Для обмена показывать дату, валюту, «Отдал» и «Получил». Две введённые суммы определяют фактический курс. Автоподстановка использует сохранённый курс на дату обмена. Более ранний курс можно применить явно.
+3. Показывать обмены в одном журнале с фильтрами по валюте и дате. Применять фильтры к полному списку до подсчёта и разбивки на страницы.
+4. Вынести график курсов и результат собственных обменов в раскрываемые блоки. При подсчёте результата учитывать также полностью проданную валюту. Расходы сохраняют сумму в валюте и эквивалент на дату операции. Настройки банков и дайджест Telegram остаются самостоятельными.
 
 ## Product Rules
 

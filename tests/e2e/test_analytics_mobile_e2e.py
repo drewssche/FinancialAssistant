@@ -581,6 +581,10 @@ def page_with_analytics_api_mock(page):
         if path == "/api/v1/debts/cards" and method == "GET":
             return json_response(route, [])
 
+        if path == "/api/v1/currency/rate-options":
+            return json_response(route, {"currency": "USD", "base_currency": "BYN", "display_scale": 1,
+                                         "providers": [], "bank_rates": [], "nbrb_rate": None})
+
         if path == "/api/v1/currency/overview" and method == "GET":
             selected_currency = (query.get("currency") or ["all"])[0]
             if selected_currency and selected_currency != "all":
@@ -728,6 +732,8 @@ def _open_context_report(page, report):
     }[report]
     page.evaluate("section => window.App.getRuntimeModule('navigation').switchSection(section)", section)
     page.locator(f"button[data-{attr}='{view}']").click()
+    if report == "currency" and not page.locator("#currencyChartDetails").evaluate("node => node.open"):
+        page.locator("#currencyChartDetails summary").click()
 
 
 def _open_mobile_analytics(page, static_server_url: str):
@@ -1557,13 +1563,12 @@ def test_currency_analytics_all_mode_renders_multi_currency_chart_and_backfill(p
     _open_mobile_analytics(page, static_server_url)
     _open_context_report(page, "currency")
     page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
-    page.wait_for_selector("button[data-analytics-currency-filter='all']")
-    page.click("button[data-analytics-currency-filter='all']")
     page.click("button[data-analytics-currency-chart-mode='nbrb']")
+    page.click("button[data-analytics-currency-filter='all']")
     page.click("button[data-analytics-currency-period='all_time']")
     page.wait_for_selector("#analyticsCurrencyChart .currency-chart-series")
 
-    assert page.locator("#analyticsCurrencyBalancesRow .currency-balance-card").count() >= 3
+    assert page.locator("#currencyQuotesTabs [data-quote-currency]").count() >= 3
     expect(page.locator("#analyticsCurrencyChartLegend [data-analytics-chart-series-toggle='nbrb-USD']")).to_contain_text("USD")
     expect(page.locator("#analyticsCurrencyChartLegend [data-analytics-chart-series-toggle='nbrb-EUR']")).to_contain_text("EUR")
     expect(page.locator("#analyticsCurrencyChartLegend [data-analytics-chart-series-toggle='nbrb-RUB']")).to_contain_text("100 RUB")
@@ -1620,6 +1625,7 @@ def test_currency_analytics_bank_mode_compares_buy_sell_and_scales_rub(page_with
     _open_context_report(page, "currency")
     page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
     expect(page.locator("button[data-analytics-currency-chart-mode='banks']")).to_have_class(re.compile(r"\bactive\b"))
+    page.click("button[data-analytics-bank-chart-currency='EUR']")
     page.wait_for_selector("#analyticsCurrencyChart [data-series-id='priorbank-buy']")
 
     buy_line = page.locator("#analyticsCurrencyChart [data-series-id='priorbank-buy'] polyline")

@@ -205,6 +205,7 @@ def test_rate_history_can_exclude_manual_rows_for_official_nbrb_charts():
                 "currency": "USD",
                 "rate": service._rate("3.20"),
                 "rate_date": date(2026, 8, 26),
+                "source": "nbrb_auto_unit",
             }
         ]
     finally:

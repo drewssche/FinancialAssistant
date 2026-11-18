@@ -256,14 +256,60 @@
         </section>
 
         <section id="currencySection" class="section-block hidden">
-          <div id="currencyWorkspaceTabs" class="segmented" role="tablist" aria-label="Разделы валюты"><button type="button" class="segmented-btn active" data-currency-view="portfolio">Портфель</button><button type="button" class="segmented-btn" data-currency-view="rates">Курсы и сделки</button></div>
-          <section id="analyticsCurrencyPanel" class="panel analytics-tab-panel hidden">
-            <div class="panel-head row between">
-              <div>
-                <h3>Курсы и сделки</h3>
-                <p id="analyticsCurrencyRangeLabel" class="subtitle"></p>
-              </div>
+          <div class="fx-workspace-head">
+            <div id="currencyWorkspaceTabs" class="segmented" role="group" aria-label="Разделы валюты">
+              <button type="button" class="segmented-btn active" data-currency-view="rates">Курсы</button>
+              <button type="button" class="segmented-btn" data-currency-view="portfolio">Мои обмены</button>
+            </div>
+            <button id="openCurrencyTradePanelBtn" class="btn btn-cta" type="button">${window.App.icons.svg("plus")} Записать обмен</button>
+          </div>
+          <section id="analyticsCurrencyPanel" class="panel analytics-tab-panel">
+            <div class="fx-workspace-head">
+              <div id="currencyQuotesTabs" class="segmented" role="group" aria-label="Валюта котировок"></div>
               <div class="toolbar">
+                <button id="currencyRefreshQuotesBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Обновить курсы" title="Обновить курсы">${window.App.icons.svg("refresh")}</button>
+                <button id="analyticsSendCurrencyDigestBtn" class="btn-icon btn btn-secondary btn-xs" type="button" aria-label="Отправить дайджест" title="Отправить дайджест">${window.App.icons.svg("send")}</button>
+              </div>
+            </div>
+            <div id="currencyQuotesList" aria-live="polite"></div>
+            <button id="openCurrencyRatePanelBtn" class="btn btn-secondary btn-xs" type="button">Ввести курс вручную</button>
+            <div id="currencyRatePanel" class="panel hidden">
+              <form id="currencyRateForm" class="category-modal-form">
+                <div class="settings-grid-2">
+                  <label class="field">
+                    <span>Валюта</span>
+                    <select id="currencyRateAsset">
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="RUB">RUB (₽)</option>
+                      <option value="CNY">CNY (¥)</option>
+                      <option value="PLN">PLN (zł)</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>BYN за 1 единицу валюты</span>
+                    <input id="currencyRateValue" type="number" min="0" step="0.000001" placeholder="3.270000" />
+                  </label>
+                </div>
+                <div class="settings-grid-2">
+                  <label class="field">
+                    <span>Дата курса</span>
+                    <input id="currencyRateDate" type="date" />
+                  </label>
+                  <label class="field">
+                    <span>Источник</span>
+                    <input id="currencyRateSource" type="text" maxlength="20" value="manual" />
+                  </label>
+                </div>
+                <div class="settings-actions">
+                  <button id="submitCurrencyRateBtn" class="btn-icon btn btn-secondary" type="submit" aria-label="Сохранить курс" title="Сохранить курс">${window.App.icons.svg("save")}</button>
+                  <button id="closeCurrencyRatePanelBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Закрыть" title="Закрыть">${window.App.icons.svg("close")}</button>
+                </div>
+              </form>
+            </div>
+            <details id="currencyChartDetails" class="fx-details">
+              <summary>История курсов</summary>
+              <div class="toolbar fx-chart-period">
                 <div id="analyticsCurrencyTabs" class="segmented" role="tablist" aria-label="Фильтр валютной аналитики"></div>
                 <div id="analyticsCurrencyPeriodTabs" class="segmented" role="tablist" aria-label="Период валютной аналитики">
                   <button class="segmented-btn" data-analytics-currency-period="7d" type="button">7 дней</button>
@@ -275,37 +321,8 @@
                 <div id="analyticsCurrencyPeriodPopover" class="app-popover app-popover-floating period-control-popover hidden" role="dialog" aria-label="Быстрый выбор периода валютной аналитики">
                   <div id="analyticsCurrencyPeriodOptions" class="settings-picker-options"></div>
                 </div>
-                <button id="analyticsSendCurrencyDigestBtn" class="btn-icon btn btn-secondary btn-xs" type="button" aria-label="Отправить дайджест" title="Отправить дайджест">${window.App.icons.svg("send")}</button>
               </div>
-            </div>
-            <div id="analyticsCurrencyKpiGrid" class="analytics-kpi-grid">
-              <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div class="muted-small">Текущая оценка открытых позиций</div>
-                <strong id="analyticsCurrencyCurrentValue">0</strong>
-              </article>
-              <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div class="muted-small">Вложено в открытые позиции</div>
-                <strong id="analyticsCurrencyBookValue">0</strong>
-              </article>
-              <article id="analyticsCurrencyResultCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="analyticsCurrencyResultLabel" class="muted-small">Нереализованный результат</div>
-                <strong id="analyticsCurrencyResultValue">0</strong>
-              </article>
-              <article id="analyticsCurrencyRealizedCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="analyticsCurrencyRealizedLabel" class="muted-small">Реализованный результат</div>
-                <strong id="analyticsCurrencyRealizedValue">0</strong>
-              </article>
-              <article id="analyticsCurrencyCombinedCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="analyticsCurrencyCombinedLabel" class="muted-small">Итоговый результат</div>
-                <strong id="analyticsCurrencyCombinedValue">0</strong>
-              </article>
-              <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div class="muted-small">Открытых позиций</div>
-                <strong id="analyticsCurrencyActiveCount">0</strong>
-              </article>
-            </div>
-            <div id="analyticsCurrencyBalancesRow" class="currency-balance-grid"></div>
-            <div id="analyticsCurrencySecondary" class="analytics-kpi-secondary"></div>
+              <p id="analyticsCurrencyRangeLabel" class="muted-small"></p>
             <section class="currency-chart-controls" aria-label="Настройки сравнения банковских курсов">
               <div class="currency-chart-controls-head">
                 <div>
@@ -340,65 +357,43 @@
             <div class="analytics-trend-chart-wrap">
               <svg id="analyticsCurrencyChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="История курса валюты"></svg>
             </div>
-            <div class="table-wrap">
-              <table class="table table-hover mobile-card-table">
-                <thead>
-                  <tr>
-                    <th>Дата</th>
-                    <th>Действие</th>
-                    <th>Валюта</th>
-                    <th>Количество</th>
-                    <th>Курс</th>
-                    <th>Комментарий</th>
-                  </tr>
-                </thead>
-                <tbody id="analyticsCurrencyTradesBody"></tbody>
-              </table>
-            </div>
-            <div id="analyticsCurrencyTradesInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
+            </details>
           </section>
-          <div id="currencyPortfolioView">
-          <section class="panel">
-            <div class="panel-head row between">
-              <div></div>
+          <section id="currencyPortfolioView" class="panel hidden">
+            <div class="fx-workspace-head">
               <div class="toolbar">
-                <button id="currencyPortfolioActivityBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Журнал валюты" title="Журнал валюты">${window.App.icons.svg("history")}</button>
-                <button id="openCurrencyTradePanelBtn" class="btn-icon btn btn-cta" type="button" aria-label="Новая сделка" title="Новая сделка">${window.App.icons.svg("plus")}</button>
-                <button id="openCurrencyRatePanelBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Обновить курс" title="Обновить курс">${window.App.icons.svg("refresh")}</button>
+                <div id="currencyFilterTabs" class="segmented" role="group" aria-label="Валюта обменов"></div>
+                <select id="currencyTradesPeriod" aria-label="Период обменов">
+                  <option value="all_time">Все даты</option>
+                  <option value="7">7 дней</option>
+                  <option value="30">30 дней</option>
+                  <option value="365">365 дней</option>
+                </select>
+              </div>
+              <div class="toolbar">
+                <button id="currencyPortfolioActivityBtn" class="btn-icon btn btn-secondary" type="button" aria-label="История изменений обменов" title="История изменений обменов">${window.App.icons.svg("history")}</button>
                 <button id="currencySendDigestBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Отправить дайджест" title="Отправить дайджест">${window.App.icons.svg("send")}</button>
               </div>
             </div>
-            <div class="table-search-row">
-              <div id="currencyFilterTabs" class="segmented" role="tablist" aria-label="Фильтр валют"></div>
+            <div class="table-wrap">
+              <table class="table table-hover mobile-card-table operations-table">
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Обмен</th>
+                    <th>Курс</th>
+                    <th>Комментарий</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="currencyTradesBody"></tbody>
+              </table>
             </div>
-            <div id="currencySummaryGrid" class="analytics-kpi-grid">
-              <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div class="muted-small">Текущая оценка открытых позиций</div>
-                <strong id="currencySummaryCurrentValue">0</strong>
-              </article>
-              <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div class="muted-small">Вложено в открытые позиции</div>
-                <strong id="currencySummaryBookValue">0</strong>
-              </article>
-              <article id="currencySummaryResultCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="currencySummaryResultLabel" class="muted-small">Нереализованный результат</div>
-                <strong id="currencySummaryResultValue">0</strong>
-              </article>
-              <article id="currencySummaryRealizedCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="currencySummaryRealizedLabel" class="muted-small">Реализованный результат</div>
-                <strong id="currencySummaryRealizedValue">0</strong>
-              </article>
-              <article id="currencySummaryCombinedCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="currencySummaryCombinedLabel" class="muted-small">Итоговый результат</div>
-                <strong id="currencySummaryCombinedValue">0</strong>
-              </article>
-              <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div class="muted-small">Открытых позиций</div>
-                <strong id="currencySummaryActiveCount">0</strong>
-              </article>
-            </div>
-            <div id="currencyBalancesRow" class="currency-balance-grid"></div>
-            <div id="currencyPositionsList" class="plans-list"></div>
+            <div id="currencyTradesInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
+            <details id="currencyResultDetails" class="fx-details">
+              <summary>Результат обменов</summary>
+              <p class="muted-small">По записанным обменам за всё время</p>
+              <div id="currencyExchangeResult" aria-live="polite"></div>
             <div class="toolbar analytics-currency-chart-toolbar">
               <div id="currencyPerformancePeriodTabs" class="segmented" role="tablist" aria-label="Период графика валютного результата">
                 <button class="segmented-btn" data-currency-performance-period="30d" type="button">30 дней</button>
@@ -414,59 +409,8 @@
             <div class="analytics-trend-chart-wrap">
               <svg id="currencyPerformanceChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="История валютного результата"></svg>
             </div>
-            <div id="currencyRatePanel" class="panel hidden">
-              <form id="currencyRateForm" class="category-modal-form">
-                <div class="settings-grid-2">
-                  <label class="field">
-                    <span>Валюта</span>
-                    <select id="currencyRateAsset">
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
-                      <option value="RUB">RUB (₽)</option>
-                      <option value="CNY">CNY (¥)</option>
-                      <option value="PLN">PLN (zł)</option>
-                    </select>
-                  </label>
-                  <label class="field">
-                    <span>Курс к BYN</span>
-                    <input id="currencyRateValue" type="number" min="0" step="0.000001" placeholder="3.270000" />
-                  </label>
-                </div>
-                <div class="settings-grid-2">
-                  <label class="field">
-                    <span>Дата курса</span>
-                    <input id="currencyRateDate" type="date" />
-                  </label>
-                  <label class="field">
-                    <span>Источник</span>
-                    <input id="currencyRateSource" type="text" maxlength="20" value="manual" />
-                  </label>
-                </div>
-                <div class="settings-actions">
-                  <button id="submitCurrencyRateBtn" class="btn-icon btn btn-secondary" type="submit" aria-label="Сохранить курс" title="Сохранить курс">${window.App.icons.svg("save")}</button>
-                  <button id="closeCurrencyRatePanelBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Закрыть" title="Закрыть">${window.App.icons.svg("close")}</button>
-                </div>
-              </form>
-            </div>
-            <div class="table-wrap">
-              <table class="table table-hover mobile-card-table operations-table">
-                <thead>
-                  <tr>
-                    <th>Дата</th>
-                    <th>Действие</th>
-                    <th>Валюта</th>
-                    <th>Количество</th>
-                    <th>Курс</th>
-                    <th>Комментарий</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="currencyTradesBody"></tbody>
-              </table>
-            </div>
-            <div id="currencyTradesInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
+            </details>
           </section>
-        </div>
         </section>
 
         <section id="itemCatalogSection" class="section-block hidden">

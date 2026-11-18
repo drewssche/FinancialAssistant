@@ -71,7 +71,6 @@
     "/static/js/app-features-analytics-shared.js",
     "/static/js/app-features-analytics-positions.js",
     "/static/js/app-features-analytics-commerce.js",
-    "/static/js/app-features-analytics-currency-trades.js",
     "/static/js/app-features-analytics-currency-chart.js",
     "/static/js/app-features-analytics-currency.js",
     "/static/js/app-analytics-hover-state-coordinator.js",

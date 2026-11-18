@@ -11,7 +11,7 @@ from app.core.cache import (
 )
 from app.core.logging import log_background_job_event
 from app.db.models import FxTrade
-from app.repositories.currency_repo import CurrencyRepository
+from app.repositories.currency_repo import NBRB_RATE_SOURCES, CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
 from app.services.activity_service import ActivityService
 from app.services.bank_currency_rate_registry import (
@@ -392,6 +392,9 @@ class CurrencyService:
             )
         return item
 
+    def get_trade(self, *, user_id: int, trade_id: int) -> FxTrade | None:
+        return self.repo.get_trade(user_id=user_id, trade_id=trade_id)
+
     def update_trade(
         self,
         *,
@@ -614,6 +617,8 @@ class CurrencyService:
         currency: str | None = None,
         page: int = 1,
         page_size: int = 20,
+        date_from: date | None = None,
+        date_to: date | None = None,
         sort_by: str = "trade_date",
         sort_dir: str = "desc",
     ) -> dict:
@@ -622,6 +627,8 @@ class CurrencyService:
             currency=currency,
             page=page,
             page_size=page_size,
+            date_from=date_from,
+            date_to=date_to,
             sort_by=sort_by,
             sort_dir=sort_dir,
         )
@@ -650,6 +657,7 @@ class CurrencyService:
         date_from: date | None = None,
         date_to: date | None = None,
         sources: tuple[str, ...] | None = None,
+        official_only: bool = False,
     ) -> list[dict]:
         return self.reporting.get_rate_history(
             user_id=user_id,
@@ -657,5 +665,5 @@ class CurrencyService:
             limit=limit,
             date_from=date_from,
             date_to=date_to,
-            sources=sources,
+            sources=NBRB_RATE_SOURCES if official_only else sources,
         )

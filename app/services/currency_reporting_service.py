@@ -303,6 +303,16 @@ class CurrencyReportingService:
                     + Decimal(computed["total_realized_result_value"])
                 )
             ),
+            "exchange_results": [
+                {
+                    "currency": code,
+                    "average_buy_rate": service._rate(stats["buy_volume_base"] / stats["buy_quantity"])
+                    if stats["buy_quantity"] else None,
+                    "realized_result_value": service._money(computed["realized_by_currency"].get(code, 0)),
+                }
+                for code, stats in sorted(computed["trade_stats_by_currency"].items())
+                if not normalized_currency or normalized_currency == code
+            ],
             "buy_trades_count": int(trade_stats["buy_trades_count"]),
             "sell_trades_count": int(trade_stats["sell_trades_count"]),
             "buy_volume_base": service._money(trade_stats["buy_volume_base"]),
@@ -325,9 +335,13 @@ class CurrencyReportingService:
         currency: str | None = None,
         page: int = 1,
         page_size: int = 20,
+        date_from: date | None = None,
+        date_to: date | None = None,
         sort_by: str = "trade_date",
         sort_dir: str = "desc",
     ) -> dict:
+        if date_from and date_to and date_from > date_to:
+            raise ValueError("Дата начала позже даты окончания")
         normalized_currency = (
             self.currency._normalize_currency(currency) if currency else None
         )
@@ -336,6 +350,8 @@ class CurrencyReportingService:
             asset_currency=normalized_currency,
             page=page,
             page_size=page_size,
+            date_from=date_from,
+            date_to=date_to,
             sort_by=sort_by,
             sort_dir=sort_dir,
         )
@@ -485,6 +501,7 @@ class CurrencyReportingService:
                 "currency": row.currency,
                 "rate": service._rate(row.rate),
                 "rate_date": row.rate_date,
+                "source": row.source,
             }
             for row in rows
         ]

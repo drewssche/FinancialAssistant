@@ -190,6 +190,7 @@
     });
     if (el.openCurrencyTabBtn) {
       el.openCurrencyTabBtn.addEventListener("click", () => {
+        state.currencyView = "rates";
         actions.switchSection("currency").catch((err) => core.setStatus(String(err)));
       });
     }

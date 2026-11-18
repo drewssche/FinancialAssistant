@@ -127,9 +127,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     item_catalog_sources = (REPO_ROOT / "static" / "js" / "app-features-item-catalog-sources.js").read_text(encoding="utf-8")
     analytics_calendar = (REPO_ROOT / "static" / "js" / "app-features-analytics-calendar.js").read_text(encoding="utf-8")
     analytics_currency = (REPO_ROOT / "static" / "js" / "app-features-analytics-currency.js").read_text(encoding="utf-8")
-    analytics_currency_trades = (
-        REPO_ROOT / "static" / "js" / "app-features-analytics-currency-trades.js"
-    ).read_text(encoding="utf-8")
     analytics_currency_chart = (
         REPO_ROOT / "static" / "js" / "app-features-analytics-currency-chart.js"
     ).read_text(encoding="utf-8")
@@ -279,9 +276,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'registerRuntimeModule?.("item-catalog-sources-factory"' in item_catalog_sources
     assert 'registerRuntimeModule?.("item-catalog-modal-factory"' in item_catalog_modal
     assert 'registerRuntimeModule?.("analytics-calendar-module"' in analytics_calendar
-    assert 'registerRuntimeModule?.(' in analytics_currency_trades
-    assert '"analytics-currency-trades-factory"' in analytics_currency_trades
-    assert 'getRuntimeModule?.("analytics-currency-trades-factory")' in analytics_currency
     assert "function loadAnalyticsCurrencyTradesPage(" not in analytics_currency
     assert "function bindAnalyticsCurrencyTradesInfiniteScroll(" not in analytics_currency
     assert '"analytics-currency-chart-factory"' in analytics_currency_chart

@@ -1,5 +1,4 @@
 from __future__ import annotations
-from tests.e2e.test_analytics_mobile_e2e import _open_context_report
 
 import json
 import socket
@@ -12,6 +11,10 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 
+from tests.api import test_currency_api
+from tests.e2e.test_analytics_mobile_e2e import _open_context_report
+
+currency_api = test_currency_api.client
 sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
 
 
@@ -81,7 +84,7 @@ def page_with_currency_pagination_api_mock():
                 "currency": "BYN",
                 "currency_position": "suffix",
             },
-            "currency": {"tracked_currencies": ["USD", "EUR"]},
+            "currency": {"tracked_currencies": ["USD", "EUR", "RUB"], "bank_rate_banks": ["priorbank", "bsb"]},
         },
     }
 
@@ -167,6 +170,20 @@ def page_with_currency_pagination_api_mock():
         if path == "/api/v1/dashboard/analytics" and method == "GET":
             return json_response(route, {"points": [], "summary": {}})
 
+        if path == "/api/v1/currency/rate-options":
+            currency = query["currency"][0]
+            return json_response(route, {
+                "currency": currency, "base_currency": "BYN", "display_scale": 100 if currency == "RUB" else 1,
+                "nbrb_rate": None, "providers": [
+                    {"bank_code": "priorbank", "bank_name": "Приорбанк", "channel_label": "онлайн"},
+                    {"bank_code": "bsb", "bank_name": "БСБ Банк", "channel_label": "наличные"},
+                ],
+                "bank_rates": [{"bank_code": "priorbank", "sell_unit_rate": "0.038", "buy_unit_rate": "0.034",
+                                "fetched_at": "2026-03-01T15:00:00Z", "stale": True}],
+            })
+        if path == "/api/v1/currency/rates/refresh" and method == "POST":
+            return json_response(route, [])
+
         if path == "/api/v1/currency/overview" and method == "GET":
             selected_currency = ((query.get("currency") or [""])[0] or "").upper() or None
             tracked = [selected_currency] if selected_currency else ["USD", "EUR"]
@@ -220,7 +237,8 @@ def page_with_currency_pagination_api_mock():
             selected_currency = ((query.get("currency") or [""])[0] or "").upper() or None
             page = max(1, int((query.get("page") or ["1"])[0]))
             page_size = max(1, int((query.get("page_size") or ["20"])[0]))
-            items = resolve_trade_items(selected_currency)
+            items = [item for item in resolve_trade_items(selected_currency)
+                     if query.get("date_from", [""])[0] <= item["trade_date"] <= query.get("date_to", ["9999"])[0]]
             sort_by = (query.get("sort_by") or ["trade_date"])[0]
             if sort_by != "trade_date":
                 numeric = sort_by in {"quantity", "unit_price"}
@@ -336,6 +354,7 @@ def test_currency_trade_kebab_edit_and_delete_close_menu(static_server_url, page
     page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
     page.wait_for_selector("#appShell:not(.hidden)")
     page.evaluate("window.App.actions.switchSection('currency')")
+    page.locator("[data-currency-view='portfolio']").click()
     trigger = page.locator('#currencyTradesBody [data-table-menu-trigger="currency-trade-25"]')
     menu = page.locator('[data-table-menu="currency-trade-25"]')
     trigger.click()
@@ -355,31 +374,26 @@ def test_currency_trade_kebab_edit_and_delete_close_menu(static_server_url, page
 
 
 @pytest.mark.e2e
-@pytest.mark.parametrize("analytics", [False, True])
-def test_currency_column_sort_survives_pagination(static_server_url, page_with_currency_pagination_api_mock, analytics):
+def test_currency_column_sort_survives_pagination(static_server_url, page_with_currency_pagination_api_mock):
     page = page_with_currency_pagination_api_mock
     page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
     page.wait_for_selector("#appShell:not(.hidden)")
-    page.evaluate(f"window.App.actions.switchSection?.('{ 'analytics' if analytics else 'currency' }')")
-    if analytics:
-        _open_context_report(page, "currency")
-    prefix = "analyticsCurrency" if analytics else "currency"
-    filter_attr = "analytics-currency-filter" if analytics else "currency-filter"
-    page.click(f"button[data-{filter_attr}='USD']")
-    page.wait_for_function(f"document.querySelectorAll('#{prefix}TradesBody tr').length === 20")
-    table = page.locator(f"#{prefix}TradesBody").locator("xpath=ancestor::table")
+    page.evaluate("window.App.actions.switchSection('currency')")
+    page.locator("[data-currency-view='portfolio']").click()
+    page.click("[data-currency-filter='USD']")
+    page.wait_for_function("document.querySelectorAll('#currencyTradesBody tr').length === 20")
+    table = page.locator("#currencyTradesBody").locator("xpath=ancestor::table")
     quantity = table.locator('th[data-sort-key="quantity"]')
     quantity.locator("button").click()
     sync_api.expect(quantity).to_have_attribute("aria-sort", "ascending")
-    sync_api.expect(page.locator(f"#{prefix}TradesBody tr").first).to_contain_text("101")
-    loader = "window.App.getRuntimeModule('analytics-currency-module').loadMoreAnalyticsCurrencyTrades()" if analytics else "window.App.getRuntimeModule('currency').loadMoreCurrencyTrades()"
-    page.evaluate(loader)
-    page.wait_for_function(f"document.querySelectorAll('#{prefix}TradesBody tr').length === 25")
-    sync_api.expect(page.locator(f"#{prefix}TradesBody tr").last).to_contain_text("125")
+    sync_api.expect(page.locator("#currencyTradesBody tr").first).to_contain_text("101")
+    page.evaluate("window.App.getRuntimeModule('currency').loadMoreCurrencyTrades()")
+    page.wait_for_function("document.querySelectorAll('#currencyTradesBody tr').length === 25")
+    sync_api.expect(page.locator("#currencyTradesBody tr").last).to_contain_text("125")
     quantity.locator("button").click()
-    sync_api.expect(page.locator(f"#{prefix}TradesBody tr").first).to_contain_text("125")
+    sync_api.expect(page.locator("#currencyTradesBody tr").first).to_contain_text("125")
     sync_api.expect(quantity).to_have_attribute("aria-sort", "descending")
-    assert page.locator(f"#{prefix}TradesBody tr").count() == 20
+    assert page.locator("#currencyTradesBody tr").count() == 20
 
 
 @pytest.mark.e2e
@@ -390,6 +404,7 @@ def test_currency_section_infinite_scroll_loads_second_page(static_server_url: s
 
     page.evaluate("() => window.App.actions.switchSection?.('currency')")
     page.wait_for_selector("#currencySection:not(.hidden)")
+    page.locator("[data-currency-view='portfolio']").click()
     page.click("button[data-currency-filter='USD']")
     page.wait_for_function("() => document.querySelectorAll('#currencyTradesBody tr').length === 20", timeout=5000)
 
@@ -421,6 +436,7 @@ def test_currency_sort_ignores_out_of_order_response(static_server_url, page_wit
     page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
     page.wait_for_selector("#appShell:not(.hidden)")
     page.evaluate("window.App.actions.switchSection('currency')")
+    page.locator("[data-currency-view='portfolio']").click()
     page.click("button[data-currency-filter='USD']")
     page.wait_for_function("!window.App.state.currencyTradesLoading")
     pending = []
@@ -442,40 +458,44 @@ def test_currency_sort_ignores_out_of_order_response(static_server_url, page_wit
 
 
 @pytest.mark.e2e
-def test_analytics_currency_section_infinite_scroll_loads_second_page(static_server_url: str, page_with_currency_pagination_api_mock):
+@pytest.mark.parametrize("width", [320, 390, 1440])
+def test_quotes_and_exchange_journal_are_independent(static_server_url, page_with_currency_pagination_api_mock, width):
     page = page_with_currency_pagination_api_mock
+    page.set_viewport_size({"width": width, "height": 900})
+    calls = []
+    page.on("request", lambda req: calls.append((req.method, req.url)))
     page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
     page.wait_for_selector("#appShell:not(.hidden)")
-
-    page.evaluate("() => window.App.actions.switchSection?.('analytics')")
-    page.wait_for_selector("#analyticsSection:not(.hidden)")
-    _open_context_report(page, "currency")
-    page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
-    page.click("button[data-analytics-currency-filter='USD']")
-    page.wait_for_function("() => document.querySelectorAll('#analyticsCurrencyTradesBody tr').length === 20", timeout=5000)
-
-    assert page.locator("#analyticsCurrencyTradesBody tr").count() == 20
-    state = page.evaluate(
-        """
-        () => ({
-          activeSection: window.App.state.activeSection,
-          currencyView: window.App.state.currencyView,
-          hasMore: window.App.state.analyticsCurrencyTradesHasMore,
-          sentinelHidden: document.getElementById('analyticsCurrencyTradesInfiniteSentinel')?.classList.contains('hidden'),
-        })
-        """
-    )
-    assert state["activeSection"] == "currency"
-    assert state["currencyView"] == "rates"
-    assert state["hasMore"] is True
-    assert state["sentinelHidden"] is False
-    page.evaluate("() => window.App.getRuntimeModule('analytics-currency-module')?.loadMoreAnalyticsCurrencyTrades?.()")
-    page.wait_for_function("() => document.querySelectorAll('#analyticsCurrencyTradesBody tr').length === 25", timeout=5000)
-
-    assert page.locator("#analyticsCurrencyTradesBody tr").count() == 25
-    calls = getattr(page, "_currency_trades_calls", [])
-    assert {"currency": "USD", "page": 1, "page_size": 20} in calls
-    assert {"currency": "USD", "page": 2, "page_size": 20} in calls
+    calls.clear()
+    page.evaluate("window.App.actions.switchSection('currency')")
+    sync_api.expect(page.locator("#currencyQuotesList")).to_contain_text("НБРБ")
+    page.locator("[data-quote-currency=RUB]").click()
+    row = page.locator(".fx-quotes tbody tr").first
+    sync_api.expect(row.locator("td").nth(0)).to_have_text("3.8000")
+    sync_api.expect(row.locator("td").nth(1)).to_have_text("3.4000")
+    sync_api.expect(row).to_contain_text("Курс устарел")
+    sync_api.expect(page.locator(".fx-quotes caption")).to_have_text("BYN за 100 RUB")
+    sync_api.expect(page.locator(".fx-quotes tbody tr").nth(1)).to_contain_text("Нет котировки")
+    assert not any("/currency/trades?" in url or "/history?" in url for _, url in calls)
+    assert page.locator("#currencySection").evaluate("node => node.getBoundingClientRect().right <= innerWidth + 1")
+    page.locator("#currencyRefreshQuotesBtn").click()
+    page.wait_for_function("!document.querySelector('#currencyRefreshQuotesBtn').disabled")
+    assert any(method == "POST" and "/rates/refresh?currency=RUB" in url for method, url in calls)
+    page.locator("#openCurrencyRatePanelBtn").click()
+    sync_api.expect(page.locator("#currencyRatePanel")).to_be_visible()
+    page.locator("#closeCurrencyRatePanelBtn").click()
+    page.locator("[data-currency-view=portfolio]").click()
+    sync_api.expect(page.locator("#currencyTradesBody")).to_contain_text("Купил")
+    page.locator("#currencyTradesPeriod").select_option("7")
+    sync_api.expect(page.locator("#currencyTradesBody")).to_contain_text("За выбранный период обменов нет")
+    assert any("date_from=" in url and "date_to=" in url for _, url in calls)
+    assert not any("/performance/history" in url for _, url in calls)
+    page.locator("#currencyResultDetails summary").click()
+    page.wait_for_function("document.querySelector('#currencyExchangeResult').textContent.includes('обменов')")
+    assert any("/performance/history" in url for _, url in calls)
+    page.locator("#currencyTradesPeriod").select_option("all_time")
+    sync_api.expect(page.locator("#currencyTradesBody")).to_contain_text("Купил")
+    sync_api.expect(page.get_by_role("button", name="Записать обмен")).to_have_count(1)
 
 
 @pytest.mark.e2e
@@ -555,6 +575,7 @@ def test_manual_currency_digest_send_is_shared_across_currency_views(
 
     page.evaluate("() => window.App.actions.switchSection?.('currency')")
     page.wait_for_selector("#currencySection:not(.hidden)")
+    page.locator("[data-currency-view='portfolio']").click()
     expect(currency_button).to_be_visible()
 
     page.evaluate("() => window.App.actions.switchSection?.('analytics')")
@@ -562,3 +583,133 @@ def test_manual_currency_digest_send_is_shared_across_currency_views(
     _open_context_report(page, "currency")
     page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
     expect(analytics_button).to_be_visible()
+
+
+@pytest.mark.e2e
+def test_exchange_at_historical_rate_and_manual_amounts(static_server_url, page_with_currency_pagination_api_mock, currency_api):
+    page = page_with_currency_pagination_api_mock
+    page.set_viewport_size({"width": 390, "height": 900})
+    for date, rate in [("2026-01-09", "3.1"), ("2026-01-12", "3.4"), ("2026-11-19", "4")]:
+        response = currency_api.put("/api/v1/currency/rates/current", json={"currency": "USD", "rate": rate, "rate_date": date})
+        assert response.is_success, response.text
+    old = currency_api.post("/api/v1/currency/trades", json={
+        "asset_currency": "CHF", "side": "buy", "quantity": "12.345678", "unit_price": "3.123456",
+        "fee": "0.75", "trade_date": "2025-12-20", "note": "Архив",
+    })
+    assert old.is_success, old.text
+
+    def exchange_api(route):
+        request = route.request
+        path = urlparse(request.url).path
+        assert path in {"/api/v1/currency/rates/history", "/api/v1/currency/rate-options", "/api/v1/currency/overview",
+                        "/api/v1/currency/trades", f"/api/v1/currency/trades/{old.json()['id']}"}
+        response = currency_api.request(request.method, path, params=parse_qs(urlparse(request.url).query),
+                                        json=request.post_data_json if request.post_data else None)
+        route.fulfill(status=response.status_code, content_type="application/json", body=response.content)
+
+    page.route("**/api/v1/currency/**", exchange_api)
+    page.clock.set_fixed_time("2026-11-18T21:15:00Z")
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.evaluate("window.App.actions.switchSection('currency')")
+    page.get_by_role("button", name="Записать обмен").click()
+    date = page.locator("#currencyTradeDateModal")
+    rate = page.locator("#currencyUnitPrice")
+    prior = page.locator("#currencyUsePriorRate")
+    qty = page.locator("#currencyQuantity")
+    total = page.locator("#currencyQuoteTotal")
+    sync_api.expect(date).to_have_value("2026-11-19")
+    date.fill("2026-01-12")
+    sync_api.expect(rate).to_have_value("3.4000")
+    sync_api.expect(page.locator("#currencyTradeRateOrigin")).to_contain_text("12.01.2026")
+    qty.fill("10")
+    sync_api.expect(total).to_have_value("34.00")
+    date.fill("2026-01-10")
+    sync_api.expect(prior).to_contain_text("09.01.2026")
+    sync_api.expect(rate).to_have_value("")
+    sync_api.expect(total).to_have_value("")
+    prior.click()
+    sync_api.expect(total).to_have_value("31.00")
+    date.fill("2026-01-08")
+    sync_api.expect(page.locator("#currencyTradeRateOrigin")).to_contain_text("На выбранную дату курса нет")
+    sync_api.expect(prior).to_be_hidden()
+    sync_api.expect(total).to_have_value("")
+    total.fill("36")
+    sync_api.expect(rate).to_have_value("3.6000")
+    date.fill("2026-01-12")
+    sync_api.expect(total).to_have_value("36")
+    with page.expect_response(lambda response: response.request.method == "POST" and response.url.endswith("/currency/trades")) as saving:
+        page.locator("#submitCreateOperationBtn").click()
+    assert saving.value.status == 201
+    sync_api.expect(page.locator("#createModal")).to_be_hidden()
+
+    page.locator("[data-currency-view=portfolio]").click()
+    sync_api.expect(page.locator("#currencyTradesBody")).to_contain_text("36 BYN")
+    page.get_by_role("button", name="Записать обмен").click()
+    page.locator("[data-currency-side=sell]").click()
+    date.fill("2026-01-14")
+    sync_api.expect(prior).to_be_visible()
+    qty.fill("3")
+    total.fill("12")
+    with page.expect_response(lambda response: response.request.method == "POST" and response.url.endswith("/currency/trades")) as sale:
+        page.locator("#submitCreateOperationBtn").click()
+    assert sale.value.status == 201
+    sync_api.expect(page.locator("#createModal")).to_be_hidden()
+    sync_api.expect(page.locator("#currencyTradesBody")).to_contain_text("Продал 3 USD за 12 BYN")
+
+    page.locator("[data-currency-filter=USD]").click()
+    sync_api.expect(page.locator(f"[data-currency-trade-row-id='{old.json()['id']}']")).to_have_count(0)
+    page.evaluate("id => window.App.getRuntimeModule('currency').openCurrencyTradeEdit(id)", old.json()["id"])
+    sync_api.expect(page.locator("#currencyAsset")).to_have_value("CHF")
+    sync_api.expect(rate).to_have_value("3.123456")
+    page.locator("#currencyNote").fill("Архивная запись")
+    with page.expect_response(lambda response: response.request.method == "PATCH") as edited:
+        page.locator("#submitCreateOperationBtn").click()
+    assert edited.value.status == 200
+    records = currency_api.get("/api/v1/currency/trades").json()["items"]
+    assert [(r["side"], r["asset_currency"], r["quantity"], r["unit_price"], r["fee"], r["trade_date"]) for r in records] == [
+        ("sell", "USD", "3.000000", "4.000000", "0.00", "2026-01-14"),
+        ("buy", "USD", "10.000000", "3.600000", "0.00", "2026-01-12"),
+        ("buy", "CHF", "12.345678", "3.123456", "0.75", "2025-12-20"),
+    ]
+
+
+@pytest.mark.e2e
+def test_delayed_rate_respects_new_date_and_entered_amounts(static_server_url, page_with_currency_pagination_api_mock):
+    page = page_with_currency_pagination_api_mock
+    pending = {}
+
+    def reply(route, day, rate):
+        route.fulfill(json=[{"currency": "USD", "source": "manual", "rate_date": day, "rate": rate}])
+
+    def hold_historical_dates(route):
+        day = parse_qs(urlparse(route.request.url).query)["date_to"][0]
+        if day in {"2026-01-12", "2026-01-13"}:
+            pending[day] = route
+        else:
+            reply(route, day, "4")
+
+    page.route("**/currency/rates/history?**", hold_historical_dates)
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.evaluate("window.App.actions.switchSection('currency')")
+    page.get_by_role("button", name="Записать обмен").click()
+    date = page.locator("#currencyTradeDateModal")
+    rate = page.locator("#currencyUnitPrice")
+    sync_api.expect(rate).to_have_value("4.0000")
+    with page.expect_request(lambda req: "date_to=2026-01-12" in req.url):
+        date.fill("2026-01-12")
+    date.fill("2026-01-14")
+    sync_api.expect(page.locator("#currencyTradeRateOrigin")).to_contain_text("14.01.2026")
+    with page.expect_response(lambda res: "date_to=2026-01-12" in res.url):
+        reply(pending["2026-01-12"], "2026-01-12", "2.7")
+    sync_api.expect(rate).to_have_value("4.0000")
+    sync_api.expect(page.locator("#currencyTradeRateOrigin")).to_contain_text("14.01.2026")
+    with page.expect_request(lambda req: "date_to=2026-01-13" in req.url):
+        date.fill("2026-01-13")
+    page.locator("#currencyQuantity").fill("10")
+    page.locator("#currencyQuoteTotal").fill("31")
+    with page.expect_response(lambda res: "date_to=2026-01-13" in res.url):
+        reply(pending["2026-01-13"], "2026-01-13", "2.8")
+    sync_api.expect(rate).to_have_value("3.1000")
+    sync_api.expect(page.locator("#currencyTradeRateOrigin")).to_contain_text("Рассчитан по введённым суммам")
