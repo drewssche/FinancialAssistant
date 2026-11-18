@@ -1,7 +1,7 @@
 (() => {
   const bundle = document.currentScript?.dataset.bundle;
   const manifest = Array.isArray(window.__APP_SCRIPT_MANIFEST__) ? window.__APP_SCRIPT_MANIFEST__ : [];
-  const assetVersion = "20261118-payment-value";
+  const assetVersion = "20261118-scan-plans";
 
   function showBootstrapError(message) {
     const text = String(message || "Не удалось загрузить приложение.");

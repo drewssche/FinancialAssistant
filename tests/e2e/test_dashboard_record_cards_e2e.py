@@ -18,6 +18,7 @@ def test_plan_cards_share_compact_grid_and_currency_is_first(static_server_url, 
         recurrence_weekdays=[], recurrence_workdays_only=False, recurrence_month_end=False,
         recurrence_end_date=None, status='upcoming', confirm_count=0, skip_count=0,
         next_reminder_at=today+'T09:00:00Z') for i in range(1, 4)]
+    state['plans'][0].update(category_name='Кофе')
     state['plans'][1].update(currency='EUR',base_currency='BYN',original_amount='23.00',amount='77.74',
         fx_rate_source='bank',fx_bank_code='technobank',fx_bank_name='Технобанк',fx_bank_channel='cash',
         fx_rate_kind='sell',fx_payment_mode='direct_conversion',current_rate='3.38',current_rate_date=today,
@@ -51,6 +52,9 @@ def test_plan_cards_share_compact_grid_and_currency_is_first(static_server_url, 
         page.evaluate("name=>window.App.getRuntimeModule('navigation').switchSection(name)",section)
         cards=page.locator(selector+' .plan-card')
         expect(cards).to_have_count(3)
+        expect(cards.get_by_role('heading', name='Подписка', exact=True)).to_have_count(1)
+        expect(cards.get_by_role('heading', name='Кофе', exact=True)).to_have_count(1)
+        expect(cards.get_by_role('button', name='Записать расход')).to_have_count(3)
         expect(cards.locator('[data-plan-receipt-view-id]')).to_have_count(1)
         cards.first.scroll_into_view_if_needed()
         for card in cards.all():

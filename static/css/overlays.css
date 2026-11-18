@@ -159,6 +159,9 @@
   font-size: 0.9375rem;
 }
 
+.toast .toast-action {margin-top:8px;min-height:44px;width:auto;}
+.toast:has(.toast-action) .toast-text {min-width:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;}
+
 .toast-progress {
   margin-top: 10px;
   height: 4px;

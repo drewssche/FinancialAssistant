@@ -11,7 +11,7 @@
   const dialog = document.createElement('dialog');
   dialog.id='receiptScanDialog';dialog.className='receipt-scan-dialog';dialog.setAttribute('aria-labelledby','receiptScanTitle');
   const iconButton=(id,icon,label)=>`<button id="${id}" type="button" class="btn btn-secondary btn-icon" aria-label="${label}" title="${label}">${icons.svg(icon)}</button>`;
-  dialog.innerHTML=`<header>${iconButton('scanBack','back','Изменить фото и распознать заново')}<h3 id="receiptScanTitle">Сканировать чек</h3>${iconButton('scanClose','close','Закрыть сканирование')}</header>
+  dialog.innerHTML=`<header>${iconButton('scanBack','back','Изменить фото и распознать заново')}<h3 id="receiptScanTitle" tabindex="-1">Сканировать чек</h3>${iconButton('scanClose','close','Закрыть сканирование')}</header>
     <label class="field scan-engine-choice"><span>Распознавание</span><select id="scanEngine"><option value="local">Tesseract · на устройстве</option><option value="rapid" disabled>RapidOCR · на сервере</option></select></label>
     <p class="muted-small" id="scanPrivacy">Фото обрабатывается на устройстве.</p>
     <button type="button" id="scanDropzone" class="scan-dropzone">${icons.svg('upload')}<strong>Выберите или перетащите фото чека</strong><span>Или вставьте из буфера: <kbd>Ctrl+V</kbd> / <kbd>⌘V</kbd></span><small>JPG, PNG, WebP · до 20 МБ</small></button>
@@ -40,12 +40,33 @@
     <div id="scanEmptyRows" hidden><p>Позиции не найдены. Их можно добавить вручную кнопкой «+».</p><button type="button" id="scanRetry" class="btn btn-secondary">${icons.svg('refresh')}Распознать ещё раз</button><button type="button" id="scanRetryCancel" class="btn btn-secondary" hidden>Отменить распознавание</button><p id="scanRetryStatus" class="muted-small" role="status"></p></div>
     <p class="sr-only" id="scanMathHint">Можно вводить вычисления: 7,11 − 0,71 · Enter — получить результат.</p><div id="scanRows"></div>
     <p id="scanArithmetic" role="status"></p><div id="scanReplaceOperation" class="scan-toolbar" hidden><span>Заменить заполненные поля операции данными этого чека?</span>${iconButton('scanReplaceYes','save','Заменить данные операции')}${iconButton('scanReplaceNo','close','Оставить операцию')}</div><label class="scan-confirm"><input id="scanConfirmed" type="checkbox">Проверил дату, магазин, валюту и позиции</label>
-    <footer><button type="submit" class="btn btn-primary" id="scanTransfer" disabled>${icons.svg("save")}<span></span></button></footer></form></div>
+    <footer><div id="scanScrollNav" role="group" aria-label="Прокрутка чека" hidden>
+      ${iconButton('scanScrollTop','up','К началу чека')}${iconButton('scanScrollBottom','down','К концу чека')}
+    </div><button type="submit" class="btn btn-primary" id="scanTransfer" disabled>${icons.svg("save")}<span></span></button></footer></form></div>
     <section id="scanSubmission" hidden><strong id="scanSubmissionReceipt"></strong><p id="scanSubmissionMessage" role="status"></p><button type="button" id="scanSubmitRetry" class="btn btn-primary">Повторить сохранение</button></section>
     <p id="scanStatus" class="muted-small" role="status"></p><footer id="scanRunBar"><button id="scanCancel" type="button" class="btn btn-secondary btn-icon" aria-label="Отменить распознавание" title="Отменить распознавание" hidden>${icons.svg("close")}</button><button id="scanRun" type="button" class="btn btn-primary btn-icon" aria-label="Распознать чек" title="Распознать чек" disabled>${icons.svg("receipt")}</button></footer>
     <dialog id="scanPhotoDialog" class="choice-dialog" aria-labelledby="scanPhotoTitle"><header><h3 id="scanPhotoTitle">Фото чека</h3>${iconButton('scanPhotoClose','close','Вернуться к позициям')}</header></dialog>
     <dialog id="scanTextDialog" class="choice-dialog task-dialog"><header><h3>Распознанный текст</h3>${iconButton('scanTextClose','close','Закрыть текст')}</header><div class="segmented" id="scanTextModes"><button type="button" class="segmented-btn active" data-text-mode="edited">Уточнённый</button><button type="button" class="segmented-btn" data-text-mode="original">Исходный</button></div><textarea id="scanText" rows="15" maxlength="80000" aria-label="Распознанный текст"></textarea><button id="scanReparse" class="btn btn-primary btn-icon" type="button" aria-label="Разобрать исправленный текст" title="Разобрать исправленный текст">${icons.svg("refresh")}</button></dialog>`;
   document.body.append(dialog);
+  const scrollNav = node('scanScrollNav');
+  const scrollTopButton = node('scanScrollTop');
+  const scrollBottomButton = node('scanScrollBottom');
+  function updateScrollNav() {
+    const limit = dialog.scrollHeight - dialog.clientHeight;
+    scrollNav.hidden = !dialog.open || dialog.dataset.stage !== 'review' || limit <= 1;
+    scrollTopButton.disabled = dialog.scrollTop <= 1;
+    scrollBottomButton.disabled = dialog.scrollTop >= limit - 1;
+  }
+  function jumpToReceiptEnd(atBottom) {
+    node(atBottom ? 'scanConfirmed' : 'receiptScanTitle').focus({preventScroll:true});
+    dialog.scrollTo({top: atBottom ? dialog.scrollHeight : 0, behavior:'instant'});
+    updateScrollNav();
+  }
+  scrollTopButton.onclick = () => jumpToReceiptEnd(false);
+  scrollBottomButton.onclick = () => jumpToReceiptEnd(true);
+  dialog.addEventListener('scroll', updateScrollNav, {passive:true});
+  const reviewResize = new ResizeObserver(updateScrollNav);
+  [dialog, node('scanWorkspace'), node('scanStatus')].forEach(element => reviewResize.observe(element));
   const storePicker=window.App.getRuntimeModule('operation-store-picker').bind(node('scanShop').closest('.field'),'scan');
   let engineChosen=false, engineCheck=0, engineAvailable=null;
   const updatePrivacy=()=>{node('scanPrivacy').textContent=node('scanEngine').value==='rapid'?'Фото отправится на сервер ФинАсиста для распознавания. Внешние сервисы не используются; фото не сохраняется этим режимом.':(engineAvailable===false?'RapidOCR недоступен. ':'')+'Фото обрабатывается на устройстве.';};

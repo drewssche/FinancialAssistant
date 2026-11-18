@@ -456,6 +456,10 @@
     return getPlanItems().find((item) => Number(item.id) === Number(planId)) || null;
   }
 
+  function openPlanOperation(operationId) {
+    return getOperationsFeature().openMoneyFlowSource({sourceKind: "operation", sourceId: Number(operationId)});
+  }
+
   async function handlePlanAction(action, planId) {
     const item = findPlanById(planId);
     if (!item) {
@@ -468,11 +472,23 @@
       return;
     }
     if (action === "confirm") {
-      await core.requestJson(`/api/v1/plans/${planId}/confirm`, {
+      const {plan, operation} = await core.requestJson(`/api/v1/plans/${planId}/confirm`, {
         method: "POST",
         headers: core.authHeaders(),
       });
-      await refreshAfterPlanMutation({ confirmed: true });
+      state.plansItems = getPlanItems().map(previous => previous.id === plan.id ? plan : previous);
+      const result = operation.kind === "income" ? "Доход записан" : "Расход записан";
+      core.notify(`${result} за ${core.formatDateRu(operation.operation_date)} · ${plansRender.getPlanTitle(item)}`, {
+        type: "success", durationMs: 12000,
+        action: {label: "Открыть операцию", onClick: () => openPlanOperation(operation.id)},
+      });
+      try {
+        await refreshAfterPlanMutation({ confirmed: true });
+      } catch {
+        await renderPlansSection();
+        renderDashboardPlans();
+        core.notify("Операция сохранена. Не удалось обновить все списки.", {type: "info"});
+      }
       return;
     }
     if (action === "skip") {
@@ -559,10 +575,7 @@
     }
     const historyOperationBtn = event.target.closest("button[data-plan-history-operation-id]");
     if (historyOperationBtn) {
-      getOperationsFeature().openMoneyFlowSource?.({
-        sourceKind: "operation",
-        sourceId: Number(historyOperationBtn.dataset.planHistoryOperationId || 0),
-      }).catch((err) => core.setStatus(String(err)));
+      openPlanOperation(historyOperationBtn.dataset.planHistoryOperationId).catch((err) => core.setStatus(String(err)));
       return;
     }
     const btn = event.target.closest("button[data-plan-action]");
@@ -602,7 +615,7 @@
     }
     event.__planActionHandled = true;
     const meta = {
-      confirm: { pendingText: "Подтверждение...", successMessage: "План подтвержден" },
+      confirm: { pendingText: "Записываем…" },
       skip: { pendingText: "Обновление...", successMessage: "План обновлен" },
     }[action];
     if (!meta) {
@@ -647,7 +660,7 @@
 
   document.addEventListener("keydown", (event) => {
     const card = event.target.closest?.("article[data-plan-card-edit-id]");
-    if (!card) {
+    if (!card || event.target !== card) {
       return;
     }
     if (event.key !== "Enter" && event.key !== " ") {

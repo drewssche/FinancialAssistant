@@ -67,7 +67,7 @@ def static_server_url() -> str:
 
 
 @pytest.fixture()
-def page_with_receipt_api_mock():
+def page_with_receipt_api_mock(request):
     preferences = {
         "preferences_version": 1,
         "data": {
@@ -308,7 +308,7 @@ def page_with_receipt_api_mock():
             browser = p.chromium.launch(headless=True)
         except Exception as exc:  # pragma: no cover
             pytest.skip(f"Chromium is not available for Playwright: {exc}")
-        page = browser.new_page()
+        page = browser.new_page(**getattr(request, "param", {}))
         page.route("https://telegram.org/js/telegram-web-app.js", lambda route: route.fulfill(content_type="application/javascript", body="/* Telegram is mocked below. */"))
         page.add_init_script(
             """

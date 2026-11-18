@@ -7,8 +7,12 @@ from pathlib import Path
 import pytest
 from tests.api.test_catalog_product_linkage_api import client as expense_ledger
 from playwright.sync_api import expect
+from tests.e2e import test_receipt_picker_store_scope_e2e as receipt_fixtures
 from tests.e2e.test_modal_date_layout_e2e import DATE_METRICS
-from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, page_with_receipt_api_mock, _login, _ensure_categories_loaded
+from tests.e2e.test_receipt_picker_store_scope_e2e import _login, _ensure_categories_loaded
+
+static_server_url = receipt_fixtures.static_server_url
+page_with_receipt_api_mock = receipt_fixtures.page_with_receipt_api_mock
 
 TEXT='''ООО Тестовый магазин
 № ДОК 123
@@ -42,6 +46,50 @@ def upload(page):
 
 def stub(page,text=TEXT):
     page.evaluate('''text=>{window.App.receiptScanEngine.recognize=()=>({cancel(){},promise:Promise.resolve({text,blocks:[]})});}''',text)
+
+@pytest.mark.e2e
+@pytest.mark.parametrize(("width", "page_with_receipt_api_mock"), [
+    (320, {"is_mobile": True, "has_touch": True}), (1440, {}),
+], indirect=["page_with_receipt_api_mock"])
+def test_receipt_review_scroll_shortcuts(static_server_url, page_with_receipt_api_mock, width):
+    page = page_with_receipt_api_mock
+    start(page, static_server_url, width)
+    stub(page)
+    upload(page)
+    nav = page.get_by_role("group", name="Прокрутка чека")
+    expect(nav).to_be_hidden()
+    page.click("#scanRun")
+    expect(page.locator("#scanReview")).to_be_visible()
+    page.set_viewport_size({"width": width, "height": 2400})
+    expect(nav).to_be_hidden()
+
+    page.set_viewport_size({"width": width, "height": 700})
+    page.fill("#scanTotal", "7.51")
+    for _ in range(9):
+        page.click("#scanAddRow")
+    expect(page.locator("#scanRows > .scan-row")).to_have_count(11)
+    up = nav.get_by_role("button", name="К началу чека")
+    down = nav.get_by_role("button", name="К концу чека")
+    activate = (lambda button: button.tap()) if width == 320 else (lambda button: button.click())
+    dialog = page.locator("#receiptScanDialog")
+    outside_scroll = page.evaluate("window.scrollY")
+    activate(up)
+    expect(up).to_be_disabled()
+    expect(page.locator("#scanDate")).to_be_in_viewport()
+    assert dialog.evaluate("d => d.scrollTop") == 0
+    footer_y = down.bounding_box()["y"]
+    dialog.evaluate("d => d.scrollTop = (d.scrollHeight - d.clientHeight) / 2")
+    expect(up).to_be_enabled()
+    expect(down).to_be_enabled()
+    assert abs(down.bounding_box()["y"] - footer_y) < 2
+    activate(down)
+    expect(down).to_be_disabled()
+    assert dialog.evaluate("d => Math.abs(d.scrollHeight - d.clientHeight - d.scrollTop)") <= 1
+    expect(page.locator("#scanConfirmed")).to_be_in_viewport()
+    expect(page.locator("#scanConfirmed")).not_to_be_checked()
+    expect(page.locator("#scanTransfer")).to_be_in_viewport()
+    expect(page.locator("#scanTotal")).to_have_value("7.51")
+    assert page.evaluate("window.scrollY") == outside_scroll
 
 @pytest.mark.e2e
 @pytest.mark.parametrize('width', [320, 1440])

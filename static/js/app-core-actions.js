@@ -99,6 +99,7 @@
     header.className = "toast-header";
     const textNode = document.createElement("div");
     textNode.className = "toast-text";
+    if (options.action) textNode.setAttribute("role", "status");
     textNode.textContent = String(message ?? "");
     const closeButton = document.createElement("button");
     closeButton.className = "toast-close";
@@ -107,7 +108,7 @@
     closeButton.setAttribute("aria-label", "Закрыть");
     closeButton.textContent = "×";
     header.appendChild(textNode);
-    if (type === "success" && Date.now() - Number(state.lastActivityMutationAt || 0) < 2500) {
+    if (type === "success" && !options.action && Date.now() - Number(state.lastActivityMutationAt || 0) < 2500) {
       const activityButton = document.createElement("button");
       activityButton.className = "toast-activity-btn";
       activityButton.type = "button";
@@ -124,7 +125,20 @@
     progressBar.className = "toast-progress-bar";
     progressBar.style.animationDuration = `${durationMs}ms`;
     progress.appendChild(progressBar);
-    toast.append(header, progress);
+    toast.appendChild(header);
+    if (options.action) {
+      const {label, onClick} = options.action;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "btn btn-secondary toast-action";
+      button.textContent = label;
+      button.addEventListener("click", () => runAction({button, pendingText: "Открываем…", action: async () => {
+        await onClick();
+        dismissToast(id);
+      }}));
+      toast.appendChild(button);
+    }
+    toast.appendChild(progress);
 
     el.toastArea.appendChild(toast);
     syncToastLayer();

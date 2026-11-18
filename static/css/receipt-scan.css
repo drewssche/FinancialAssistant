@@ -37,7 +37,8 @@
 .scan-confirm {display:flex;align-items:start;gap:10px;margin:16px 0;}
 .scan-confirm input {width:20px;height:20px;min-height:20px;flex:0 0 20px;margin:0;}
 .scan-error {color:#ffaaaa;}
-#scanReview footer {display:flex;justify-content:flex-end;}
+#scanReview footer {display:flex;align-items:center;justify-content:flex-end;gap:8px;}
+#scanScrollNav {display:flex;gap:4px;margin-inline-end:auto;}
 #scanText {width:100%;min-height:200px;box-sizing:border-box;}
 #scanTextDialog .btn-primary {margin-top:12px;}
 @media(max-width:700px){
@@ -47,7 +48,7 @@
  .scan-image-column {position:static;}
  #scanCanvas {max-height:55vh;}
  .scan-corner {width:44px;height:44px;}
- #scanTransfer {width:100%;}
+ #scanTransfer {flex:1;min-width:0;}
 }
 #scanTransfer {display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;max-width:100%;white-space:normal;}
 #scanTransfer svg {flex:none;width:18px;height:18px;}

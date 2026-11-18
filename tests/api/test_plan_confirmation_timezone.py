@@ -57,7 +57,10 @@ def test_web_confirmation_uses_account_day(client, set_clock, ui, instant, expec
 
 
 def test_telegram_confirms_new_local_day_and_web_rejects_repeat(client, set_clock, monkeypatch):
-    plan_id = create_plan(client, {"timezone": "Europe/Minsk"}, recurrence_enabled=True, recurrence_frequency="daily")
+    plan_id = create_plan(
+        client, {"timezone": "Europe/Minsk"}, recurrence_enabled=True, recurrence_frequency="daily",
+        currency="USD", fx_rate_source="manual", fx_manual_rate="3.25", tags=["кофе"],
+    )
     path = f"/api/v1/plans/{plan_id}/confirm"
     set_clock("2026-11-14T20:59:59Z")
     assert client.post(path).json()["operation"]["operation_date"] == "2026-11-14"
@@ -89,6 +92,9 @@ def test_telegram_confirms_new_local_day_and_web_rejects_repeat(client, set_cloc
     operations = client.get("/api/v1/operations").json()["items"]
     history = client.get("/api/v1/plans/history").json()["items"]
     assert sorted(op["operation_date"] for op in operations) == ["2026-11-14", "2026-11-15"]
+    assert all((op["currency"], op["original_amount"], op["amount"], op["tags"]) ==
+               ("USD", "10.00", "32.50", ["кофе"]) for op in operations)
+    assert client.get("/api/v1/plans").json()["items"][0]["scheduled_date"] == "2026-11-22"
     assert sorted(item["effective_date"] for item in history) == ["2026-11-14", "2026-11-15"]
 
 

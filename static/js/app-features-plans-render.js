@@ -223,19 +223,30 @@
       return "Событие";
     }
 
+    function getPlanTitle(item, categories = getPlanDisplayCategories(item)) {
+      const rows = item.receipt_items || [];
+      const product = rows.find(row => row.name?.trim())?.name.trim();
+      const note = item.note?.trim();
+      if (rows.length > 1 && product) return note || `${product} · ещё ${rows.length - 1}`;
+      return product || note || categories[0]?.name || "Без категории";
+    }
+
     function renderPlanCard(item, options = {}) {
       const dashboardCompact = options.dashboardCompact === true;
       const hideActions = options.hideActions === true;
       const kindClass = item.kind === "income" ? "income" : "expense";
-      const categoryChips = core.renderCategoryChipList
-        ? core.renderCategoryChipList(getPlanDisplayCategories(item), "")
-        : "<span class='muted-small'>Без категории</span>";
-      const dateLabel = item.due_date ? core.formatDateRu(item.due_date) : "Без срока";
+      const categories = getPlanDisplayCategories(item);
+      const note = (item.note || "").trim();
+      const title = getPlanTitle(item, categories);
+      const visibleCategories = categories.filter(category => category.name !== title);
+      const categoryChips = visibleCategories.length ? core.renderCategoryChipList(visibleCategories, "") : "";
+      const dueDate = item.due_date || item.scheduled_date;
+      const dateLabel = dueDate ? core.formatDateRu(dueDate) : "Без срока";
       const progress = dueProgressMeta(item);
       const dueDays = planDueDaysBadge(item);
       const dueDaysTone = planDueDaysBadgeTone(progress.tone);
       const kindLabel = item.kind === "income" ? "Доход" : "Расход";
-      const hasReceiptItems = Array.isArray(item.receipt_items) && item.receipt_items.length > 0;
+      const hasReceiptItems = item.receipt_items?.length > 0;
       const reminderText = reminderLabel(item);
       const reminderMeta = reminderText
         ? `<span class="meta-chip meta-chip-neutral">${core.escapeHtml(reminderText)}</span>`
@@ -243,7 +254,7 @@
       const positionsMeta = hasReceiptItems
         ? `<button class="btn btn-secondary btn-icon" type="button" data-plan-receipt-view-id="${item.id}" aria-label="Чек" title="Чек">${window.App.icons.svg("receipt")}</button>`
         : "";
-      const noteMeta = item.note ? `<span class="muted-small">${core.highlightText(item.note, "")}</span>` : "";
+      const noteMeta = note && note !== title ? `<span class="muted-small">${escapeHtml(note)}</span>` : "";
       const showConfirm = item.status !== "confirmed" && item.status !== "skipped";
       const canEdit = !dashboardCompact && showConfirm;
       const canSkip = !dashboardCompact && item.recurrence_enabled && item.status !== "confirmed";
@@ -256,18 +267,18 @@
           <div class="plan-card-row">
             <div class="plan-card-primary">
               <div class="plan-card-summary">
+                <h3 class="plan-card-heading">${escapeHtml(title)}</h3>
                 <div class="plan-card-date">
-
                   <strong>${dateLabel}</strong>
                 </div>
                 <div class="plan-card-context">
                   <div class="plan-card-title-row">
                     <span class="kind-pill kind-pill-${kindClass}">${kindLabel}</span>
-                    <div class="plan-card-category-list">${categoryChips}</div>
+                    ${categoryChips ? `<div class="plan-card-category-list">${categoryChips}</div>` : ""}
                     ${positionsMeta}
                     ${window.App.purchaseTags.chips(window.App.purchaseTags.all(item))}
+                    ${noteMeta ? `<span class="plan-card-note">${noteMeta}</span>` : ""}
                   </div>
-                  ${noteMeta ? `<div class="plan-card-meta">${noteMeta}</div>` : ""}
                 </div>
               </div>
               <div class="plan-card-top-meta">
@@ -283,7 +294,7 @@
               </div>
             ${hideActions ? "" : `
               <div class="actions row-actions plan-card-actions">
-                ${showConfirm ? `<button class="btn btn-primary btn-icon" type="button" data-plan-action="confirm" data-plan-id="${item.id}" aria-label="В операцию" title="В операцию">${window.App.icons.svg("save")}</button>` : ""}
+                ${showConfirm ? `<button class="btn btn-primary plan-confirm-button" type="button" data-plan-action="confirm" data-plan-id="${item.id}">${window.App.icons.svg("save")} Записать ${kindLabel.toLowerCase()}</button>` : ""}
                 ${canEdit ? `<button class="btn btn-secondary btn-icon" type="button" data-plan-action="edit" data-plan-id="${item.id}" aria-label="Редактировать" title="Редактировать">${window.App.icons.svg("edit")}</button>` : ""}
                 ${canSkip ? `<button class="btn btn-secondary btn-icon" type="button" data-plan-action="skip" data-plan-id="${item.id}" aria-label="Пропустить" title="Пропустить">${window.App.icons.svg("skip")}</button>` : ""}
                 ${showMenu ? `<button class="btn btn-secondary btn-icon" type="button" data-activity-entity-type="plan" data-activity-entity-id="${item.id}" aria-label="Журнал" title="Журнал">${window.App.icons.svg("history")}</button>` : ""}
@@ -319,7 +330,7 @@
             <div class="plan-card-meta">
               ${window.App.purchaseTags.chips(item.tags)}
               ${item.note ? `<strong>${core.highlightText(item.note, "")}</strong>` : ""}
-              <span class="muted-small">Дата плана: ${effectiveDate}</span>
+              <span class="muted-small">${item.event_type === "confirmed" ? "Дата операции" : "Дата плана"} · ${effectiveDate}</span>
               ${createdAt ? `<span class="muted-small">Событие: ${createdAt}</span>` : ""}
               ${operationMeta}
             </div>
@@ -335,6 +346,7 @@
     return {
       renderPlanCard,
       renderHistoryCard,
+      getPlanTitle,
       getPlanDisplayCategories,
       formatPlanAmountHtml,
     };
