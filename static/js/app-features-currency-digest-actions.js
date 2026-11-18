@@ -1,7 +1,6 @@
 (() => {
   const { el, core } = window.App;
   const sendButtons = [
-    el.dashboardSendCurrencyDigestBtn,
     el.currencySendDigestBtn,
     el.analyticsSendCurrencyDigestBtn,
   ].filter(Boolean);

@@ -36,6 +36,8 @@ class DashboardService:
         period: str = "month",
         date_from: date | None = None,
         date_to: date | None = None,
+        *,
+        debt_totals_only: bool = False,
     ):
         total_started = perf_counter()
         cache_key = build_dashboard_summary_cache_key(
@@ -44,6 +46,8 @@ class DashboardService:
             date_from=date_from,
             date_to=date_to,
         )
+        if debt_totals_only:
+            cache_key += ":debt_totals"
         cached = get_json(cache_key)
         if cached:
             increment_counter("dashboard_summary_cache_hit_total")
@@ -54,6 +58,35 @@ class DashboardService:
         increment_counter("dashboard_summary_cache_miss_total")
         miss_compute_started = perf_counter()
 
+        if debt_totals_only:
+            payload = self._get_debt_totals(user_id)
+        else:
+            payload = self._get_full_summary(user_id, period, date_from, date_to)
+        if payload["debt_summary_available"] and payload.get("currency_summary_available", True):
+            set_json(cache_key, payload)
+        observe_latency_ms("dashboard_summary_latency_miss_compute_ms", (perf_counter() - miss_compute_started) * 1000)
+        observe_latency_ms("dashboard_summary_latency_total_ms", (perf_counter() - total_started) * 1000)
+        self.redis_runtime_advisory.maybe_send_advisory()
+        return payload
+
+    def _get_debt_totals(self, user_id: int) -> dict:
+        debt_service = DebtService(self.db)
+        debt_summary, debt_summary_available = self._safe_debt_summary(
+            debt_service,
+            user_id=user_id,
+        )
+        debt_lend_outstanding, debt_borrow_outstanding, active_debt_cards = debt_summary
+        debt_lend_outstanding = self._money(debt_lend_outstanding)
+        debt_borrow_outstanding = self._money(debt_borrow_outstanding)
+        return {
+            "debt_lend_outstanding": debt_lend_outstanding,
+            "debt_borrow_outstanding": debt_borrow_outstanding,
+            "debt_net_position": debt_lend_outstanding - debt_borrow_outstanding,
+            "active_debt_cards": active_debt_cards,
+            "debt_summary_available": debt_summary_available,
+        }
+
+    def _get_full_summary(self, user_id: int, period: str, date_from: date | None, date_to: date | None) -> dict:
         resolved_date_from, resolved_date_to = self.analytics.resolve_period_bounds(
             user_id=user_id,
             period=period,
@@ -76,14 +109,7 @@ class DashboardService:
         debt_cashflow_total = self._money(cashflow_totals["debt_cashflow_total"])
         fx_cashflow_total = self._money(cashflow_totals["fx_cashflow_total"])
         cashflow_total = self._money((income_total - expense_total) + debt_cashflow_total + fx_cashflow_total)
-        debt_service = DebtService(self.db)
-        debt_summary, debt_summary_available = self._safe_debt_summary(
-            debt_service,
-            user_id=user_id,
-        )
-        debt_lend_outstanding, debt_borrow_outstanding, active_debt_cards = debt_summary
-        debt_lend_outstanding = self._money(debt_lend_outstanding)
-        debt_borrow_outstanding = self._money(debt_borrow_outstanding)
+        debt_totals = self._get_debt_totals(user_id)
         currency_service = CurrencyService(self.db)
         currency_summary, currency_summary_available = self._safe_currency_summary(currency_service, user_id=user_id)
         tracked_codes = currency_summary["tracked_currencies"]
@@ -102,7 +128,7 @@ class DashboardService:
             for item in currency_summary["positions"]
             if item["currency"] in tracked_codes
         ]
-        payload = {
+        return {
             "date_from": resolved_date_from.isoformat(),
             "date_to": resolved_date_to.isoformat(),
             "income_total": income_total,
@@ -112,11 +138,7 @@ class DashboardService:
             "fx_cashflow_total": fx_cashflow_total,
             "cashflow_total": cashflow_total,
             "balance_with_currency_result": (income_total - expense_total) + self._money(currency_summary["total_result_value"]),
-            "debt_lend_outstanding": debt_lend_outstanding,
-            "debt_borrow_outstanding": debt_borrow_outstanding,
-            "debt_net_position": debt_lend_outstanding - debt_borrow_outstanding,
-            "active_debt_cards": active_debt_cards,
-            "debt_summary_available": debt_summary_available,
+            **debt_totals,
             "currency_book_value": currency_summary["total_book_value"],
             "currency_current_value": currency_summary["total_current_value"],
             "currency_result_value": currency_summary["total_result_value"],
@@ -133,12 +155,6 @@ class DashboardService:
             "tracked_currency_positions": tracked_positions,
             "currency_summary_available": currency_summary_available,
         }
-        if debt_summary_available and currency_summary_available:
-            set_json(cache_key, payload)
-        observe_latency_ms("dashboard_summary_latency_miss_compute_ms", (perf_counter() - miss_compute_started) * 1000)
-        observe_latency_ms("dashboard_summary_latency_total_ms", (perf_counter() - total_started) * 1000)
-        self.redis_runtime_advisory.maybe_send_advisory()
-        return payload
 
     @staticmethod
     def _money(value) -> Decimal:

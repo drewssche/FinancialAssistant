@@ -129,30 +129,13 @@
   }
 
   function renderDashboardCurrencySkeleton() {
-    if (el.dashboardCurrencyBalances) {
-      el.dashboardCurrencyBalances.innerHTML = Array.from({ length: 3 }, () => `
-        <article class="currency-balance-card skeleton-card-block skeleton-stack-md">
-          ${line("skeleton-w-40", "skeleton-line-xs")}
-          ${line("skeleton-w-56", "skeleton-line-lg")}
-          ${line("skeleton-w-80", "skeleton-line-sm")}
-          ${line("skeleton-w-72", "skeleton-line-sm")}
-        </article>
-      `).join("");
-    }
-    if (el.dashboardCurrencyRates) {
-      el.dashboardCurrencyRates.innerHTML = Array.from({ length: 2 }, () => `
-        <article class="dashboard-currency-rate-card skeleton-card-block skeleton-stack-md">
-          ${line("skeleton-w-32", "skeleton-line-xs")}
-          ${line("skeleton-w-48", "skeleton-line-lg")}
-          ${line("skeleton-w-64", "skeleton-line-sm")}
-          ${line("skeleton-w-56", "skeleton-line-xs")}
-          ${line("skeleton-w-32", "skeleton-line-sm")}
-        </article>
-      `).join("");
-    }
-    if (el.dashboardCurrencyPositions) {
-      el.dashboardCurrencyPositions.innerHTML = Array.from({ length: 5 }, () => `<span class="skeleton-chip" aria-hidden="true"></span>`).join("");
-    }
+    if (!el.dashboardCurrencyRates) return;
+    el.dashboardCurrencyDate.textContent = "";
+    el.dashboardCurrencyRates.innerHTML = window.App.core.getTrackedCurrencies()
+      .filter((code) => code !== "BYN")
+      .map(() => `<div class="dashboard-rate-row" aria-hidden="true">
+        ${line("skeleton-w-64", "skeleton-line-sm")}
+      </div>`).join("");
   }
 
   function renderPlansSectionSkeleton() {

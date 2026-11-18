@@ -16,7 +16,7 @@ def test_currency_digest_manual_send_uses_one_shared_inflight_request():
 
     assert "let sendPromise = null" in source
     assert "if (sendPromise)" in source
-    assert "el.dashboardSendCurrencyDigestBtn" in source
+    assert "el.dashboardSendCurrencyDigestBtn" not in source
     assert "el.currencySendDigestBtn" in source
     assert "el.analyticsSendCurrencyDigestBtn" in source
     assert "sendButtons.forEach((button) =>" in source
@@ -64,7 +64,7 @@ def test_dashboard_navigation_ignores_stale_section_loads():
     assert "const loadSeq = ++dashboardLoadSeq" in dashboard
     assert 'state.activeSection === "dashboard"' in dashboard
     assert "if (!isCurrentDashboardLoad())" in dashboard
-    assert "Promise.allSettled([currencyOverviewTask, plansTask, debtCardsTask]).finally" in dashboard
+    assert "Promise.allSettled([currencyRatesTask, plansTask, debtCardsTask]).finally" in dashboard
     assert "optionalPanelTasksStarted = true" in dashboard
     assert "let dashboardOptionalLoadController = null" in dashboard
     assert "let dashboardOptionalLoadPromise = null" in dashboard
@@ -77,8 +77,8 @@ def test_dashboard_navigation_ignores_stale_section_loads():
     assert "dashboardOptionalLoadPromise.finally(() => {" in load_dashboard_body
     assert "endDashboardOptionalRefreshes({" in load_dashboard_body
     assert "if (!dashboardPlansLoadPromise) {" in dashboard
-    assert "function renderDashboardLoadFailure(err, { preserveExisting = false } = {})" in dashboard
-    assert "renderDashboardLoadFailure(err, { preserveExisting: state.dashboardSummaryHydrated });" in dashboard
+    assert "function renderDashboardLoadFailure({ preserveExisting = false } = {})" in dashboard
+    assert "renderDashboardLoadFailure({ preserveExisting: state.dashboardSummaryHydrated });" in dashboard
     assert "data-dashboard-retry" in dashboard
     assert "abortDashboardAnalyticsPreview: highlights.abortDashboardAnalyticsPreview" in analytics
     assert "let dashboardAnalyticsPreviewController = null" in analytics_highlights

@@ -66,16 +66,17 @@ from tests.e2e.test_plans_ui_e2e import page_with_plans_api_mock, _login_and_ope
 
 @pytest.mark.e2e
 @pytest.mark.parametrize('width', [390, 1440])
-def test_currency_status_aligns_right_and_actions_highlight(static_server_url, page_with_plans_api_mock, width):
-    p, _ = page_with_plans_api_mock
-    p.set_viewport_size({'width':width,'height':1000})
-    p.route('**/api/v1/currency/overview?*', lambda r:r.fulfill(json={
-        'tracked_currencies':['USD'], 'current_rates':[dict(currency='USD', rate='3.0091',change_value='0',change_percent='0',rate_date='2025-01-01',source='nbrb_auto_unit')], 'bank_rates':[]}))
-    _login_and_open_dashboard(p, static_server_url)
-    card = p.locator('.dashboard-currency-rate-card').first
-    expect(card.locator('.dashboard-currency-rate-badge')).to_have_count(0)
-    expect(card.locator('.dashboard-currency-rate-meta')).to_contain_text('01.01.2025')
-    refresh = card.locator('button').first
-    refresh.hover()
-    assert refresh.evaluate('n=>getComputedStyle(n).boxShadow') != 'none'
-    card.screenshot(path=f'/tmp/fa-rate-card-{width}.png')
+def test_dashboard_rate_shows_last_publication_and_opens_by_keyboard(static_server_url, page_with_plans_api_mock, width):
+    page, _ = page_with_plans_api_mock
+    page.set_viewport_size({'width': width, 'height': 1000})
+    page.route('**/api/v1/dashboard/currency-rates', lambda route: route.fulfill(json=[
+        dict(currency='USD', display_scale=1, display_rate='3.0091', change_pct=0, rate_date='2025-01-01')]))
+    _login_and_open_dashboard(page, static_server_url)
+    row = page.locator('[data-dashboard-quote=USD]')
+    expect(page.locator('#dashboardCurrencyDate')).to_have_text('01.01.2025')
+    expect(row).to_contain_text('0,00 %')
+    row.focus()
+    expect(row).to_be_focused()
+    row.press('Enter')
+    expect(page.locator('[data-quote-currency=USD]')).to_have_attribute('aria-pressed', 'true')
+    expect(page.locator('#currencyQuotesList caption')).to_have_text('BYN за 1 USD')

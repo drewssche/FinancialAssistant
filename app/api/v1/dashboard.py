@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -13,26 +14,40 @@ from app.schemas.dashboard import (
     AnalyticsCalendarYearOut,
     AnalyticsHighlightsOut,
     AnalyticsPositionsOut,
+    DashboardCurrencyRate,
     DashboardDebtPreviewCard,
+    DashboardDebtTotals,
     DashboardSummary,
     DashboardSummaryMetrics,
 )
+from app.services.currency_service import CurrencyService
 from app.services.dashboard_service import DashboardService
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
-@router.get("/summary", response_model=DashboardSummary)
+@router.get("/currency-rates", response_model=list[DashboardCurrencyRate])
+def get_dashboard_currency_rates(
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    return CurrencyService(db).get_dashboard_rates(user_id=user_id)
+
+
+@router.get("/summary", response_model=DashboardSummary | DashboardDebtTotals)
 def get_summary(
     period: str = Query(default="month", pattern="^(day|week|month|year|all_time|custom)$"),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
+    view: Literal["full", "debt_totals"] = "full",
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     service = DashboardService(db)
     try:
-        return service.get_summary(user_id=user_id, period=period, date_from=date_from, date_to=date_to)
+        return service.get_summary(
+            user_id=user_id, period=period, date_from=date_from, date_to=date_to, debt_totals_only=view == "debt_totals",
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

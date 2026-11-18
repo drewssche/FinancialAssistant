@@ -4,6 +4,14 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 
 
+class DashboardCurrencyRate(BaseModel):
+    currency: str
+    display_scale: int
+    display_rate: Decimal | None
+    rate_date: date | None
+    change_pct: float | None
+
+
 class DashboardCurrencyPosition(BaseModel):
     currency: str
     quantity: Decimal
@@ -16,7 +24,15 @@ class DashboardCurrencyPosition(BaseModel):
     total_result_value: Decimal = Decimal("0")
 
 
-class DashboardSummary(BaseModel):
+class DashboardDebtTotals(BaseModel):
+    debt_lend_outstanding: Decimal
+    debt_borrow_outstanding: Decimal
+    debt_net_position: Decimal
+    active_debt_cards: int
+    debt_summary_available: bool = True
+
+
+class DashboardSummary(DashboardDebtTotals):
     date_from: str
     date_to: str
     income_total: Decimal
@@ -26,11 +42,6 @@ class DashboardSummary(BaseModel):
     fx_cashflow_total: Decimal = Decimal("0")
     cashflow_total: Decimal = Decimal("0")
     balance_with_currency_result: Decimal = Decimal("0")
-    debt_lend_outstanding: Decimal
-    debt_borrow_outstanding: Decimal
-    debt_net_position: Decimal
-    active_debt_cards: int
-    debt_summary_available: bool = True
     currency_book_value: Decimal = Decimal("0")
     currency_current_value: Decimal = Decimal("0")
     currency_result_value: Decimal = Decimal("0")

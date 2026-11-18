@@ -92,6 +92,9 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
             return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
         if path == "/api/v1/operations/item-templates" and method == "GET":
             return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
+        if path == "/api/v1/dashboard/currency-rates":
+            return json_response(route, [{"currency": "USD", "display_scale": 1, "display_rate": "2.9652",
+                                          "rate_date": "2026-03-27", "change_pct": None}])
         if path == "/api/v1/currency/rates/history":
             params = parse_qs(query)
             currency = params["currency"][0]
@@ -150,9 +153,9 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
             page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
             page.wait_for_selector("#appShell:not(.hidden)")
             page.wait_for_selector("#dashboardCurrencyPanel:not(.hidden)")
-            page.wait_for_selector("#dashboardCurrencyRates .dashboard-currency-rate-card")
-            assert "hidden" in (page.locator("#dashboardCurrencyBalances").get_attribute("class") or "")
-            assert "hidden" in (page.locator("#dashboardCurrencyPositions").get_attribute("class") or "")
+            page.wait_for_selector("#dashboardCurrencyRates [data-dashboard-quote]")
+            assert page.locator("#dashboardCurrencyBalances").count() == 0
+            assert page.locator("#dashboardCurrencyPositions").count() == 0
             page.click("#addOperationCta")
             page.wait_for_selector("#createModal:not(.hidden)")
             page.locator('#createEntryModeSwitch button[data-entry-mode="currency"]').click()

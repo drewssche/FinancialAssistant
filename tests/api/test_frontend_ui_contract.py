@@ -432,7 +432,7 @@ def test_analytics_global_period_uses_compact_period_control():
     assert "el.dashboardAnalyticsPeriodControlLabel.textContent" in analytics_ui
 
 
-def test_currency_kpi_and_settings_support_compact_bank_rates_and_alerts():
+def test_official_rate_links_and_bank_alert_settings():
     secondary = (
         REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js"
     ).read_text(encoding="utf-8")
@@ -450,10 +450,9 @@ def test_currency_kpi_and_settings_support_compact_bank_rates_and_alerts():
     assert 'data-bank-alert-threshold="above"' in preferences
     assert 'data-bank-alert-threshold="below"' in preferences
     assert 'data-bank-alert-field="action"' not in preferences
-    assert "Покупка" in dashboard
-    assert "Продажа" in dashboard
-    assert 'itemCurrency === "RUB" ? 100 : 1' in dashboard
-    assert "currencyOverview.bank_rates" in dashboard
+    assert "data-dashboard-quote" in dashboard
+    assert "/api/v1/dashboard/currency-rates" in dashboard
+    assert "/api/v1/currency/overview" not in dashboard
     assert "collectBankCurrencyAlerts()" in preferences
 
 
@@ -475,7 +474,7 @@ def test_currency_digest_settings_support_seven_day_chart_preference():
     assert "telegram_digest_chart_enabled: el.currencyDigestChartToggle" in preferences
 
 
-def test_currency_digest_manual_send_buttons_are_available_in_all_currency_views():
+def test_currency_digest_manual_send_buttons_are_in_the_currency_workspace():
     primary = (
         REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js"
     ).read_text(encoding="utf-8")
@@ -484,12 +483,10 @@ def test_currency_digest_manual_send_buttons_are_available_in_all_currency_views
     ).read_text(encoding="utf-8")
     elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
 
-    assert 'id="dashboardSendCurrencyDigestBtn" class="btn-icon btn btn-secondary btn-xs"' in primary
+    assert "dashboardSendCurrencyDigestBtn" not in primary
     assert 'id="analyticsSendCurrencyDigestBtn" class="btn-icon btn btn-secondary btn-xs"' in secondary
     assert 'id="currencySendDigestBtn" class="btn-icon btn btn-secondary"' in secondary
-    assert primary.count("Отправить дайджест") == 2
     assert secondary.count("Отправить дайджест") == 4
-    assert 'dashboardSendCurrencyDigestBtn: document.getElementById("dashboardSendCurrencyDigestBtn")' in elements
     assert 'currencySendDigestBtn: document.getElementById("currencySendDigestBtn")' in elements
     assert 'analyticsSendCurrencyDigestBtn: document.getElementById("analyticsSendCurrencyDigestBtn")' in elements
 

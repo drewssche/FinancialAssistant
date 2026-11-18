@@ -14,7 +14,7 @@ This document is the compact current contract for the currency feature. Historic
 - Weighted-average position calculation from FX trade history.
 - Realized, unrealized, and total currency result in backend summary and UI.
 - Endpoint for currency performance history: `GET /api/v1/currency/performance/history`.
-- Dashboard currency panel with portfolio valuation, per-currency cards, rate refresh actions, and last-known-rate fallback.
+- Dashboard rows show the latest effective NBRB rate for each tracked currency and the percentage change from its previous official publication.
 - Market history and personal exchange results are independently expandable and fetched on demand.
 - Settings for tracked currencies, dashboard visibility, and currency digest preferences.
 - Daily tracked-rate refresh and Telegram currency digest.
@@ -28,6 +28,7 @@ This document is the compact current contract for the currency feature. Historic
 2. Для обмена показывать дату, валюту, «Отдал» и «Получил». Две введённые суммы определяют фактический курс. Автоподстановка использует сохранённый курс на дату обмена. Более ранний курс можно применить явно.
 3. Показывать обмены в одном журнале с фильтрами по валюте и дате. Применять фильтры к полному списку до подсчёта и разбивки на страницы.
 4. Вынести график курсов и результат собственных обменов в раскрываемые блоки. При подсчёте результата учитывать также полностью проданную валюту. Расходы сохраняют сумму в валюте и эквивалент на дату операции. Настройки банков и дайджест Telegram остаются самостоятельными.
+5. После ближайших планов показывать «Курсы НБРБ». Общую дату указывать в заголовке, разные даты — в строках. Строка открывает сравнение банков для выбранной валюты. Скрытый в настройках блок пропускает загрузку курсов.
 
 ## Product Rules
 
@@ -42,7 +43,7 @@ This document is the compact current contract for the currency feature. Historic
   - `Итог`
   - `Прибыль / убыток`
 - Avoid exposing `PnL`, `realized`, or `unrealized` as primary UI wording unless space or technical context requires it.
-- If a user tracks no currencies and has no currency portfolio value, dashboard currency KPI chips should stay hidden or collapse to a compact empty state.
+- A tracked currency without an official publication shows «Нет курса» and still opens its bank quotes.
 
 ## Calculation Rules
 
@@ -77,7 +78,7 @@ This document is the compact current contract for the currency feature. Historic
 - Backend service: `app/services/currency_service.py`
 - API: `app/api/v1/currency.py`
 - Schemas: `app/schemas/currency.py`
-- Dashboard integration: `app/services/dashboard_service.py`
+- Dashboard rates endpoint: `GET /api/v1/dashboard/currency-rates`
 - Currency UI: `static/js/app-features-currency.js`
 - Currency analytics UI: `static/js/app-features-analytics-currency.js`
 - Dashboard currency UI: `static/js/app-features-dashboard.js`

@@ -272,6 +272,8 @@ def page_with_plans_api_mock(page):
             if "page" in query and "page_size" in query:
                 return _json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
             return _json_response(route, [])
+        if path == "/api/v1/dashboard/currency-rates" and method == "GET":
+            return _json_response(route, [])
         if path == "/api/v1/dashboard/summary" and method == "GET":
             return _json_response(
                 route,

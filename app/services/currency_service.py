@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import re
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -18,6 +19,7 @@ from app.services.bank_currency_rate_registry import (
     BANK_RATE_PROVIDERS,
     BANK_RATE_STALE_MINUTES,
     DEFAULT_BANK_RATE_BANKS,
+    display_scale,
 )
 from app.services.currency_reporting_service import CurrencyReportingService
 
@@ -243,6 +245,31 @@ class CurrencyService:
             if code in BANK_RATE_PROVIDERS and code not in normalized:
                 normalized.append(code)
         return normalized
+
+    def get_dashboard_rates(self, *, user_id: int) -> list[dict]:
+        currencies = self.get_currency_preferences(user_id)["tracked_currencies"]
+        today = datetime.now(ZoneInfo("Europe/Minsk")).date()
+        rates = []
+        for currency in currencies:
+            if currency == "BYN":
+                continue
+            history = self.repo.list_rate_history(
+                user_id=user_id, currency=currency, date_to=today, sources=NBRB_RATE_SOURCES, limit=2,
+            )
+            current = history[-1] if history else None
+            scale = display_scale(currency)
+            change_pct = None
+            if len(history) == 2 and history[0].rate > 0:
+                previous = history[0].rate
+                change_pct = (current.rate - previous) * 100 / previous
+            rates.append({
+                "currency": currency,
+                "display_scale": scale,
+                "display_rate": current.rate * scale if current else None,
+                "rate_date": current.rate_date if current else None,
+                "change_pct": change_pct,
+            })
+        return rates
 
     def get_bank_rates(
         self,

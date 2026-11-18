@@ -60,6 +60,7 @@
 
   async function loadAllTimeSummary(options = {}) {
     const params = new URLSearchParams({ period: "all_time" });
+    if (options.debtTotalsOnly) params.set("view", "debt_totals");
     return loadSummary(params, options);
   }
 

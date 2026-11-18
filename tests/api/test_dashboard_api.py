@@ -1,3 +1,8 @@
+from contextlib import contextmanager
+from datetime import datetime, timedelta
+from decimal import Decimal
+from zoneinfo import ZoneInfo
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -8,7 +13,7 @@ from app.api.deps import get_current_user_id
 from app.core.cache import reset_cache_for_tests
 from app.core.metrics import reset_metrics_for_tests
 from app.db.base import Base
-from app.db.models import User
+from app.db.models import FxRateSnapshot, User, UserPreference
 from app.db.session import get_db
 from app.main import app
 
@@ -56,6 +61,42 @@ def reset_dashboard_metrics():
     yield
     reset_cache_for_tests()
     reset_metrics_for_tests()
+
+
+def test_dashboard_rates_use_two_official_publications_and_no_portfolio(client, monkeypatch):
+    from app.repositories.currency_repo import CurrencyRepository
+
+    today = datetime.now(ZoneInfo("Europe/Minsk")).date()
+    with contextmanager(app.dependency_overrides[get_db])() as db:
+        db.add(User(id=2, display_name="Other", status="active"))
+        db.add(UserPreference(user_id=1, data={"currency": {"tracked_currencies": ["RUB", "EUR", "USD", "GBP", "BYN"]}}))
+        for user_id, code, days, rate, source in [
+            (1, "RUB", -4, ".03", "nbrb_history_unit"), (1, "RUB", -2, ".033", "nbrb_auto_unit"),
+            (1, "RUB", -1, ".15", "manual"), (1, "RUB", 1, ".09", "nbrb_auto_unit"),
+            (1, "EUR", 0, "9", "manual"), (2, "EUR", 0, "2", "nbrb_auto_unit"),
+            (1, "USD", -2, "2", "nbrb_history_unit"), (1, "USD", -1, "3", "nbrb_auto_unit"),
+            (1, "USD", 0, "3", "nbrb_auto_unit"), (1, "GBP", -3, "4", "nbrb_history_unit"),
+            (1, "CNY", 0, ".5", "nbrb_auto_unit"),
+        ]:
+            db.add(FxRateSnapshot(user_id=user_id, currency=code, rate_date=today + timedelta(days=days),
+                                  rate=Decimal(rate), source=source))
+        db.commit()
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("Dashboard quotes must only read official rates and tracking preferences")
+
+    for name in ("list_all_trades", "list_trades", "list_bank_rates"):
+        monkeypatch.setattr(CurrencyRepository, name, unexpected)
+    response = client.get("/api/v1/dashboard/currency-rates")
+    assert response.status_code == 200
+    rows = response.json()
+    assert [row["currency"] for row in rows] == ["RUB", "EUR", "USD", "GBP"]
+    rub, eur, usd, gbp = rows
+    assert rub["display_scale"] == 100 and Decimal(rub["display_rate"]) == Decimal("3.3")
+    assert rub["rate_date"] == (today - timedelta(days=2)).isoformat() and rub["change_pct"] == 10
+    assert eur["rate_date"] is None and eur["display_rate"] is None and eur["change_pct"] is None
+    assert usd["rate_date"] == today.isoformat() and usd["change_pct"] == 0
+    assert gbp["display_scale"] == 1 and Decimal(gbp["display_rate"]) == 4 and gbp["change_pct"] is None
 
 
 def test_dashboard_all_time_empty(client: TestClient):
@@ -210,6 +251,30 @@ def test_dashboard_summary_includes_debt_metrics(client: TestClient):
     assert payload["debt_borrow_outstanding"] == "120.00"
     assert payload["debt_net_position"] == "180.00"
     assert payload["active_debt_cards"] == 2
+
+
+def test_dashboard_debt_totals_skip_currency_history_and_have_their_own_cache(client, monkeypatch):
+    from app.services.currency_service import CurrencyService
+
+    params = {"period": "all_time", "view": "debt_totals"}
+    url = "/api/v1/dashboard/summary"
+    with monkeypatch.context() as patch:
+        def unexpected(*args, **kwargs):
+            pytest.fail("The dashboard does not need personal exchange positions")
+        patch.setattr(CurrencyService, "compute_positions", unexpected)
+        response = client.get(url, params=params)
+        assert response.status_code == 200
+        assert response.json()["active_debt_cards"] == 0
+        assert "tracked_currency_positions" not in response.json()
+    assert "tracked_currency_positions" in client.get(url, params={"period": "all_time"}).json()
+    debt = client.post("/api/v1/debts", json={
+        "counterparty": "Анна", "direction": "lend", "principal": "12.00", "start_date": "2026-03-02",
+    })
+    assert debt.status_code == 201
+    full = client.get(url, params={"period": "all_time"}).json()
+    compact = client.get(url, params=params).json()
+    assert "income_total" in full and "income_total" not in compact
+    assert compact["debt_lend_outstanding"] == full["debt_lend_outstanding"] == "12.00"
 
 
 def test_dashboard_summary_uses_current_base_equivalent_for_foreign_currency_debt(client: TestClient):

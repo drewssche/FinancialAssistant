@@ -508,12 +508,14 @@ def test_manual_currency_digest_send_is_shared_across_currency_views(
     page.wait_for_selector("#appShell:not(.hidden)")
     page.wait_for_selector("#dashboardSection:not(.hidden)")
 
-    dashboard_button = page.locator("#dashboardSendCurrencyDigestBtn")
     currency_button = page.locator("#currencySendDigestBtn")
     analytics_button = page.locator("#analyticsSendCurrencyDigestBtn")
     expect = sync_api.expect
 
-    expect(dashboard_button).to_be_visible()
+    expect(page.locator("#dashboardSendCurrencyDigestBtn")).to_have_count(0)
+    page.evaluate("() => window.App.actions.switchSection('currency')")
+    page.locator("[data-currency-view='portfolio']").click()
+    expect(currency_button).to_be_visible()
     expect(currency_button).to_have_count(1)
     expect(analytics_button).to_have_count(1)
 
@@ -521,7 +523,6 @@ def test_manual_currency_digest_send_is_shared_across_currency_views(
         """
         () => {
           const ids = [
-            "dashboardSendCurrencyDigestBtn",
             "currencySendDigestBtn",
             "analyticsSendCurrencyDigestBtn",
           ];
@@ -541,12 +542,6 @@ def test_manual_currency_digest_send_is_shared_across_currency_views(
     )
 
     assert pending_states == [
-        {
-            "id": "dashboardSendCurrencyDigestBtn",
-            "disabled": True,
-            "ariaBusy": "true",
-            "text": "Отправляем дайджест",
-        },
         {
             "id": "currencySendDigestBtn",
             "disabled": True,
@@ -568,15 +563,10 @@ def test_manual_currency_digest_send_is_shared_across_currency_views(
     calls = getattr(page, "_currency_digest_calls", [])
     assert calls == [{"method": "POST", "path": "/api/v1/currency/telegram-digest/send"}]
 
-    for button in (dashboard_button, currency_button, analytics_button):
+    for button in (currency_button, analytics_button):
         expect(button).to_be_enabled()
         assert button.get_attribute("aria-busy") is None
         expect(button).to_have_attribute("aria-label", "Отправить дайджест")
-
-    page.evaluate("() => window.App.actions.switchSection?.('currency')")
-    page.wait_for_selector("#currencySection:not(.hidden)")
-    page.locator("[data-currency-view='portfolio']").click()
-    expect(currency_button).to_be_visible()
 
     page.evaluate("() => window.App.actions.switchSection?.('analytics')")
     page.wait_for_selector("#analyticsSection:not(.hidden)")

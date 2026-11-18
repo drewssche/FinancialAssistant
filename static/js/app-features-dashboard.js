@@ -1,14 +1,13 @@
 (() => {
   const { state, el, core } = window.App;
-  const operationModal = window.App.getRuntimeModule?.("operation-modal");
   const debtUi = core.debtUi;
-  const getCategoryMetaById = operationModal.getCategoryMetaById;
   let dashboardLoadSeq = 0;
   let dashboardLoadController = null;
   let dashboardOptionalLoadSeq = 0;
   let dashboardOptionalLoadController = null;
   let dashboardOptionalLoadPromise = null;
   let dashboardPlansLoadPromise = null;
+  let dashboardRatesController = null;
 
   function getPlansFeature() {
     return window.App.getRuntimeModule?.("plans");
@@ -24,25 +23,6 @@
 
   function getInlineRefreshState() {
     return window.App.getRuntimeModule?.("inline-refresh-state") || {};
-  }
-
-  function getTrackedCurrencies() {
-    const raw = state.preferences?.data?.currency?.tracked_currencies;
-    if (!Array.isArray(raw) || !raw.length) {
-      return ["USD", "EUR"];
-    }
-    return raw.map((item) => String(item || "").toUpperCase()).filter(Boolean);
-  }
-
-  function getResultPresentation(rawValue) {
-    const value = Number(rawValue || 0);
-    if (value > 0) {
-      return { cardClass: "analytics-kpi-income", label: "Прибыль" };
-    }
-    if (value < 0) {
-      return { cardClass: "analytics-kpi-expense", label: "Убыток" };
-    }
-    return { cardClass: "analytics-kpi-neutral", label: "Результат" };
   }
 
   function dueBadgeLabel(stateValue, dueDate) {
@@ -74,157 +54,61 @@
     return 4;
   }
 
-  function renderDashboardCurrencySummary(summary) {
-    const currencyPrefs = state.preferences?.data?.currency || {};
-    el.dashboardCurrencyPanel?.classList.toggle("hidden", currencyPrefs.show_dashboard_kpi === false);
-    for (const node of [el.dashboardCurrencyKpiGrid, el.dashboardCurrencyBalances, el.dashboardCurrencyPositions]) {
-      if (node) { node.replaceChildren(); node.classList.add("hidden"); }
-    }
-  }
+  const percentFormat = new Intl.NumberFormat("ru-RU", {
+    style: "percent", signDisplay: "exceptZero", minimumFractionDigits: 2, maximumFractionDigits: 2,
+  });
 
-  function formatSignedRate(value, digits = 4) {
-    const numeric = Number(value || 0);
-    const prefix = numeric > 0 ? "+" : numeric < 0 ? "-" : "";
-    return `${prefix}${Math.abs(numeric).toFixed(digits)}`;
-  }
-
-  function formatSignedPercent(value) {
-    const numeric = Number(value || 0);
-    const prefix = numeric > 0 ? "+" : numeric < 0 ? "-" : "";
-    return `${prefix}${Math.abs(numeric).toFixed(2)}%`;
-  }
-
-  function renderDashboardCurrencyRates(currentRates = [], trackedCurrencies = [], bankRates = []) {
-    if (!el.dashboardCurrencyRates) {
+  function renderDashboardCurrencyRates(rates) {
+    const commonDate = rates[0]?.rate_date;
+    const sameDate = commonDate && rates.every((row) => row.rate_date === commonDate);
+    el.dashboardCurrencyDate.textContent = sameDate ? core.formatDateRu(commonDate) : "";
+    if (!rates.length) {
+      el.dashboardCurrencyRates.innerHTML = '<span class="muted-small">Выберите валюты в настройках.</span>';
       return;
     }
-    const tracked = Array.isArray(trackedCurrencies) ? trackedCurrencies : [];
-    const normalizedTracked = tracked
-      .map((item) => core.normalizeCurrencyCode?.(item, "") || "")
-      .filter(Boolean);
-    const rows = Array.isArray(currentRates) ? currentRates : [];
-    const bankRows = Array.isArray(bankRates) ? bankRates : [];
-    const rowsByCurrency = new Map(rows.map((item) => [core.normalizeCurrencyCode?.(item.currency, "") || "", item]));
-    const visibleCurrencies = normalizedTracked.length
-      ? normalizedTracked
-      : Array.from(rowsByCurrency.keys());
-    if (!visibleCurrencies.length) {
-      el.dashboardCurrencyRates.innerHTML = `
-        <article class="dashboard-currency-rate-card dashboard-currency-rate-card-empty">
-          <strong>Курсы пока не заданы</strong>
-          <span class="muted-small">Добавь отслеживаемую валюту и хотя бы один snapshot курса</span>
-        </article>
-      `;
-      return;
-    }
-    el.dashboardCurrencyRates.innerHTML = visibleCurrencies.map((currency) => {
-      const item = rowsByCurrency.get(currency);
-      if (!item) {
-        const currencyLabel = core.formatCurrencyLabel(currency);
-        return `
-          <article class="dashboard-currency-rate-card dashboard-currency-rate-card-empty">
-            <div class="dashboard-currency-rate-head">
-              <strong>${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</strong>
-              <span class="dashboard-currency-rate-badge dashboard-currency-rate-badge-empty">Нет курса</span>
-            </div>
-            <div class="dashboard-currency-rate-value">—</div>
-            <div class="dashboard-currency-rate-meta muted-small">Сохрани текущий курс в разделе Валюта</div>
-            <div class="dashboard-currency-rate-actions">
-              <button class="btn btn-secondary btn-xs btn-icon" type="button" data-dashboard-refresh-currency="${currency}" aria-label="Обновить курс" title="Обновить курс">${window.App.icons.svg("refresh")}</button>
-            </div>
-          </article>
-        `;
-      }
-      const deltaValue = Number(item.change_value || 0);
-      const hasDelta = item.change_value !== null && item.change_value !== undefined;
-      const rateDateIso = item.rate_date ? String(item.rate_date) : "";
-      const isStale = Boolean(rateDateIso) && rateDateIso < core.getTodayIso();
-      const deltaTone = deltaValue > 0 ? "positive" : deltaValue < 0 ? "negative" : "neutral";
-      const rateDate = item.rate_date ? core.formatDateRu(item.rate_date) : "без даты";
-      const source = item.source ? String(item.source).trim() : "manual";
-      const itemCurrency = core.normalizeCurrencyCode?.(item.currency, "") || "";
-      const displayScale = itemCurrency === "RUB" ? 100 : 1;
-      const currencyLabel = `${displayScale > 1 ? `${displayScale} ` : ""}${core.formatCurrencyLabel(itemCurrency)}`;
-      const baseCurrencySymbol = core.formatCurrencySymbol?.(core.getCurrencyConfig?.().code || "BYN") || "BYN";
-      const currencyBankRows = bankRows.filter((row) => (core.normalizeCurrencyCode?.(row.currency, "") || "") === itemCurrency);
-      const bankRatesHtml = currencyBankRows.length ? `
-        <div class="dashboard-bank-rates" aria-label="Курсы банков для ${itemCurrency}">
-          <div class="dashboard-bank-rate-row dashboard-bank-rate-head">
-            <span>Банк</span><span>Покупка</span><span>Продажа</span>
-          </div>
-          ${currencyBankRows.map((row) => {
-            const bankName = String(row.bank_name || row.bank_code || "Банк");
-            const channelLabel = String(row.channel_label || row.channel || "");
-            const staleClass = row.stale ? " dashboard-bank-rate-stale" : "";
-            return `
-              <div class="dashboard-bank-rate-row${staleClass}" title="${core.escapeHtml ? core.escapeHtml(`${bankName}${channelLabel ? ` · ${channelLabel}` : ""}${row.stale ? " · данные устарели" : ""}`) : bankName}">
-                <span class="dashboard-bank-rate-name">${core.escapeHtml ? core.escapeHtml(bankName) : bankName}</span>
-                <strong>${core.formatRateDisplay?.(row.buy_rate || 0, 4, 6)}</strong>
-                <strong>${core.formatRateDisplay?.(row.sell_rate || 0, 4, 6)}</strong>
-              </div>
-            `;
-          }).join("")}
-        </div>
-      ` : '<div class="dashboard-bank-rates-empty muted-small">Банковские курсы ещё загружаются</div>';
-      return `
-        <article class="dashboard-currency-rate-card">
-          <div class="dashboard-currency-rate-head">
-            <strong>${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</strong>
-
-          </div>
-          <div class="dashboard-currency-rate-value-row">
-            <div class="dashboard-currency-rate-value">${core.formatRateDisplay?.(Number(item.rate || 0) * displayScale, 4, 6)}</div>
-            <div class="dashboard-currency-rate-delta dashboard-currency-rate-delta-${deltaTone}">
-              ${hasDelta ? `${formatSignedRate(Number(item.change_value || 0) * displayScale)} · ${formatSignedPercent(item.change_pct || 0)}` : "—"}
-            </div>
-          </div>
-          <div class="dashboard-currency-rate-meta muted-small">${isStale ? `Последний доступный курс к ${baseCurrencySymbol}` : `Официальный курс к ${baseCurrencySymbol}`} · ${rateDate}</div>
-          <div class="dashboard-currency-rate-delta-caption muted-small">${hasDelta ? (isStale ? "К предыдущему курсу" : "За день") : "Нет предыдущего курса для сравнения"}</div>
-          <div class="dashboard-currency-rate-source muted-small">Источник: ${core.escapeHtml ? core.escapeHtml(source) : source}</div>
-          ${bankRatesHtml}
-          <div class="dashboard-currency-rate-actions">
-            <button class="btn btn-secondary btn-xs btn-icon" type="button" data-dashboard-refresh-currency="${item.currency}" aria-label="Обновить курс" title="Обновить курс">${window.App.icons.svg("refresh")}</button>
-          </div>
-        </article>
-      `;
+    el.dashboardCurrencyRates.innerHTML = rates.map((row) => {
+      const code = core.escapeHtml(row.currency);
+      const label = row.display_scale > 1 ? `${row.display_scale} ${code}` : code;
+      const date = !sameDate && row.rate_date ? core.formatDateRu(row.rate_date) : "";
+      const value = row.display_rate == null
+        ? '<span class="muted-small">Нет курса</span>'
+        : `<strong>${core.formatRateDisplay(row.display_rate).replace(".", ",")} <small>BYN</small></strong>`;
+      const change = row.change_pct;
+      const tone = change > 0 ? "positive" : change < 0 ? "negative" : "neutral";
+      return `<button type="button" class="dashboard-rate-row" data-dashboard-quote="${code}"
+          title="Сравнить курсы банков для ${code}">
+        <span class="dashboard-rate-code">${label}${date ? `<small>${date}</small>` : ""}</span>
+        ${value}
+        <span class="dashboard-rate-change ${tone}" title="К предыдущему опубликованному курсу">${change == null ? "" : percentFormat.format(change / 100)}</span>
+        ${window.App.icons.svg("forward")}
+      </button>`;
     }).join("");
   }
 
-  async function refreshDashboardCurrencyRates(currency = "") {
-    const refreshState = getInlineRefreshState();
-    const query = currency ? `?currency=${encodeURIComponent(currency)}` : "";
-    await refreshState.withRefresh?.(el.dashboardCurrencyPanel, async () => {
-      await core.requestJson(`/api/v1/currency/rates/refresh${query}`, {
-        method: "POST",
-        headers: core.authHeaders(),
-      });
-      core.invalidateUiRequestCache?.("dashboard:summary");
-      await loadDashboard();
-      if (state.activeSection === "currency") {
-        window.App.getRuntimeModule?.("currency")?.loadCurrencySection?.({ force: true }).catch(() => {});
-      }
-      if (state.activeSection === "analytics" && state.analyticsTab === "currency") {
-        window.App.getRuntimeModule?.("analytics-currency-module")?.loadAnalyticsCurrency?.({ force: true }).catch(() => {});
-      }
-    }, currency ? `Обновляется ${currency}` : "Обновляются курсы");
-  }
-
-  function formatDateTimeRu(value) {
-    if (!value) {
-      return "";
-    }
+  async function loadDashboardCurrencyRates() {
+    if (dashboardRatesController || state.activeSection !== "dashboard"
+        || state.preferences?.data?.currency?.show_dashboard_kpi === false) return;
+    const controller = new AbortController();
+    dashboardRatesController = controller;
     try {
-      const date = value instanceof Date ? value : new Date(value);
-      if (Number.isNaN(date.getTime())) {
-        return "";
+      const rates = await core.requestJson("/api/v1/dashboard/currency-rates", {
+        headers: core.authHeaders(), signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      renderDashboardCurrencyRates(rates);
+      state.dashboardCurrencyHydrated = true;
+      setDashboardPanelState(el.dashboardCurrencyPanel, "ready");
+    } catch (error) {
+      if (controller.signal.aborted || core.isAbortError(error)) return;
+      reportOptionalDashboardPanelFailure("currency", error);
+      if (state.dashboardCurrencyHydrated) {
+        setDashboardPanelState(el.dashboardCurrencyPanel, "stale");
+      } else {
+        el.dashboardCurrencyDate.textContent = "";
+        el.dashboardCurrencyRates.innerHTML = dashboardPanelError("Не удалось загрузить курсы НБРБ");
       }
-      return new Intl.DateTimeFormat("ru-RU", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      }).format(date);
-    } catch {
-      return "";
+    } finally {
+      if (dashboardRatesController === controller) dashboardRatesController = null;
     }
   }
 
@@ -269,22 +153,16 @@
     </div>`;
   }
 
-  function renderDashboardLoadFailure(err, { preserveExisting = false } = {}) {
-    const message = core.errorMessage ? core.errorMessage(err) : String(err || "Ошибка загрузки");
+  function renderDashboardLoadFailure({ preserveExisting = false } = {}) {
     if (preserveExisting) {
       setDashboardPanelState(el.dashboardCurrencyPanel, "stale");
       setDashboardPanelState(el.dashboardDebtsPanel, "stale");
       getLoadingSkeletons().clearDashboardAnalyticsSkeletonState?.();
       return;
     }
-    if (el.dashboardCurrencyBalances) {
-      el.dashboardCurrencyBalances.innerHTML = `<div class="muted-small">Не удалось загрузить валютный портфель: ${core.escapeHtml ? core.escapeHtml(message) : message}</div>`;
-    }
     if (el.dashboardCurrencyRates) {
-      el.dashboardCurrencyRates.innerHTML = "";
-    }
-    if (el.dashboardCurrencyPositions) {
-      el.dashboardCurrencyPositions.innerHTML = "";
+      el.dashboardCurrencyDate.textContent = "";
+      el.dashboardCurrencyRates.innerHTML = dashboardPanelError("Не удалось загрузить курсы НБРБ");
     }
     if (el.dashboardPlansList) {
       el.dashboardPlansList.innerHTML = dashboardPanelError("Не удалось загрузить ближайшие планы");
@@ -333,11 +211,13 @@
     if (startedOnDashboard && !state.dashboardPlansHydrated) {
       skeletons.renderDashboardPlansSkeleton?.();
     }
-    if (startedOnDashboard && !state.dashboardCurrencyHydrated) {
+    const showCurrency = state.preferences?.data?.currency?.show_dashboard_kpi !== false;
+    el.dashboardCurrencyPanel?.classList.toggle("hidden", !showCurrency);
+    if (startedOnDashboard && showCurrency && !state.dashboardCurrencyHydrated) {
       skeletons.renderDashboardCurrencySkeleton?.();
     }
     const dashboardData = getDashboardData();
-    const shouldRefreshCurrency = startedOnDashboard && state.dashboardCurrencyHydrated;
+    const shouldRefreshCurrency = startedOnDashboard && showCurrency && state.dashboardCurrencyHydrated;
     const shouldRefreshDebts = startedOnDashboard && (state.dashboardDebtSummaryLoaded || state.dashboardDebtsHydrated);
     const shouldRefreshPlans = startedOnDashboard && state.dashboardPlansHydrated;
     if (shouldRefreshCurrency && el.dashboardCurrencyPanel) {
@@ -352,8 +232,8 @@
     let optionalPanelTasksStarted = false;
     try {
       const data = await (dashboardData.loadAllTimeSummary
-        ? dashboardData.loadAllTimeSummary({ signal: requestSignal })
-        : core.requestJson("/api/v1/dashboard/summary?period=all_time", { headers: core.authHeaders(), signal: requestSignal }));
+        ? dashboardData.loadAllTimeSummary({ signal: requestSignal, debtTotalsOnly: true })
+        : core.requestJson("/api/v1/dashboard/summary?period=all_time&view=debt_totals", { headers: core.authHeaders(), signal: requestSignal }));
       if (!isCurrentDashboardLoad()) {
         return;
       }
@@ -365,11 +245,9 @@
       }
       state.dashboardSummaryHydrated = true;
       setDashboardPanelState(el.dashboardDebtsPanel, "ready");
-      setDashboardPanelState(el.dashboardCurrencyPanel, "ready");
       if (data.debt_summary_available === false) {
         state.dashboardDebtSummaryLoaded = false;
       }
-      renderDashboardCurrencySummary(data);
       if (data.debt_summary_available !== false) {
         state.dashboardDebtSummaryLoaded = true;
       }
@@ -394,12 +272,7 @@
         && optionalLoadSeq === dashboardOptionalLoadSeq
         && state.activeSection === "dashboard"
       );
-      const currencyOverviewTask = core.requestJson("/api/v1/currency/overview?trades_limit=10", {
-        headers: core.authHeaders(),
-        signal: optionalRequestSignal,
-      })
-        .then((value) => ({ value, error: null }))
-        .catch((error) => ({ value: null, error }));
+      const currencyRatesTask = showCurrency ? loadDashboardCurrencyRates() : Promise.resolve();
       const plansTask = el.dashboardPlansPanel && ui?.showDashboardOperations !== false
         ? Promise.resolve(getPlansFeature().loadPlans?.({ signal: optionalRequestSignal }))
           .then((value) => ({ value, error: null }))
@@ -416,47 +289,14 @@
           .catch((error) => ({ value: null, error }))
         : Promise.resolve({ value: null, error: null });
       optionalPanelTasksStarted = true;
-      dashboardOptionalLoadPromise = Promise.allSettled([currencyOverviewTask, plansTask, debtCardsTask]).finally(() => {
+      dashboardOptionalLoadPromise = Promise.allSettled([currencyRatesTask, plansTask, debtCardsTask]).finally(() => {
         if (dashboardOptionalLoadController?.signal === optionalRequestSignal) {
           dashboardOptionalLoadController = null;
-        }
-        if (dashboardOptionalLoadPromise) {
           dashboardOptionalLoadPromise = null;
         }
       });
 
-      currencyOverviewTask.then((currencyOverviewResult) => {
-        if (currencyOverviewResult.error) {
-          if (core.isAbortError?.(currencyOverviewResult.error)) {
-            return;
-          }
-          if (!isCurrentOptionalDashboardLoad()) {
-            return;
-          }
-          reportOptionalDashboardPanelFailure("currency", currencyOverviewResult.error);
-          if (state.dashboardCurrencyHydrated) {
-            setDashboardPanelState(el.dashboardCurrencyPanel, "stale");
-            return;
-          }
-          renderDashboardCurrencyRates([], [], []);
-        } else {
-          if (!isCurrentOptionalDashboardLoad()) {
-            return;
-          }
-          const currencyOverview = currencyOverviewResult.value || {};
-          renderDashboardCurrencyRates(
-            currencyOverview.current_rates,
-            currencyOverview.tracked_currencies,
-            currencyOverview.bank_rates,
-          );
-          state.dashboardCurrencyHydrated = true;
-          setDashboardPanelState(el.dashboardCurrencyPanel, "ready");
-        }
-      }).catch((err) => {
-        if (!core.isAbortError?.(err)) {
-          reportOptionalDashboardPanelFailure("currency", err);
-        }
-      }).finally(() => {
+      currencyRatesTask.finally(() => {
         if (shouldRefreshCurrency && el.dashboardCurrencyPanel) {
           refreshState.end?.(el.dashboardCurrencyPanel);
         }
@@ -583,7 +423,7 @@
         return;
       }
       if (isCurrentDashboardLoad()) {
-        renderDashboardLoadFailure(err, { preserveExisting: state.dashboardSummaryHydrated });
+        renderDashboardLoadFailure({ preserveExisting: state.dashboardSummaryHydrated });
         throw err;
       }
     } finally {
@@ -618,6 +458,8 @@
   }
 
   function abortDashboardLoad() {
+    dashboardRatesController?.abort();
+    dashboardRatesController = null;
     if (dashboardLoadController) {
       dashboardLoadController.abort();
       dashboardLoadController = null;
@@ -632,45 +474,20 @@
     dashboardOptionalLoadSeq += 1;
   }
 
-  function bindCurrencyActions() {
-    if (el.dashboardRefreshAllCurrencyRatesBtn) {
-      el.dashboardRefreshAllCurrencyRatesBtn.addEventListener("click", () => {
-        core.runAction({
-          button: el.dashboardRefreshAllCurrencyRatesBtn,
-          pendingText: "Обновление...",
-          errorPrefix: "Ошибка обновления курсов",
-          action: async () => {
-            await refreshDashboardCurrencyRates("");
-            core.setStatus("Курсы валют обновлены");
-          },
-        });
-      });
-    }
-    if (el.dashboardCurrencyRates) {
-      el.dashboardCurrencyRates.addEventListener("click", (event) => {
-        const btn = event.target.closest("button[data-dashboard-refresh-currency]");
-        if (!btn) {
-          return;
-        }
-        const currency = String(btn.dataset.dashboardRefreshCurrency || "").trim().toUpperCase();
-        core.runAction({
-          button: btn,
-          pendingText: "Обновление...",
-          errorPrefix: "Ошибка обновления курса",
-          action: async () => {
-            await refreshDashboardCurrencyRates(currency);
-            core.setStatus(`Курс ${core.formatCurrencyLabel(currency)} обновлен`);
-          },
-        });
-      });
-    }
-  }
-
   function bindDashboardRetryActions() {
     [el.dashboardCurrencyPanel, el.dashboardPlansPanel, el.dashboardDebtsPanel].filter(Boolean).forEach((panel) => {
       panel.addEventListener("click", (event) => {
         const button = event.target.closest("button[data-dashboard-retry]");
         if (!button) return;
+        if (panel === el.dashboardCurrencyPanel) {
+          core.runAction({
+            button,
+            pendingText: "Загрузка…",
+            errorPrefix: "Не удалось загрузить курсы НБРБ",
+            action: loadDashboardCurrencyRates,
+          });
+          return;
+        }
         state.dashboardDebtSummaryLoaded = false;
         state.dashboardSummaryHydrated = false;
         state.dashboardDebtsHydrated = false;
@@ -687,13 +504,11 @@
     });
   }
 
-  bindCurrencyActions();
   bindDashboardRetryActions();
 
   const api = {
     loadDashboard,
     abortDashboardLoad,
-    refreshDashboardCurrencyRates,
     loadDashboardOperations: loadDashboardPlans,
     loadDashboardPlans,
   };

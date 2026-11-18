@@ -30,10 +30,6 @@
 #dashboardSection .panel-head h3 { font-size: 16px; }
 #dashboardSection .panel-head .subtitle { display: none; }
 #dashboardSection .dashboard-debt-kpi { min-width: 0; }
-#dashboardSection #dashboardCurrencyPositions,
-#dashboardSection #dashboardCurrencyBalances { display: none; }
-#dashboardSection .dashboard-currency-panel .analytics-kpi-grid { margin-bottom: 12px; }
-#dashboardSection .currency-rate-card { border-radius: 8px; }
 #currencyWorkspaceTabs { width: fit-content; }
 #currencySection .currency-chart-controls { border: 0; padding: 0; background: none; }
 #currencySection .currency-chart-controls-head { gap: 10px; }
@@ -135,12 +131,6 @@
 #dashboardSection #dashboardPlansKpi > span { width: auto; }
 #dashboardSection #dashboardDebtKpiGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 #dashboardSection #dashboardDebtKpiGrid p { font-size: 20px; }
-#dashboardSection .dashboard-currency-rate-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; }
-#dashboardSection .dashboard-currency-rate-card > :not(.dashboard-currency-rate-actions) { grid-column: 1; }
-#dashboardSection .dashboard-currency-rate-actions { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
-#dashboardSection .dashboard-currency-rate-delta-caption { display: none; }
-#dashboardSection .dashboard-currency-rate-card > :is(.dashboard-bank-rates, .dashboard-bank-rates-empty) { grid-column: 1 / -1; }
-#dashboardSection .dashboard-bank-rates { gap: 8px; }
 @media (max-width: 640px) {
   #dashboardSection #dashboardKpiPrimary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #dashboardSection .panel-head { display: flex; flex-direction: row; align-items: flex-start; gap: 8px; }
@@ -149,23 +139,16 @@
   .main:has(#dashboardSection:not(.hidden)) > .topbar { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
   .main:has(#dashboardSection:not(.hidden)) .top-actions { width: auto; margin-left: auto; }
   .main:has(#dashboardSection:not(.hidden)) .cta-row { display: flex; flex-direction: row; width: auto; }
-  #dashboardSection #dashboardCurrencyRates { display: grid; grid-template-columns: minmax(0, 1fr); }
 }
 #currencySection .currency-performance-empty { height: auto; min-height: 64px; display: grid; place-items: center; padding: 16px; border: 0; }
 #currencySection .currency-performance-empty-label { white-space: normal; text-align: center; }
 @media (max-width: 640px) {
   #dashboardSection #dashboardAnalyticsPanel .panel-head,
-  #dashboardSection #dashboardStructurePanel .panel-head,
-  #dashboardSection #dashboardCurrencyPanel .panel-head { flex-wrap: wrap; }
+  #dashboardSection #dashboardStructurePanel .panel-head { flex-wrap: wrap; }
   #dashboardSection #dashboardAnalyticsPanel .panel-head > div,
-  #dashboardSection #dashboardStructurePanel .panel-head > div,
-  #dashboardSection #dashboardCurrencyPanel .panel-head > div { width: 100%; }
-  #dashboardSection #dashboardCurrencyPanel .toolbar { display: flex; flex-wrap: nowrap; }
+  #dashboardSection #dashboardStructurePanel .panel-head > div { width: 100%; }
 }
 
-/* Keep the rate status on the card edge, independently of its refresh action. */
-#dashboardSection .dashboard-currency-rate-card > .dashboard-currency-rate-head { grid-column: 1 / -1; }
-#dashboardSection .dashboard-currency-rate-actions { grid-row: 2 / span 3; }
 #analyticsCalendarPanel #analyticsCalendarTotals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 #analyticsCalendarTotalsSecondary { font-size: .75rem; color: var(--muted); }
 #analyticsYearGrid:has([data-calendar-year]) { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }

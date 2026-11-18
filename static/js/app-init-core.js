@@ -188,13 +188,6 @@
         row.dataset.dashboardPositionDateTo,
       ).catch((err) => core.setStatus(String(err)));
     });
-    if (el.openCurrencyTabBtn) {
-      el.openCurrencyTabBtn.addEventListener("click", () => {
-        state.currencyView = "rates";
-        actions.switchSection("currency").catch((err) => core.setStatus(String(err)));
-      });
-    }
-
     if (el.sidebarLogoutBtn) {
       el.sidebarLogoutBtn.addEventListener("click", () => getSessionFeature().logout?.(true));
     }

@@ -21,8 +21,8 @@ def test_period_cards_plans_and_rate_no_duplicates(static_server_url,page_with_p
         category_breakdown=[],top_categories=[],top_positions=[],frequent_positions=[],price_increases=[])))
     p.route('**/api/v1/plans/forecast?*',lambda r:r.fulfill(json=dict(date_from=today,date_to=today,
         income_total='100',expense_total='70' if 'days=7' in r.request.url else '120',occurrences_count=12,overdue_count=0)))
-    p.route('**/api/v1/currency/overview?*',lambda r:r.fulfill(json=dict(tracked_currencies=['RUB'],positions=[],
-        current_rates=[dict(currency='RUB',rate='.03',change_value='.0001',change_pct='.3',rate_date=today)],bank_rates=[])))
+    p.route('**/api/v1/dashboard/currency-rates', lambda r: r.fulfill(json=[
+        dict(currency='RUB', display_scale=100, display_rate='3.0000', change_pct=0.3, rate_date=today)]))
     _login_and_open_dashboard(p,static_server_url)
     expect(p.locator('#dashboardKpiPrimary .analytics-kpi-card')).to_have_count(3)
     expect(p.locator('#dashboardKpiPrimary')).to_contain_text('150')
@@ -32,8 +32,8 @@ def test_period_cards_plans_and_rate_no_duplicates(static_server_url,page_with_p
     expect(p.locator('#dashboardKpiSecondary')).not_to_contain_text('Самый затратный')
     expect(p.locator('#dashboardPlansKpi')).to_contain_text('Планов: 12')
     expect(p.locator('#dashboardPlansKpi')).to_contain_text('120')
-    expect(p.locator('#dashboardCurrencyRates .dashboard-currency-rate-badge')).to_have_count(0)
-    expect(p.locator('#dashboardCurrencyRates .dashboard-currency-rate-delta').first).to_contain_text('+0.0100')
+    expect(p.locator('[data-dashboard-quote=RUB]')).to_contain_text('100 RUB')
+    expect(p.locator('[data-dashboard-quote=RUB] .dashboard-rate-change')).to_have_text('+0,30 %')
     assert p.locator('#dashboardSection').evaluate('n=>n.firstElementChild.id')=='dashboardAnalyticsPanel'
     assert p.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
     p.locator('#dashboardAnalyticsPanel').screenshot(path=f'/tmp/fa-period-kpi-{width}.png')

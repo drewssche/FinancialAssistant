@@ -113,7 +113,7 @@
 
   function getTrackedCurrencies() {
     const raw = state.preferences?.data?.currency?.tracked_currencies;
-    if (!Array.isArray(raw)) {
+    if (!Array.isArray(raw) || !raw.length) {
       return ["USD", "EUR"];
     }
     return Array.from(new Set(
@@ -366,14 +366,25 @@
     });
   }
 
+  function selectQuoteCurrency(code) {
+    state.currencyQuoteAsset = code;
+    state.analyticsCurrencyChartCurrency = code;
+    state.analyticsCurrencyFilter = code;
+  }
+
   function bind() {
     const showError = (err) => core.setStatus(String(err));
+    el.dashboardCurrencyRates?.addEventListener("click", (event) => {
+      const code = event.target.closest("[data-dashboard-quote]")?.dataset.dashboardQuote;
+      if (!code) return;
+      selectQuoteCurrency(code);
+      state.currencyView = "rates";
+      getNavigationActions().switchSection("currency", { scrollToTop: true }).catch(showError);
+    });
     document.getElementById("currencyQuotesTabs")?.addEventListener("click", (event) => {
       const code = event.target.closest("[data-quote-currency]")?.dataset.quoteCurrency;
       if (!code || code === state.currencyQuoteAsset) return;
-      state.currencyQuoteAsset = code;
-      state.analyticsCurrencyChartCurrency = code;
-      state.analyticsCurrencyFilter = code;
+      selectQuoteCurrency(code);
       loadCurrencySection().catch(showError);
     });
     document.getElementById("currencyChartDetails")?.addEventListener("toggle", () =>

@@ -58,9 +58,8 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert 'itemTemplateHistoryBtn: document.getElementById("itemTemplateHistoryBtn")' in elements
     assert 'sourceGroupCreateItemBtn: document.getElementById("sourceGroupCreateItemBtn")' in elements
     assert 'editGroupCreateCategoryBtn: document.getElementById("editGroupCreateCategoryBtn")' in elements
-    assert 'id="dashboardCurrencyActivityBtn"' in shell_primary
+    assert "dashboardCurrencyActivityBtn" not in shell_primary
     assert 'id="currencyPortfolioActivityBtn"' in shell_secondary
-    assert 'dashboardCurrencyActivityBtn: document.getElementById("dashboardCurrencyActivityBtn")' in elements
     assert 'currencyPortfolioActivityBtn: document.getElementById("currencyPortfolioActivityBtn")' in elements
     assert 'activityModal: document.getElementById("activityModal")' in elements
     assert 'usageModal: document.getElementById("usageModal")' in elements

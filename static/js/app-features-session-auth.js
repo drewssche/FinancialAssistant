@@ -466,7 +466,6 @@
     el.userName.textContent = name;
     el.userHandle.textContent = username ? `@${username}` : (telegramId ? `ID ${telegramId}` : "Telegram");
     const activityFeature = window.App.getRuntimeModule?.("activity") || {};
-    activityFeature.configureActivityButton?.(el.dashboardCurrencyActivityBtn, "currency_portfolio", state.currentUserId);
     activityFeature.configureActivityButton?.(el.currencyPortfolioActivityBtn, "currency_portfolio", state.currentUserId);
     renderUserAvatar(name, me.avatar_url);
     if (!state.isAdmin && state.accessStatus !== "approved" && state.accessStatus !== "active") {
