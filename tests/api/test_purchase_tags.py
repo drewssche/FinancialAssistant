@@ -19,7 +19,8 @@ def test_tagged_plan_confirmation_and_mixed_receipt_totals(client):
     assert client.get(plans, params={"q": "#" + tag}).json()["total"] == 1
     product_id = plan["receipt_items"][0]["product_id"]
     product = f"{ops}/catalog-products/{product_id}"
-    assert client.get(product).json()["tags"] == [tag]
+    assert plan["receipt_items"][0]["tags"] == [tag]
+    assert client.get(product).json()["tags"] == []
     assert client.patch(product, json={"tags": ["новый тег"]}).status_code == 200
     summary = lambda value: client.get(ops + "/purpose-tags/summary", params={"tag": value}).json()
     assert Decimal(str(summary(tag)["planned"]["totals"]["BYN"])) == Decimal("26.90")
@@ -34,6 +35,67 @@ def test_tagged_plan_confirmation_and_mixed_receipt_totals(client):
     assert Decimal(str(summary(tag)["paid"]["totals"]["BYN"])) == Decimal("26.90")
     assert client.get(plans + "/history", params={"q": "#дом"}).json()["total"] == 1
     assert client.patch(product, json={"tags": ["a,b"]}).status_code == 422
+
+
+def test_birthday_tag_stays_on_its_purchase_when_the_product_is_bought_again(client):
+    ops = "/api/v1/operations"
+    tag = "др-2026"
+    line = {"name": "Торт", "shop_name": "Green", "quantity": 1, "unit_price": "35.00"}
+
+    def buy(day, item):
+        response = client.post(ops, json={"kind": "expense", "operation_date": day, "receipt_items": [item]})
+        assert response.status_code == 201, response.text
+        return response.json()["receipt_items"][0]
+
+    first = buy("2026-11-15", {**line, "tags": [tag]})
+    assert first["tags"] == [tag]
+    product = f"{ops}/catalog-products/{first['product_id']}"
+    again = buy("2026-11-16", {**line, "template_id": first["template_id"]})
+    assert again["product_id"] == first["product_id"]
+    assert again["tags"] == []
+    assert client.get(product).json()["tags"] == []
+
+    assert client.patch(product, json={"tags": ["выпечка"]}).status_code == 200
+    assert buy("2026-11-17", line)["tags"] == ["выпечка"]
+    summary = client.get(f"{ops}/purpose-tags/summary", params={"tag": tag}).json()["paid"]
+    assert summary["count"] == 1
+    assert summary["totals"] == {"BYN": 35}
+
+
+def test_tag_summary_uses_the_currency_of_the_tagged_amount(client):
+    ops = "/api/v1/operations"
+    tag = "др-2026"
+    whole = "вся оплата"
+    legacy = client.post(ops, json={
+        "kind": "expense", "operation_date": "2026-01-20", "tags": [whole],
+        "receipt_items": [
+            {"name": "Десерт", "quantity": 1, "unit_price": "15.10", "tags": [tag, whole]},
+            {"name": "Чай", "quantity": 1, "unit_price": "17.00"},
+        ],
+        "fx_settlement": {"asset_currency": "USD", "quantity": "10", "quote_total": "32.10", "unit_price": "3.21"},
+    })
+    assert legacy.status_code == 201, legacy.text
+    receipt = legacy.json()
+    assert (receipt["receipt_currency"], receipt["currency"]) == ("BYN", "USD")
+    foreign = client.post(ops, json={
+        "kind": "expense", "operation_date": "2026-01-21", "currency": "USD", "fx_rate": "3.20",
+        "receipt_items": [{"name": "Свеча", "quantity": 1, "unit_price": "2.25", "tags": [tag]}],
+    })
+    assert foreign.status_code == 201, foreign.text
+
+    def paid(value):
+        result = client.get(f"{ops}/purpose-tags/summary", params={"tag": value})
+        assert result.status_code == 200, result.text
+        return result.json()["paid"]
+
+    lines = paid(tag)
+    assert lines["totals"] == {"BYN": 15.10, "USD": 2.25}
+    assert [(r["id"], r["amount"], r["currency"]) for r in lines["entries"]] == [
+        (foreign.json()["id"], 2.25, "USD"), (receipt["id"], 15.10, "BYN"),
+    ]
+    payment = paid(whole)
+    assert payment["totals"] == {"USD": 10}
+    assert [(r["id"], r["amount"], r["currency"]) for r in payment["entries"]] == [(receipt["id"], 10, "USD")]
 
 
 def test_standalone_plan_tags_and_legacy_line_update(client):

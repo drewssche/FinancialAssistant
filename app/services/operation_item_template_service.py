@@ -662,7 +662,6 @@ class OperationItemTemplateService:
                     brand_id=matched_item.get("brand_id"),
                     category_id=matched_item.get("category_id") or category_id,
                     measurement=self._new_product_measurement(normalized_items, key),
-                    tags=matched_item.get("tags"),
                 )
             template = self.repo.create_item_template(
                 user_id=user_id,
@@ -843,7 +842,6 @@ class OperationItemTemplateService:
                     brand_id=matched_item.get("brand_id"),
                     category_id=matched_item.get("category_id") or category_id,
                     measurement=self._new_product_measurement(normalized_items, key),
-                    tags=matched_item.get("tags"),
                 )
             template = self.repo.create_item_template(
                 user_id=user_id,
