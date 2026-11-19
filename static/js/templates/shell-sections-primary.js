@@ -36,6 +36,13 @@
             <div id="dashboardKpiSecondary" class="analytics-kpi-secondary"></div>
           </section>
 <section id="dashboardProductWatches" class="panel"></section>
+<section id="dashboardCurrencyPanel" class="panel dashboard-currency-panel hidden" aria-labelledby="dashboardCurrencyTitle">
+            <div class="panel-head row between">
+              <h3 id="dashboardCurrencyTitle">Курсы валют</h3>
+              <span id="dashboardCurrencyDate" class="muted-small"></span>
+            </div>
+            <div id="dashboardCurrencyRates" class="dashboard-currency-rates-grid"></div>
+          </section>
 <section id="dashboardPlansPanel" class="panel">
             <div class="panel-head row between">
               <div>
@@ -58,13 +65,6 @@
             <div id="dashboardPlansList" class="plans-list dashboard-plans-list">
               <div class="muted-small">Планов пока нет</div>
             </div>
-          </section>
-<section id="dashboardCurrencyPanel" class="panel dashboard-currency-panel hidden" aria-labelledby="dashboardCurrencyTitle">
-            <div class="panel-head row between">
-              <h3 id="dashboardCurrencyTitle">Курсы НБРБ</h3>
-              <span id="dashboardCurrencyDate" class="muted-small"></span>
-            </div>
-            <div id="dashboardCurrencyRates" class="dashboard-currency-rates-grid"></div>
           </section>
 <section id="dashboardDebtsPanel" class="panel">
             <div class="panel-head row between">

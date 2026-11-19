@@ -4,12 +4,24 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 
 
+class DashboardBankQuote(BaseModel):
+    bank_code: str
+    bank_name: str
+    channel_label: str
+    buy_unit_rate: Decimal | None = None
+    sell_unit_rate: Decimal | None = None
+    quoted_at: datetime | None = None
+    fetched_at: datetime | None = None
+    stale: bool = False
+
+
 class DashboardCurrencyRate(BaseModel):
     currency: str
     display_scale: int
     display_rate: Decimal | None
     rate_date: date | None
     change_pct: float | None
+    bank_rates: list[DashboardBankQuote] = Field(default_factory=list)
 
 
 class DashboardCurrencyPosition(BaseModel):

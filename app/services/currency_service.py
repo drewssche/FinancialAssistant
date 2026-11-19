@@ -22,6 +22,7 @@ from app.services.bank_currency_rate_registry import (
     display_scale,
 )
 from app.services.currency_reporting_service import CurrencyReportingService
+from app.services.fx_rate_policy_service import FxRatePolicyService
 
 
 MONEY_Q = Decimal("0.01")
@@ -247,12 +248,15 @@ class CurrencyService:
         return normalized
 
     def get_dashboard_rates(self, *, user_id: int) -> list[dict]:
-        currencies = self.get_currency_preferences(user_id)["tracked_currencies"]
+        prefs = self.get_currency_preferences(user_id)
+        currencies = [code for code in prefs["tracked_currencies"] if code != "BYN"]
+        bank_codes = prefs["bank_rate_banks"]
+        quotes = FxRatePolicyService(self.db).get_bank_quotes(
+            currencies=currencies, base_currency="BYN", bank_codes=bank_codes,
+        )
         today = datetime.now(ZoneInfo("Europe/Minsk")).date()
         rates = []
         for currency in currencies:
-            if currency == "BYN":
-                continue
             history = self.repo.list_rate_history(
                 user_id=user_id, currency=currency, date_to=today, sources=NBRB_RATE_SOURCES, limit=2,
             )
@@ -268,6 +272,14 @@ class CurrencyService:
                 "display_rate": current.rate * scale if current else None,
                 "rate_date": current.rate_date if current else None,
                 "change_pct": change_pct,
+                "bank_rates": [
+                    quotes.get((currency, code)) or {
+                        "bank_code": code,
+                        "bank_name": BANK_RATE_PROVIDERS[code]["name"],
+                        "channel_label": BANK_RATE_PROVIDERS[code]["channel_label"],
+                    }
+                    for code in bank_codes
+                ],
             })
         return rates
 

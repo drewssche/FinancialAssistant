@@ -14,7 +14,7 @@ This document is the compact current contract for the currency feature. Historic
 - Weighted-average position calculation from FX trade history.
 - Realized, unrealized, and total currency result in backend summary and UI.
 - Endpoint for currency performance history: `GET /api/v1/currency/performance/history`.
-- Dashboard rows show the latest effective NBRB rate for each tracked currency and the percentage change from its previous official publication.
+- Above the upcoming plans, each tracked currency shows its effective NBRB rate, the change from the previous official publication, and buy and sell quotes from the selected banks.
 - Market history and personal exchange results are independently expandable and fetched on demand.
 - Settings for tracked currencies, dashboard visibility, and currency digest preferences.
 - Daily tracked-rate refresh and Telegram currency digest.
@@ -28,7 +28,7 @@ This document is the compact current contract for the currency feature. Historic
 2. Для обмена показывать дату, валюту, «Отдал» и «Получил». Две введённые суммы определяют фактический курс. Автоподстановка использует сохранённый курс на дату обмена. Более ранний курс можно применить явно.
 3. Показывать обмены в одном журнале с фильтрами по валюте и дате. Применять фильтры к полному списку до подсчёта и разбивки на страницы.
 4. Вынести график курсов и результат собственных обменов в раскрываемые блоки. При подсчёте результата учитывать также полностью проданную валюту. Расходы сохраняют сумму в валюте и эквивалент на дату операции. Настройки банков и дайджест Telegram остаются самостоятельными.
-5. После ближайших планов показывать «Курсы НБРБ». Общую дату указывать в заголовке, разные даты — в строках. Строка открывает сравнение банков для выбранной валюты. Скрытый в настройках блок пропускает загрузку курсов.
+5. Над ближайшими планами показывать «Курсы валют». Для каждой валюты выводить курс НБРБ и таблицу выбранных банков с колонками «Я покупаю» и «Я продаю». Все цены указаны в BYN за одно и то же количество валюты, для RUB — за 100. Общую дату НБРБ указывать в заголовке, разные даты — в строках валют. Нажатие на валюту открывает подробные котировки. Скрытый в настройках блок пропускает загрузку курсов.
 
 ## Product Rules
 

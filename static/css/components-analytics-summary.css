@@ -364,6 +364,56 @@
   gap: var(--space-2);
 }
 
+.dashboard-rate-card {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.dashboard-rate-card > .dashboard-rate-row {
+  width: 100%;
+  border: 0;
+}
+
+.dashboard-rate-card:has(table) > .dashboard-rate-row {
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.dashboard-bank-quotes {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-bank-quotes :is(th, td) {
+  padding: var(--space-1) var(--space-2);
+  border-top: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dashboard-bank-quotes th:first-child {
+  text-align: left;
+  padding-left: var(--space-3);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-bank-quotes thead th {
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 500;
+}
+
+.dashboard-bank-quotes tbody th {
+  font-weight: 500;
+}
+
+.dashboard-quote-stale {
+  color: #f3bd78;
+}
+
 .dashboard-rate-row {
   display: grid;
   grid-template-columns: 1fr auto auto auto;

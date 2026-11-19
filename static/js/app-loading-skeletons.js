@@ -131,11 +131,15 @@
   function renderDashboardCurrencySkeleton() {
     if (!el.dashboardCurrencyRates) return;
     el.dashboardCurrencyDate.textContent = "";
+    const banks = window.App.getRuntimeModule("session-preferences")?.getMergedCurrencyPrefs().bank_rate_banks;
+    const table = Array.isArray(banks) && banks.length
+      ? `<table class="dashboard-bank-quotes"><tbody>${Array.from({ length: banks.length + 1 }, () =>
+        `<tr><td>${line("skeleton-w-64")}</td><td>${line("skeleton-w-64")}</td><td>${line("skeleton-w-64")}</td></tr>`
+      ).join("")}</tbody></table>` : "";
     el.dashboardCurrencyRates.innerHTML = window.App.core.getTrackedCurrencies()
       .filter((code) => code !== "BYN")
-      .map(() => `<div class="dashboard-rate-row" aria-hidden="true">
-        ${line("skeleton-w-64", "skeleton-line-sm")}
-      </div>`).join("");
+      .map(() => `<div class="dashboard-rate-card" aria-hidden="true">
+        <div class="dashboard-rate-row">${line("skeleton-w-64", "skeleton-line-sm")}</div>${table}</div>`).join("");
   }
 
   function renderPlansSectionSkeleton() {

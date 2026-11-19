@@ -251,59 +251,26 @@ class FxRatePolicyService:
                 "rate_date": nbrb_row.rate_date,
                 "source": nbrb_row.source,
             }
-        rows = [
-            row
-            for row in self.repo.list_bank_rates(currencies=[normalized_currency])
-            if str(row.base_currency).upper() == normalized_base
-            and row.bank_code in BANK_RATE_PROVIDERS
-        ]
-        rows_by_provider = {
-            (row.bank_code, row.channel): row
-            for row in rows
-        }
-        now = datetime.now(timezone.utc)
-        stale_cutoff = now - timedelta(minutes=BANK_RATE_STALE_MINUTES)
+        quotes = self.get_bank_quotes(
+            currencies=[normalized_currency], base_currency=normalized_base,
+            bank_codes=list(BANK_RATE_PROVIDERS),
+        )
         bank_rates = []
         providers = []
         for bank_code, provider in BANK_RATE_PROVIDERS.items():
             channel = str(provider["channel"])
-            row = rows_by_provider.get((bank_code, channel))
+            quote = quotes.get((normalized_currency, bank_code))
             providers.append(
                 {
                     "bank_code": bank_code,
                     "bank_name": str(provider["name"]),
                     "channel": channel,
                     "channel_label": str(provider.get("channel_label") or channel),
-                    "has_quote": row is not None,
+                    "has_quote": quote is not None,
                 }
             )
-            if row is None:
-                continue
-            row_scale = max(1, int(row.scale or 1))
-            fetched_at = self._aware(row.fetched_at)
-            quoted_at = self._aware(row.quoted_at)
-            freshness_timestamp = min(
-                value for value in (fetched_at, quoted_at) if value is not None
-            ) if fetched_at or quoted_at else None
-            bank_rates.append(
-                {
-                    "bank_code": row.bank_code,
-                    "bank_name": row.bank_name,
-                    "currency": row.currency,
-                    "base_currency": row.base_currency,
-                    "scale": row_scale,
-                    "buy_rate": self._rate(row.buy_rate),
-                    "sell_rate": self._rate(row.sell_rate),
-                    "buy_unit_rate": self._rate(Decimal(row.buy_rate) / Decimal(row_scale)),
-                    "sell_unit_rate": self._rate(Decimal(row.sell_rate) / Decimal(row_scale)),
-                    "channel": row.channel,
-                    "channel_label": str(provider.get("channel_label") or row.channel),
-                    "location_name": row.location_name,
-                    "quoted_at": quoted_at,
-                    "fetched_at": fetched_at,
-                    "stale": freshness_timestamp is None or freshness_timestamp < stale_cutoff,
-                }
-            )
+            if quote is not None:
+                bank_rates.append(quote)
         return {
             "currency": normalized_currency,
             "base_currency": normalized_base,
@@ -312,6 +279,44 @@ class FxRatePolicyService:
             "bank_rates": bank_rates,
             "providers": providers,
         }
+
+    def get_bank_quotes(
+        self, *, currencies: list[str], base_currency: str, bank_codes: list[str],
+    ) -> dict[tuple[str, str], dict]:
+        """Look up each bank's configured channel, keyed by currency and bank code."""
+        if not currencies or not bank_codes:
+            return {}
+        rows = self.repo.list_bank_rates(bank_codes=bank_codes, currencies=currencies)
+        stale_cutoff = datetime.now(timezone.utc) - timedelta(minutes=BANK_RATE_STALE_MINUTES)
+        quotes = {}
+        for row in rows:
+            provider = BANK_RATE_PROVIDERS[row.bank_code]
+            if str(row.base_currency).upper() != base_currency or row.channel != provider["channel"]:
+                continue
+            row_scale = max(1, int(row.scale or 1))
+            fetched_at = self._aware(row.fetched_at)
+            quoted_at = self._aware(row.quoted_at)
+            freshness_timestamp = min(
+                value for value in (fetched_at, quoted_at) if value is not None
+            ) if fetched_at or quoted_at else None
+            quotes[(row.currency, row.bank_code)] = {
+                "bank_code": row.bank_code,
+                "bank_name": row.bank_name,
+                "currency": row.currency,
+                "base_currency": row.base_currency,
+                "scale": row_scale,
+                "buy_rate": self._rate(row.buy_rate),
+                "sell_rate": self._rate(row.sell_rate),
+                "buy_unit_rate": self._rate(Decimal(row.buy_rate) / Decimal(row_scale)),
+                "sell_unit_rate": self._rate(Decimal(row.sell_rate) / Decimal(row_scale)),
+                "channel": row.channel,
+                "channel_label": str(provider.get("channel_label") or row.channel),
+                "location_name": row.location_name,
+                "quoted_at": quoted_at,
+                "fetched_at": fetched_at,
+                "stale": freshness_timestamp is None or freshness_timestamp < stale_cutoff,
+            }
+        return quotes
 
     @staticmethod
     def _rate(value: Decimal | None) -> Decimal:

@@ -8,7 +8,7 @@ from tests.e2e.test_plans_ui_e2e import static_server_url, page_with_plans_api_m
 
 @pytest.mark.e2e
 @pytest.mark.parametrize('width', [320, 390, 1024, 1440, 2338])
-def test_plan_cards_share_grid_and_precede_compact_official_rates(static_server_url, page_with_plans_api_mock, width):
+def test_compact_bank_quotes_above_plans_and_plan_grid(static_server_url, page_with_plans_api_mock, width):
     page, state = page_with_plans_api_mock
     page.set_viewport_size({'width': width, 'height': 1000})
     today = date.today().isoformat()
@@ -24,26 +24,50 @@ def test_plan_cards_share_grid_and_precede_compact_official_rates(static_server_
         fx_rate_kind='sell',fx_payment_mode='direct_conversion',current_rate='3.38',current_rate_date=today,
         current_base_amount='77.74', receipt_items=[dict(name='Подписка', quantity='1', unit_price='23', line_total='23')])
     state['preferences']['data']['currency'] = {'tracked_currencies': ['USD', 'EUR', 'RUB']}
+    def banks(buy, sell):
+        return [
+            dict(bank_name='Приорбанк', channel_label='онлайн', buy_unit_rate=buy, sell_unit_rate=sell,
+                 quoted_at=today+'T09:00:00Z', stale=True),
+            dict(bank_name='Технобанк', channel_label='наличные', buy_unit_rate=buy, sell_unit_rate=sell,
+                 fetched_at=today+'T10:00:00Z'),
+            dict(bank_name='БСБ Банк', channel_label='наличные'),
+            dict(bank_name='Сбер Банк', channel_label='наличные', buy_unit_rate=buy, sell_unit_rate=sell,
+                 fetched_at=today+'T10:00:00Z'),
+        ]
     page.route('**/api/v1/dashboard/currency-rates', lambda route: route.fulfill(json=[
-        dict(currency='USD', display_rate='3.0091', display_scale=1, change_pct=-0.07, rate_date=today),
-        dict(currency='EUR', display_rate='3.3749', display_scale=1, change_pct=0.13, rate_date=today),
-        dict(currency='RUB', display_rate='3.6038', display_scale=100, change_pct=0.08, rate_date=today),
+        dict(currency='USD', display_rate='3.0091', display_scale=1, change_pct=-0.07, rate_date=today, bank_rates=banks('2.99', '3.05')),
+        dict(currency='EUR', display_rate='3.3749', display_scale=1, change_pct=0.13, rate_date=today, bank_rates=banks('3.32', '3.41')),
+        dict(currency='RUB', display_rate='3.6038', display_scale=100, change_pct=0.08, rate_date=today, bank_rates=banks('.0351', '.0368')),
     ]))
     page.route('**/api/v1/operations/catalog-products*', lambda route: route.fulfill(json={'items':[], 'total':0, 'page':1, 'page_size':100}))
     _login_and_open_dashboard(page, static_server_url)
     expect(page.locator('#dashboardPlansList .plan-card')).to_have_count(3)
     assert page.locator('#dashboardSection').evaluate("n=>n.firstElementChild.id") == 'dashboardAnalyticsPanel'
-    panel = page.locator('#dashboardPlansPanel + #dashboardCurrencyPanel')
+    panel = page.locator('#dashboardCurrencyPanel')
+    plans = page.locator('#dashboardCurrencyPanel + #dashboardPlansPanel')
+    expect(plans).to_be_visible()
     rates = panel.locator('[data-dashboard-quote]')
     expect(rates).to_have_count(3)
     expect(panel.get_by_role('button')).to_have_count(3)
-    expect(panel.locator('table')).to_have_count(0)
+    tables = panel.get_by_role('table')
+    expect(tables).to_have_count(3)
+    rub = panel.get_by_role('table', name='Курсы банков в BYN за 100 RUB')
+    expect(rub.get_by_role('columnheader')).to_have_text(['Банк · BYN', 'Я покупаю', 'Я продаю'])
+    expect(rub.get_by_role('row', name='Технобанк', exact=False).get_by_role('cell')).to_have_text(['3,68', '3,51'])
+    expect(rub.get_by_role('row', name='БСБ Банк', exact=False).get_by_role('cell')).to_have_text(['—', '—'])
+    expect(rub.get_by_role('rowheader', name='Приорбанк устарел')).to_be_visible()
     expect(panel.locator('[data-dashboard-quote=RUB]')).to_contain_text('100 RUB')
-    expect(panel.locator('#dashboardCurrencyDate')).to_have_text(date.today().strftime('%d.%m.%Y'))
+    expect(panel.locator('#dashboardCurrencyDate')).to_have_text('НБРБ на '+date.today().strftime('%d.%m.%Y'))
     for row in rates.all():
         assert row.evaluate('n => n.scrollWidth <= n.clientWidth + 1')
         assert row.bounding_box()['height'] >= 44
-    assert panel.bounding_box()['height'] < (240 if width < 640 else 230)
+    for table in tables.all():
+        expect(table.get_by_role('row')).to_have_count(5)
+        assert table.evaluate('t => [...t.querySelectorAll("th, td")].every(c => c.scrollWidth <= c.clientWidth + 1)')
+        assert table.evaluate('t => t.getBoundingClientRect().right <= innerWidth && t.offsetWidth <= t.parentElement.clientWidth + 1')
+    box = panel.bounding_box()
+    assert box['y'] + box['height'] <= plans.bounding_box()['y'] + 1
+    assert box['height'] < (665 if width < 640 else 450 if width == 1024 else 267)
     panel.screenshot(path=f'/tmp/fa-currency-kpi-{width}.png')
     layouts=[]
     for section, selector in [('dashboard','#dashboardPlansList'),('plans','#plansList')]:
@@ -91,8 +115,11 @@ def test_dashboard_opens_banks_for_selected_currency(static_server_url, page_wit
     page.set_viewport_size({'width': width, 'height': 844})
     state['preferences']['data']['currency'] = {'tracked_currencies': ['USD', 'EUR', 'RUB']}
     rows = [
-        dict(currency='USD', display_scale=1, display_rate='3', change_pct=0, rate_date='2026-01-08'),
-        dict(currency='EUR', display_scale=1, display_rate=None, change_pct=None, rate_date=None),
+        dict(currency='USD', display_scale=1, display_rate='3', change_pct=0, rate_date='2026-01-08', bank_rates=[]),
+        dict(currency='EUR', display_scale=1, display_rate=None, change_pct=None, rate_date=None, bank_rates=[
+            dict(bank_name='Технобанк', channel_label='наличные', buy_unit_rate='3.29', sell_unit_rate='3.49',
+                 fetched_at='2026-01-08T09:00:00Z'),
+        ]),
         dict(currency='RUB', display_scale=100, display_rate='3.52', change_pct=None, rate_date='2026-01-07'),
     ]
     page.route('**/api/v1/dashboard/currency-rates', lambda route: route.fulfill(json=rows))
@@ -103,6 +130,8 @@ def test_dashboard_opens_banks_for_selected_currency(static_server_url, page_wit
     expect(panel.locator('[data-dashboard-quote=USD]')).to_contain_text('08.01.2026')
     expect(panel.locator('[data-dashboard-quote=RUB]')).to_contain_text('07.01.2026')
     expect(panel.locator('[data-dashboard-quote=EUR]')).to_contain_text('Нет курса')
+    expect(panel.get_by_role('table')).to_have_count(1)
+    expect(panel.get_by_role('table', name='Курсы банков в BYN за 1 EUR').get_by_role('cell')).to_have_text(['3,49', '3,29'])
     expect(panel.locator('#dashboardCurrencyDate')).to_be_empty()
     assert not overview_calls
 
@@ -138,16 +167,21 @@ def test_dashboard_rates_retry_loads_quotes_and_keeps_last_publication_on_error(
         if len(calls) != 2:
             return route.fulfill(status=503, json={'detail': 'Недоступно'})
         return route.fulfill(json=[dict(currency='USD', display_scale=1, display_rate='3.2',
-                                        rate_date='2026-01-08', change_pct=None)])
+                                        rate_date='2026-01-08', change_pct=None, bank_rates=[
+                                            dict(bank_name='БСБ Банк', channel_label='наличные',
+                                                 buy_unit_rate='3.18', sell_unit_rate='3.25',
+                                                 fetched_at='2026-01-08T09:00:00Z'),
+                                        ])])
 
     page.route('**/api/v1/dashboard/currency-rates', rates)
     _login_and_open_dashboard(page, static_server_url)
     panel = page.locator('#dashboardCurrencyPanel')
-    expect(panel.get_by_role('alert')).to_contain_text('Не удалось загрузить курсы НБРБ')
+    expect(panel.get_by_role('alert')).to_contain_text('Не удалось загрузить курсы валют')
     panel.get_by_role('button', name='Повторить загрузку').click()
     expect(panel.locator('[data-dashboard-quote=USD]')).to_contain_text('3,2000')
     page.evaluate("window.App.getRuntimeModule('dashboard').loadDashboard()")
     expect(panel).to_have_attribute('data-load-state', 'stale')
-    expect(panel.locator('#dashboardCurrencyDate')).to_have_text('08.01.2026')
+    expect(panel.locator('#dashboardCurrencyDate')).to_have_text('НБРБ на 08.01.2026')
     expect(panel.locator('[data-dashboard-quote=USD]')).to_contain_text('3,2000')
+    expect(panel.get_by_role('cell')).to_have_text(['3,25', '3,18'])
     assert calls == ['GET', 'GET', 'GET']

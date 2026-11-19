@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -13,7 +13,7 @@ from app.api.deps import get_current_user_id
 from app.core.cache import reset_cache_for_tests
 from app.core.metrics import reset_metrics_for_tests
 from app.db.base import Base
-from app.db.models import FxRateSnapshot, User, UserPreference
+from app.db.models import FxBankRate, FxRateSnapshot, User, UserPreference
 from app.db.session import get_db
 from app.main import app
 
@@ -63,13 +63,17 @@ def reset_dashboard_metrics():
     reset_metrics_for_tests()
 
 
-def test_dashboard_rates_use_two_official_publications_and_no_portfolio(client, monkeypatch):
+def test_dashboard_rates_use_two_official_publications_and_selected_bank_quotes(client, monkeypatch):
     from app.repositories.currency_repo import CurrencyRepository
 
     today = datetime.now(ZoneInfo("Europe/Minsk")).date()
+    now = datetime.now(timezone.utc)
     with contextmanager(app.dependency_overrides[get_db])() as db:
         db.add(User(id=2, display_name="Other", status="active"))
-        db.add(UserPreference(user_id=1, data={"currency": {"tracked_currencies": ["RUB", "EUR", "USD", "GBP", "BYN"]}}))
+        db.add(UserPreference(user_id=1, data={"currency": {
+            "tracked_currencies": ["RUB", "EUR", "USD", "GBP", "BYN"],
+            "bank_rate_banks": ["technobank", "priorbank"],
+        }}))
         for user_id, code, days, rate, source in [
             (1, "RUB", -4, ".03", "nbrb_history_unit"), (1, "RUB", -2, ".033", "nbrb_auto_unit"),
             (1, "RUB", -1, ".15", "manual"), (1, "RUB", 1, ".09", "nbrb_auto_unit"),
@@ -80,13 +84,32 @@ def test_dashboard_rates_use_two_official_publications_and_no_portfolio(client, 
         ]:
             db.add(FxRateSnapshot(user_id=user_id, currency=code, rate_date=today + timedelta(days=days),
                                   rate=Decimal(rate), source=source))
+        for code, name, channel, currency, base, scale, buy, sell, age in [
+            ("technobank", "Технобанк", "cash", "RUB", "BYN", 100, "3.51", "3.68", 0),
+            ("priorbank", "Приорбанк", "online", "RUB", "BYN", 1, ".0352", ".0369", 60),
+            ("technobank", "Технобанк", "cash", "EUR", "BYN", 1, "3.24", "3.35", 0),
+            ("technobank", "Технобанк", "cash", "RUB", "USD", 100, "1", "2", 0),
+            ("priorbank", "Приорбанк", "cash", "RUB", "BYN", 100, "2", "3", 0),
+            ("bsb", "БСБ Банк", "cash", "RUB", "BYN", 100, "4", "5", 0),
+        ]:
+            db.add(FxBankRate(bank_code=code, bank_name=name, currency=currency, base_currency=base,
+                              scale=scale, buy_rate=Decimal(buy), sell_rate=Decimal(sell), channel=channel,
+                              quoted_at=now - timedelta(minutes=age), fetched_at=now))
         db.commit()
 
     def unexpected(*args, **kwargs):
-        pytest.fail("Dashboard quotes must only read official rates and tracking preferences")
+        pytest.fail("Dashboard quotes must not read the exchange portfolio")
 
-    for name in ("list_all_trades", "list_trades", "list_bank_rates"):
+    for name in ("list_all_trades", "list_trades"):
         monkeypatch.setattr(CurrencyRepository, name, unexpected)
+    calls = []
+    list_bank_rates = CurrencyRepository.list_bank_rates
+
+    def count_bank_queries(repo, **kwargs):
+        calls.append(kwargs)
+        return list_bank_rates(repo, **kwargs)
+
+    monkeypatch.setattr(CurrencyRepository, "list_bank_rates", count_bank_queries)
     response = client.get("/api/v1/dashboard/currency-rates")
     assert response.status_code == 200
     rows = response.json()
@@ -97,6 +120,22 @@ def test_dashboard_rates_use_two_official_publications_and_no_portfolio(client, 
     assert eur["rate_date"] is None and eur["display_rate"] is None and eur["change_pct"] is None
     assert usd["rate_date"] == today.isoformat() and usd["change_pct"] == 0
     assert gbp["display_scale"] == 1 and Decimal(gbp["display_rate"]) == 4 and gbp["change_pct"] is None
+    assert calls == [dict(bank_codes=["technobank", "priorbank"], currencies=["RUB", "EUR", "USD", "GBP"])]
+    assert all([quote["bank_code"] for quote in row["bank_rates"]] == ["technobank", "priorbank"] for row in rows)
+    cash, online = rub["bank_rates"]
+    assert (Decimal(cash["buy_unit_rate"]) * 100, Decimal(cash["sell_unit_rate"]) * 100) == (Decimal("3.51"), Decimal("3.68"))
+    assert (Decimal(online["buy_unit_rate"]) * 100, Decimal(online["sell_unit_rate"]) * 100) == (Decimal("3.52"), Decimal("3.69"))
+    assert not cash["stale"] and online["stale"]
+    assert Decimal(eur["bank_rates"][0]["sell_unit_rate"]) == Decimal("3.35")
+    assert eur["bank_rates"][1]["sell_unit_rate"] is None and eur["bank_rates"][1]["quoted_at"] is None
+
+    with contextmanager(app.dependency_overrides[get_db])() as db:
+        db.get(UserPreference, 1).data = {"currency": {"tracked_currencies": ["USD"], "bank_rate_banks": []}}
+        db.commit()
+    calls.clear()
+    response = client.get("/api/v1/dashboard/currency-rates")
+    assert response.status_code == 200
+    assert response.json()[0]["bank_rates"] == [] and not calls
 
 
 def test_dashboard_all_time_empty(client: TestClient):

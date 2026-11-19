@@ -58,10 +58,26 @@
     style: "percent", signDisplay: "exceptZero", minimumFractionDigits: 2, maximumFractionDigits: 2,
   });
 
+  function dashboardBankTable(row) {
+    if (!row.bank_rates?.length) return "";
+    const format = (rate) => Number(rate) > 0
+      ? core.formatRateDisplay(Number(rate) * row.display_scale, 2, 6).replace(".", ",") : "—";
+    const rows = row.bank_rates.map((bank) => {
+      const stamp = bank.quoted_at || bank.fetched_at;
+      const detail = [bank.channel_label, stamp ? core.formatDateTimeRu(stamp) : "Нет котировки"];
+      const stale = bank.stale ? ' <small class="dashboard-quote-stale">устарел</small>' : "";
+      return `<tr title="${core.escapeHtml(detail.join(" · "))}"><th scope="row">${core.escapeHtml(bank.bank_name)}${stale}</th>
+        <td>${format(bank.sell_unit_rate)}</td><td>${format(bank.buy_unit_rate)}</td></tr>`;
+    });
+    return `<table class="dashboard-bank-quotes" aria-label="Курсы банков в BYN за ${row.display_scale} ${core.escapeHtml(row.currency)}">
+      <thead><tr><th scope="col">Банк · BYN</th><th scope="col">Я покупаю</th><th scope="col">Я продаю</th></tr></thead>
+      <tbody>${rows.join("")}</tbody></table>`;
+  }
+
   function renderDashboardCurrencyRates(rates) {
     const commonDate = rates[0]?.rate_date;
     const sameDate = commonDate && rates.every((row) => row.rate_date === commonDate);
-    el.dashboardCurrencyDate.textContent = sameDate ? core.formatDateRu(commonDate) : "";
+    el.dashboardCurrencyDate.textContent = sameDate ? `НБРБ на ${core.formatDateRu(commonDate)}` : "";
     if (!rates.length) {
       el.dashboardCurrencyRates.innerHTML = '<span class="muted-small">Выберите валюты в настройках.</span>';
       return;
@@ -69,19 +85,19 @@
     el.dashboardCurrencyRates.innerHTML = rates.map((row) => {
       const code = core.escapeHtml(row.currency);
       const label = row.display_scale > 1 ? `${row.display_scale} ${code}` : code;
-      const date = !sameDate && row.rate_date ? core.formatDateRu(row.rate_date) : "";
+      const date = !sameDate && row.rate_date ? `НБРБ · ${core.formatDateRu(row.rate_date)}` : "";
       const value = row.display_rate == null
-        ? '<span class="muted-small">Нет курса</span>'
+        ? '<span class="muted-small">Нет курса НБРБ</span>'
         : `<strong>${core.formatRateDisplay(row.display_rate).replace(".", ",")} <small>BYN</small></strong>`;
       const change = row.change_pct;
       const tone = change > 0 ? "positive" : change < 0 ? "negative" : "neutral";
-      return `<button type="button" class="dashboard-rate-row" data-dashboard-quote="${code}"
-          title="Сравнить курсы банков для ${code}">
+      return `<div class="dashboard-rate-card"><button type="button" class="dashboard-rate-row" data-dashboard-quote="${code}"
+          title="Открыть подробные курсы для ${code}">
         <span class="dashboard-rate-code">${label}${date ? `<small>${date}</small>` : ""}</span>
         ${value}
         <span class="dashboard-rate-change ${tone}" title="К предыдущему опубликованному курсу">${change == null ? "" : percentFormat.format(change / 100)}</span>
         ${window.App.icons.svg("forward")}
-      </button>`;
+      </button>${dashboardBankTable(row)}</div>`;
     }).join("");
   }
 
@@ -105,7 +121,7 @@
         setDashboardPanelState(el.dashboardCurrencyPanel, "stale");
       } else {
         el.dashboardCurrencyDate.textContent = "";
-        el.dashboardCurrencyRates.innerHTML = dashboardPanelError("Не удалось загрузить курсы НБРБ");
+        el.dashboardCurrencyRates.innerHTML = dashboardPanelError("Не удалось загрузить курсы валют");
       }
     } finally {
       if (dashboardRatesController === controller) dashboardRatesController = null;
@@ -162,7 +178,7 @@
     }
     if (el.dashboardCurrencyRates) {
       el.dashboardCurrencyDate.textContent = "";
-      el.dashboardCurrencyRates.innerHTML = dashboardPanelError("Не удалось загрузить курсы НБРБ");
+      el.dashboardCurrencyRates.innerHTML = dashboardPanelError("Не удалось загрузить курсы валют");
     }
     if (el.dashboardPlansList) {
       el.dashboardPlansList.innerHTML = dashboardPanelError("Не удалось загрузить ближайшие планы");
@@ -483,7 +499,7 @@
           core.runAction({
             button,
             pendingText: "Загрузка…",
-            errorPrefix: "Не удалось загрузить курсы НБРБ",
+            errorPrefix: "Не удалось загрузить курсы валют",
             action: loadDashboardCurrencyRates,
           });
           return;

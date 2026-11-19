@@ -73,7 +73,7 @@ def test_dashboard_rate_shows_last_publication_and_opens_by_keyboard(static_serv
         dict(currency='USD', display_scale=1, display_rate='3.0091', change_pct=0, rate_date='2025-01-01')]))
     _login_and_open_dashboard(page, static_server_url)
     row = page.locator('[data-dashboard-quote=USD]')
-    expect(page.locator('#dashboardCurrencyDate')).to_have_text('01.01.2025')
+    expect(page.locator('#dashboardCurrencyDate')).to_have_text('НБРБ на 01.01.2025')
     expect(row).to_contain_text('0,00 %')
     row.focus()
     expect(row).to_be_focused()
