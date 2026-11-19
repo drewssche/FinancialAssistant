@@ -67,10 +67,10 @@
       const detail = [bank.channel_label, stamp ? core.formatDateTimeRu(stamp) : "Нет котировки"];
       const stale = bank.stale ? ' <small class="dashboard-quote-stale">устарел</small>' : "";
       return `<tr title="${core.escapeHtml(detail.join(" · "))}"><th scope="row">${core.escapeHtml(bank.bank_name)}${stale}</th>
-        <td>${format(bank.sell_unit_rate)}</td><td>${format(bank.buy_unit_rate)}</td></tr>`;
+        <td>${format(bank.buy_unit_rate)}</td><td>${format(bank.sell_unit_rate)}</td></tr>`;
     });
     return `<table class="dashboard-bank-quotes" aria-label="Курсы банков в BYN за ${row.display_scale} ${core.escapeHtml(row.currency)}">
-      <thead><tr><th scope="col">Банк · BYN</th><th scope="col">Я покупаю</th><th scope="col">Я продаю</th></tr></thead>
+      <thead><tr><th scope="col">Банк · BYN</th><th scope="col" title="Банк покупает валюту">Покупка</th><th scope="col" title="Банк продаёт валюту">Продажа</th></tr></thead>
       <tbody>${rows.join("")}</tbody></table>`;
   }
 

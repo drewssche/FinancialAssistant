@@ -52,8 +52,8 @@ def test_compact_bank_quotes_above_plans_and_plan_grid(static_server_url, page_w
     tables = panel.get_by_role('table')
     expect(tables).to_have_count(3)
     rub = panel.get_by_role('table', name='Курсы банков в BYN за 100 RUB')
-    expect(rub.get_by_role('columnheader')).to_have_text(['Банк · BYN', 'Я покупаю', 'Я продаю'])
-    expect(rub.get_by_role('row', name='Технобанк', exact=False).get_by_role('cell')).to_have_text(['3,68', '3,51'])
+    expect(rub.get_by_role('columnheader')).to_have_text(['Банк · BYN', 'Покупка', 'Продажа'])
+    expect(rub.get_by_role('row', name='Технобанк', exact=False).get_by_role('cell')).to_have_text(['3,51', '3,68'])
     expect(rub.get_by_role('row', name='БСБ Банк', exact=False).get_by_role('cell')).to_have_text(['—', '—'])
     expect(rub.get_by_role('rowheader', name='Приорбанк устарел')).to_be_visible()
     expect(panel.locator('[data-dashboard-quote=RUB]')).to_contain_text('100 RUB')
@@ -131,7 +131,7 @@ def test_dashboard_opens_banks_for_selected_currency(static_server_url, page_wit
     expect(panel.locator('[data-dashboard-quote=RUB]')).to_contain_text('07.01.2026')
     expect(panel.locator('[data-dashboard-quote=EUR]')).to_contain_text('Нет курса')
     expect(panel.get_by_role('table')).to_have_count(1)
-    expect(panel.get_by_role('table', name='Курсы банков в BYN за 1 EUR').get_by_role('cell')).to_have_text(['3,49', '3,29'])
+    expect(panel.get_by_role('table', name='Курсы банков в BYN за 1 EUR').get_by_role('cell')).to_have_text(['3,29', '3,49'])
     expect(panel.locator('#dashboardCurrencyDate')).to_be_empty()
     assert not overview_calls
 
@@ -141,8 +141,9 @@ def test_dashboard_opens_banks_for_selected_currency(static_server_url, page_wit
     expect(page.locator('[data-currency-view=rates]')).to_have_attribute('aria-pressed', 'true')
     expect(page.locator(f'[data-quote-currency={code}]')).to_have_attribute('aria-pressed', 'true')
     expect(page.locator('#currencyQuotesList caption')).to_have_text(f"BYN за {100 if code == 'RUB' else 1} {code}")
-    expect(page.locator('#currencyQuotesList')).to_contain_text('Технобанк')
-    expect(page.locator('#currencyQuotesList')).to_contain_text('Я покупаю')
+    quotes = page.locator('#currencyQuotesList').get_by_role('table')
+    expect(quotes.get_by_role('columnheader')).to_have_text(['Банк', 'Покупка', 'Продажа'])
+    expect(quotes.get_by_role('row', name='Технобанк', exact=False).get_by_role('cell')).to_have_text(['3.4900', '3.5200'])
 
 
 @pytest.mark.e2e
@@ -183,5 +184,5 @@ def test_dashboard_rates_retry_loads_quotes_and_keeps_last_publication_on_error(
     expect(panel).to_have_attribute('data-load-state', 'stale')
     expect(panel.locator('#dashboardCurrencyDate')).to_have_text('НБРБ на 08.01.2026')
     expect(panel.locator('[data-dashboard-quote=USD]')).to_contain_text('3,2000')
-    expect(panel.get_by_role('cell')).to_have_text(['3,25', '3,18'])
+    expect(panel.get_by_role('cell')).to_have_text(['3,18', '3,25'])
     assert calls == ['GET', 'GET', 'GET']

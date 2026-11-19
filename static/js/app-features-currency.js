@@ -204,11 +204,11 @@
       const meta = [bank?.channel_label || quote?.channel_label, time, quote ? (quote.stale ? "Курс устарел" : "") : "Нет котировки"];
       return `<tr><th scope="row">${escapeHtml(bank?.bank_name || quote?.bank_name || code)}
         <small>${escapeHtml(meta.filter(Boolean).join(" · "))}</small></th>
-        <td>${format(quote?.sell_unit_rate)}</td><td>${format(quote?.buy_unit_rate)}</td></tr>`;
+        <td>${format(quote?.buy_unit_rate)}</td><td>${format(quote?.sell_unit_rate)}</td></tr>`;
     });
     const nbrb = data.nbrb_rate;
     target.innerHTML = `<table class="fx-quotes"><caption>${escapeHtml(unit)}</caption>
-      <thead><tr><th scope="col">Банк</th><th scope="col">Я покупаю</th><th scope="col">Я продаю</th></tr></thead>
+      <thead><tr><th scope="col">Банк</th><th scope="col" title="Банк покупает валюту">Покупка</th><th scope="col" title="Банк продаёт валюту">Продажа</th></tr></thead>
       <tbody>${rows.join("") || '<tr><td colspan="3">Выберите банки в настройках валюты.</td></tr>'}</tbody></table>
       <p class="muted-small">НБРБ · ${nbrb ? `${format(nbrb.unit_rate)} ${escapeHtml(unit)} · ${core.formatDateRu(nbrb.rate_date)}` : "Нет курса"}</p>`;
   }

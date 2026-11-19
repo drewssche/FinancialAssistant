@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 from tests.api import test_currency_api
-from tests.e2e.test_analytics_mobile_e2e import _open_context_report
+from tests.e2e.test_analytics_mobile_e2e import _open_context_report, _set_mock_telegram
 
 currency_api = test_currency_api.client
 sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
@@ -26,7 +26,7 @@ def static_server_url() -> str:
         port = s.getsockname()[1]
 
     process = subprocess.Popen(
-        [sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
+        [sys.executable, "-m", "tests.e2e.static_server", str(port), "--bind", "127.0.0.1"],
         cwd=str(repo_root),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -327,18 +327,8 @@ def page_with_currency_pagination_api_mock():
         page = browser.new_page(viewport={"width": 1280, "height": 720})
         page._currency_trades_calls = trades_calls
         page._currency_digest_calls = digest_calls
-        page.add_init_script(
-            """
-            window.localStorage.setItem("access_token", "e2e-token");
-            window.Telegram = {
-              WebApp: {
-                initData: "mock-init-data",
-                ready() {},
-                expand() {},
-              }
-            };
-            """
-        )
+        _set_mock_telegram(page)
+        page.add_init_script('window.localStorage.setItem("access_token", "e2e-token");')
         page.route("**/api/v1/**", handler)
         try:
             yield page
@@ -471,8 +461,8 @@ def test_quotes_and_exchange_journal_are_independent(static_server_url, page_wit
     sync_api.expect(page.locator("#currencyQuotesList")).to_contain_text("НБРБ")
     page.locator("[data-quote-currency=RUB]").click()
     row = page.locator(".fx-quotes tbody tr").first
-    sync_api.expect(row.locator("td").nth(0)).to_have_text("3.8000")
-    sync_api.expect(row.locator("td").nth(1)).to_have_text("3.4000")
+    sync_api.expect(page.locator(".fx-quotes").get_by_role("columnheader")).to_have_text(["Банк", "Покупка", "Продажа"])
+    sync_api.expect(row.get_by_role("cell")).to_have_text(["3.4000", "3.8000"])
     sync_api.expect(row).to_contain_text("Курс устарел")
     sync_api.expect(page.locator(".fx-quotes caption")).to_have_text("BYN за 100 RUB")
     sync_api.expect(page.locator(".fx-quotes tbody tr").nth(1)).to_contain_text("Нет котировки")
