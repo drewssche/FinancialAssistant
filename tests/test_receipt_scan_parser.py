@@ -292,6 +292,26 @@ def test_quantity_discount_scaling_preserves_original_basis_and_rounds_cents():
     assert [r['total'] for r in data]==[152,303,None,455,76,455,966]
 
 
+def test_correcting_weight_keeps_manually_entered_line_discount():
+    script = 'global.window={App:{}};' + PARSER + r'''
+    const parser = window.App.receiptScanParser;
+    const results = [null, 'kg', 'g', 'l', 'ml', 'piece'].map(unit => {
+      const row = parser.parse('Товар\n3.14 x0.334 1.05').rows[0];
+      row.sale_unit = unit;
+      row.discount = 7;
+      parser.recalculateRow(row, 'discount');
+      row.quantity = null;
+      parser.recalculateRow(row, 'quantity', .334);
+      row.quantity = .5;
+      parser.recalculateRow(row, 'quantity', null);
+      return [row.discount, row.total];
+    });
+    console.log(JSON.stringify(results));'''
+    results = json.loads(subprocess.check_output(['node', '-e', script], text=True))
+    assert results[:-1] == [[7, 150]] * 5
+    assert results[-1] == [10, 147]
+
+
 def test_pharmacy_explicit_quantity_first_currency_and_labelled_short_date():
     result=run('ООО Аптека\n№ ДОК 123\nЛекарство 20мл №4\n2.000X19.82BYN 39.64\n#ПРОДАНО 0.5000 УП.\n#ЦЕНА ЗА УПАКОВКУ 79.28\nИТОГО К ОПЛАТЕ 39.64\nДАТА 27.10.26 ВРЕМЯ 19:11:22')
     assert result['draft']['date']=='2026-10-27'

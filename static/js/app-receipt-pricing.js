@@ -6,6 +6,10 @@
     return BigInt(number.toFixed(digits).replace(".", ""));
   };
   const roundedDivide = (n, d) => (n + d / 2n) / d;
+  function paidUnitPrice(total, quantity) {
+    const thousandths = scaled(quantity, 3);
+    return thousandths > 0n ? Number(roundedDivide(scaled(total, 2) * 1000n, thousandths)) / 100 : null;
+  }
   function calculate(item) {
     const quantity = scaled(item.quantity, 3);
     if (!item.discount_mode) {
@@ -24,6 +28,15 @@
       total <= 0n ? "Итог должен быть больше нуля" :
       subtotal !== null && total > subtotal ? "Итог превышает сумму до скидки" : "";
     return { total: Number(total) / 100, subtotal: subtotal === null ? null : Number(subtotal) / 100, error };
+  }
+  function savedAmounts(row) {
+    const total = row.line_total != null ? Number(row.line_total) : calculate(row).total;
+    if (!row.is_discounted) return {total, subtotal: null};
+    if (row.line_subtotal != null) return {total, subtotal: Number(row.line_subtotal)};
+    // Older receipts only store the regular unit price. Round the whole line as at checkout.
+    const subtotal = Number(row.regular_unit_price) > 0
+      ? calculate({quantity: row.quantity, unit_price: row.regular_unit_price}).total : null;
+    return {total, subtotal};
   }
   function compare(item, previous) {
     const current = calculate(item);
@@ -49,5 +62,5 @@
     };
   }
   window.App = window.App || {};
-  window.App.receiptPricing = { calculate, payload, compare };
+  window.App.receiptPricing = { calculate, savedAmounts, paidUnitPrice, payload, compare };
 })();

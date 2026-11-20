@@ -143,13 +143,12 @@
     if(!rows?.length)return previous;
     return {...(previous && Object.hasOwn(previous, 'printed_discount') ? {printed_discount:previous.printed_discount} : {}),
       date:node(prefix+'Date').value,shop:rows[0].shop_name||'',total:inputMoney(node(prefix+'Amount').value),currency:node(prefix+'Currency').value,rows:rows.map((r,index)=>{
-      const money=window.App.receiptPricing.calculate(r), price=Number(r.regular_unit_price||r.unit_price);
+      const money=window.App.receiptPricing.savedAmounts(r), price=Number(r.regular_unit_price||r.unit_price);
       const old=previous?.rows?.[index];
       const sameLine=old?.name===r.name;
       const codes=keepSavedCodes&&!r.code_entries?.length&&sameLine?old.code_entries:r.code_entries;
       return {...r,code_errors:[],code_entries:codes||[],catalog:r.product_id||r.template_id?{...r}:null,category_touched:true,price:Math.round(price*100),
         printed_quantity:sameLine ? old.printed_quantity ?? Number(r.quantity) : Number(r.quantity),
-        has_printed_discount:sameLine && (old.has_printed_discount ?? (old.printed_total != null && old.discount_type != null)),
         quantity:Number(r.quantity),discount:Math.max(0,Math.round(((money.subtotal??money.total)-money.total)*100)),total:Math.round(money.total*100)};
     })};
   }
@@ -395,16 +394,16 @@
   const expandedRows = new WeakMap(), rowsWithIssues = new WeakSet();
   let lastVisitedIssue = null;
   const moneyFormat = new Intl.NumberFormat('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-  const quantityFormat = new Intl.NumberFormat('ru-RU', {maximumFractionDigits: 3});
-  function updateRowSummary(el, row, index, currency, reason) {
+  function updateRowSummary(el, row, index, currency, reason, gross) {
     const summary = el.querySelector('.scan-row-summary');
     summary.querySelector('strong').textContent = row.name.trim() || `Позиция ${index + 1}`;
     summary.querySelector('b').textContent = row.total == null ? '—' : `${moneyFormat.format(row.total / 100)} ${currency}`;
-    const quantity = Number.isFinite(row.quantity) ? quantityFormat.format(row.quantity) : '—';
+    const quantity = Number.isFinite(row.quantity) ? window.App.measurements.formatQuantity(row.quantity) : '—';
     const price = row.price == null ? '—' : moneyFormat.format(row.price / 100);
     const unit = window.App.measurements.units[row.sale_unit];
     const discount = row.discount > 0 ? ` · скидка ${moneyFormat.format(row.discount / 100)} ${currency}` : '';
-    summary.querySelector('.scan-row-quantity').textContent = `${quantity}${unit ? ' ' + unit : ''} × ${price}${discount}`;
+    const weighted = window.App.measurements.weightDiscountSummary(row, row.price / 100, gross / 100, row.discount / 100, currency);
+    summary.querySelector('.scan-row-quantity').textContent = weighted || `${quantity}${unit ? ' ' + unit : ''} × ${price}${discount}`;
     summary.querySelector('.scan-row-warning').textContent = reason ? 'Требует проверки' : '';
     if (reason && !rowsWithIssues.has(row)) el.open = true;
     if (reason) rowsWithIssues.add(row); else rowsWithIssues.delete(row);
@@ -717,22 +716,26 @@
         input.setAttribute('aria-invalid', String(Boolean(issue?.fields?.includes(input.dataset.scanField))));
       }
       hint.textContent=messages.join(' · ');hint.hidden=!messages.length;
-      updateRowSummary(el, draft.rows[index], index, node('scanCurrency').value, messages.length);
       const row=draft.rows[index],calculation=el.querySelector('.scan-row-calculation');
+      const gross=parser.rowSubtotal(row);
+      updateRowSummary(el, row, index, currency, messages.length, gross);
       const applyPrice=el.querySelector('.scan-apply-catalog-price');
       if(applyPrice){
         applyPrice.disabled=Boolean(applyPrice.dataset.catalogCurrency&&applyPrice.dataset.catalogCurrency!==node('scanCurrency').value);
         applyPrice.title=applyPrice.disabled?'Валюта цены отличается от валюты чека':'Подставить цену и пересчитать оплату по количеству и скидке';
       }
-      const gross=parser.rowSubtotal(row);
       const show=gross!==null&&Number.isInteger(row.discount)&&row.discount>0;
+      const weighed=window.App.measurements.isWeightUnit(row.sale_unit);
       el.querySelector('[data-scan-field=price]').previousElementSibling.textContent =
         window.App.measurements.priceLabel(row) + (row.discount > 0 ? ' до скидки' : '');
+      el.querySelector('[data-scan-field=discount]').previousElementSibling.textContent = weighed ? 'Скидка за весь вес' : 'Скидка на всю позицию';
       calculation.hidden=!show;
       if (show) {
         const net=gross-row.discount;
         const unit=window.App.measurements.units[row.sale_unit];
-        const unitPrice=unit && row.quantity!==1 && net>0 ? ` · ≈ ${moneyFormat.format(net / 100 / row.quantity)} ${currency}/${unit}` : '';
+        const showPaidRate=unit && (row.quantity!==1 || weighed) && net>0;
+        const unitPrice=showPaidRate
+          ? ` · после скидки ≈ ${moneyFormat.format(window.App.receiptPricing.paidUnitPrice(net/100, row.quantity))} ${currency}/${unit}` : '';
         calculation.textContent=`${moneyFormat.format(gross/100)} − ${moneyFormat.format(row.discount/100)} = ${moneyFormat.format(net/100)} ${currency}${unitPrice}`;
       }
       el.querySelector('.scan-codes-host').refreshCodeState?.();

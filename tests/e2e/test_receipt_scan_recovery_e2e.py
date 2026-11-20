@@ -43,7 +43,10 @@ def test_saved_receipt_reopens_with_current_operation_and_placeholder(static_ser
     page.locator('#scanConfirmed').check();page.click('#scanTransfer')
     attachment=page.evaluate("window.App.getRuntimeModule('receipt-scan').payload('create')")
     items=page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
-    if not has_photo:attachment['image']=None
+    if not has_photo:
+        attachment['image']=None
+        # Older operations only carry the regular and paid unit prices.
+        items[0].update(discount_mode=None, discount_value=None, unit_price='2.75')
     page.route('**/api/v1/operations/77/receipt-scan',lambda route:route.fulfill(json=attachment))
     page.evaluate("window.App.getRuntimeModule('receipt-scan').saved('create');window.App.getRuntimeModule('operation-modal').closeCreateModal()")
     # Reopened saved form has current amount/date, not stale OCR values.
@@ -53,6 +56,7 @@ def test_saved_receipt_reopens_with_current_operation_and_placeholder(static_ser
     page.click('#openSavedReceiptScan')
     expect(page.locator('#scanDate')).to_have_value('2026-10-16')
     expect(page.locator('#scanRows .scan-row')).to_have_count(2)
+    expect(page.locator('#scanRows [data-scan-field=discount]').first).to_have_value('0.50')
     expect(page.locator('#scanNoPhoto')).to_be_hidden() if has_photo else expect(page.locator('#scanNoPhoto')).to_be_visible()
     if has_photo:
         page.click('#scanZoomIn')

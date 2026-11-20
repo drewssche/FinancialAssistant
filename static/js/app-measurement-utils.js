@@ -1,6 +1,9 @@
 (() => {
   const fields = ["sale_unit", "package_quantity", "package_unit"];
   const units = { piece: "шт.", pack: "упак.", kg: "кг", g: "г", l: "л", ml: "мл" };
+  const formatQuantity = new Intl.NumberFormat('ru-RU', {maximumFractionDigits: 3}).format;
+  const formatMoneyAmount = new Intl.NumberFormat('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format;
+  const isWeightUnit = unit => unit === 'kg' || unit === 'g';
   function snapshot(value = {}) {
     return Object.fromEntries(fields.map((key) => [key, value[key] === "" || value[key] == null ? null : value[key]]));
   }
@@ -23,8 +26,15 @@
   }
   function quantityLabel(value) {
     const unit = units[value.sale_unit];
-    const label = ['kg','g'].includes(value.sale_unit) ? 'Вес' : ['l','ml'].includes(value.sale_unit) ? 'Объём' : 'Кол-во';
+    const label = isWeightUnit(value.sale_unit) ? 'Вес' : ['l','ml'].includes(value.sale_unit) ? 'Объём' : 'Кол-во';
     return unit ? `${label}, ${unit}` : label;
+  }
+  function weightDiscountSummary(row, unitPrice, subtotal, discount, currency) {
+    if (!isWeightUnit(row.sale_unit) || !(row.quantity > 0 && unitPrice > 0 && subtotal > discount && discount > 0)) return '';
+    const unit = units[row.sale_unit];
+    const paidRate = window.App.receiptPricing.paidUnitPrice(subtotal - discount, row.quantity);
+    const before = `${formatQuantity(row.quantity)} ${unit} × ${formatMoneyAmount(unitPrice)} ${currency}/${unit} = ${formatMoneyAmount(subtotal)} ${currency}`;
+    return `${before} · скидка за весь вес ${formatMoneyAmount(discount)} ${currency} · после скидки ≈ ${formatMoneyAmount(paidRate)} ${currency}/${unit}`;
   }
   function renderUnitButtons(host, {choices, dataset = 'unit', onSelect}) {
     for (const [key,label] of choices) {
@@ -88,5 +98,5 @@
     return {refresh:sync};
   }
   window.App = window.App || {};
-  window.App.measurements = { fields, units, snapshot, options, packageSize, summary, priceLabel, quantityLabel, renderUnitButtons, mount };
+  window.App.measurements = { fields, units, snapshot, options, packageSize, summary, priceLabel, quantityLabel, formatQuantity, isWeightUnit, weightDiscountSummary, renderUnitButtons, mount };
 })();

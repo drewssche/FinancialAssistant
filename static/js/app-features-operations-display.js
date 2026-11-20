@@ -27,7 +27,7 @@
       return getOperationDisplayCategories(item)[0] || null;
     }
 
-    function receiptDiscountLabel(row) {
+    function receiptDiscountLabel(row, subtotal, total) {
       if (!row?.is_discounted) {
         return "";
       }
@@ -36,10 +36,8 @@
         coupon: "Купон",
         loyalty_points: "Баллы",
       }[row.discount_type] || "Скидка";
-      const regular = Number(row.regular_unit_price || 0);
-      const price = Number(row.unit_price || 0);
-      if (regular > 0 && price > 0 && price < regular) {
-        const percent = Math.round(((regular - price) / regular) * 100);
+      if (subtotal > 0 && total > 0 && total < subtotal) {
+        const percent = Math.round(((subtotal - total) / subtotal) * 100);
         return `${typeLabel} -${percent}%`;
       }
       return typeLabel;
@@ -68,7 +66,7 @@
       el.operationReceiptItems.innerHTML = item.receipt_items.map((row) => {
         const qty = Number(row.quantity || 0);
         const price = Number(row.unit_price || 0);
-        const total = Number(row.line_total || qty * price || 0);
+        const {total, subtotal} = window.App.receiptPricing.savedAmounts(row);
         const receiptCurrency = String(item.receipt_currency || item.currency || item.base_currency || core.getCurrencyConfig?.().code || "BYN").toUpperCase();
         const media = window.App.getRuntimeModule?.("catalog-media") || {};
         const shopChip = row.shop_name && !commonShop
@@ -81,13 +79,17 @@
         const brandChip = row.brand_name && !String(row.product_name || row.name || "").toLowerCase().includes(String(row.brand_name).toLowerCase())
           ? `<span class="operation-receipt-brand">${typeof brandRenderer === "function" ? brandRenderer({ name: row.brand_name, accent_color: row.brand_accent_color || null, image_id: row.brand_image_id || null }) : core.renderCategoryChip({ name: row.brand_name, icon: null, accent_color: row.brand_accent_color || null }, "")}</span>`
           : "";
-        const discountLabel = receiptDiscountLabel(row);
+        const discountLabel = receiptDiscountLabel(row, subtotal, total);
         const discountChip = discountLabel
           ? `<span class="operation-receipt-discount-chip">${esc(discountLabel)}</span>`
           : "";
         const regularPrice = row.is_discounted && Number(row.regular_unit_price || 0) > 0
           ? ` · обычная цена ${core.formatMoney(row.regular_unit_price, { currency: receiptCurrency })}`
           : "";
+        const unit = window.App.measurements.units[row.sale_unit];
+        const quantityLabel = window.App.measurements.formatQuantity(qty) + (unit ? ' ' + unit : '');
+        const weightSummary = window.App.measurements.weightDiscountSummary(row, row.regular_unit_price, subtotal, subtotal - total, receiptCurrency);
+        const priceDetail = weightSummary || `${quantityLabel} × ${core.formatMoney(price, {currency: receiptCurrency})}${regularPrice}`;
         const itemThumb = media.renderThumb?.(row.product_image_id || row.item_image_id, {
           kind: "item",
           size: "receipt",
@@ -115,7 +117,7 @@
             ${categoryChip}
             ${window.App.purchaseTags.chips(row.tags)}
             <div class="operation-receipt-meta muted-small">
-              ${esc(core.formatAmount(qty))} × ${core.formatMoney(price, { currency: receiptCurrency })}${regularPrice}
+              ${esc(priceDetail)}
             </div>
             ${row.note && !/^OCR:\s/.test(row.note) ? `<div class="muted-small">${esc(row.note)}</div>` : ""}
           </article>

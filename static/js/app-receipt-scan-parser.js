@@ -171,10 +171,7 @@
       const agreesWithLines = rows.length > 0 && sums.paid === printed && printedDiscount != null && sums.discount === printedDiscount;
       if ((cardTotals.size === 1 && cardTotals.has(printed)) || (!cardTotals.size && agreesWithLines)) totals.add(printed);
     }
-    for(const row of rows) {
-      row.code_entries=extractCodes(row.source);
-      row.has_printed_discount=Boolean(row.discount_type);
-    }
+    for(const row of rows) row.code_entries=extractCodes(row.source);
     if (dates.size !== 1) warnings.push('Проверьте дату покупки по чеку');
     if (totals.size !== 1) warnings.push('Проверьте итог к оплате');
     if (!rows.length) warnings.push('Строки не распознаны — исправьте текст или добавьте вручную');
@@ -185,13 +182,12 @@
   // Recalculate only after a user edits a number. Printed OCR values stay intact on load.
   function recalculateRow(row, field, previousQuantity=null) {
     const changed=[];
-    if(['price','discount','total'].includes(field))delete row.discount_basis;
-    // Correcting a scanned weight keeps the absolute discount printed under that line.
+    // An amount entered for a weighed portion stays with that portion when its weight is corrected.
     const measured = row.sale_unit ? ['kg','g','l','ml'].includes(row.sale_unit) :
-      validQuantity(row.printed_quantity) && !Number.isInteger(row.printed_quantity) ||
-      row.printed_total != null && [previousQuantity, row.quantity].some(q => q > 0 && !Number.isInteger(q));
-    const printedDiscount = row.has_printed_discount ?? (row.printed_total != null && row.discount_type != null);
-    if(field==='quantity'&&!(measured && printedDiscount)&&Number.isSafeInteger(row.discount)&&row.discount>=0){
+      (validQuantity(row.printed_quantity) && !Number.isInteger(row.printed_quantity)) ||
+      (row.printed_total != null && [previousQuantity, row.quantity].some(q => validQuantity(q) && !Number.isInteger(q)));
+    if (['price','discount','total'].includes(field) || (field === 'quantity' && measured)) delete row.discount_basis;
+    if(field==='quantity'&&!measured&&Number.isSafeInteger(row.discount)&&row.discount>=0){
       if(!row.discount_basis&&Number.isFinite(previousQuantity)&&previousQuantity>0&&previousQuantity<=100000){
         row.discount_basis={quantity:Math.round(previousQuantity*1000),amount:row.discount};
       }

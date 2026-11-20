@@ -135,29 +135,26 @@
 
   function getReceiptDiscountSummary(receiptItems) {
     let hasDiscount = false;
-    let purchaseTotal = 0;
-    let regularTotal = 0;
+    let paidCents = 0;
+    let regularCents = 0;
     for (const row of Array.isArray(receiptItems) ? receiptItems : []) {
-      const quantity = Number(row.quantity || 0);
-      const purchasePrice = Number(row.unit_price || 0);
-      const regularPrice = Number(row.regular_unit_price || 0);
-      if (!(quantity > 0 && purchasePrice > 0)) {
+      const {total, subtotal} = window.App.receiptPricing.savedAmounts(row);
+      if (!(row.quantity > 0 && total > 0)) {
         continue;
       }
-      const hasValidDiscount = Boolean(row?.is_discounted) && regularPrice > purchasePrice;
-      hasDiscount = hasDiscount || Boolean(row?.is_discounted);
-      purchaseTotal += purchasePrice * quantity;
-      regularTotal += (hasValidDiscount ? regularPrice : purchasePrice) * quantity;
+      hasDiscount = hasDiscount || Boolean(row.is_discounted);
+      paidCents += Math.round(total * 100);
+      regularCents += Math.round(Math.max(total, subtotal ?? total) * 100);
     }
     if (!hasDiscount) {
       return null;
     }
-    if (!(regularTotal > purchaseTotal && regularTotal > 0)) {
+    if (regularCents <= paidCents) {
       return { percent: null, savings: 0 };
     }
     return {
-      percent: ((regularTotal - purchaseTotal) / regularTotal) * 100,
-      savings: regularTotal - purchaseTotal,
+      percent: ((regularCents - paidCents) / regularCents) * 100,
+      savings: (regularCents - paidCents) / 100,
     };
   }
 

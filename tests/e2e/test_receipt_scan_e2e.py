@@ -470,19 +470,28 @@ def test_scan_numeric_expressions_and_invalid_results(static_server_url,page_wit
 
 @pytest.mark.e2e
 @pytest.mark.parametrize('width', [320, 1440])
-def test_green_receipt_discount_review(static_server_url, page_with_receipt_api_mock, width):
+def test_green_receipt_discount_review(static_server_url, page_with_receipt_api_mock, expense_ledger, width):
     page = page_with_receipt_api_mock
     start(page, static_server_url, width)
     receipt = """ООО ГРИНРОЗНИЦА
 № ДОК 123
 Набор продуктов
-31.49 x1.000 31.49
-Скидка -2.21
+20.36 x1.000 20.36
+Скидка -1.41
 Пакет
 0.59 x1.000 0.59
 Сыр вес
 19.63 x0.198 3.89
 Скидка -0.27
+Лук вес
+3.14 x0.334 1.05
+Скидка -0.07
+Рулет вес
+17.29 x0.560 9.68
+Скидка -0.68
+Орехи вес
+25.00 x0.016 0.40
+Скидка -0.05
 """
     receipt += 'Сырок\n4006381333931 0.99 x1.000 0.99\nСкидка -0.07\n' * 4
     stub(page, receipt + 'ИТОГО К ОПЛАТЕ 37.17\nИТОГО СКИДКА -2.75\n12.10.2026 12:00:00')
@@ -509,11 +518,23 @@ def test_green_receipt_discount_review(static_server_url, page_with_receipt_api_
 
     rows = page.locator('#scanRows .scan-row')
     expect(rows.last.locator('summary')).to_contain_text('3,68 BYN')
-    cheese = open_scan_row(rows.nth(2))
-    cheese.locator('[data-scan-unit=kg]').click()
+    portions = [
+        ('0,198', '19,63', '3,89', '0,27', '3,62', '18,28'),
+        ('0,334', '3,14', '1,05', '0,07', '0,98', '2,93'),
+        ('0,56', '17,29', '9,68', '0,68', '9,00', '16,07'),
+        ('0,016', '25,00', '0,40', '0,05', '0,35', '21,88'),  # 21.875 per kg rounds up.
+    ]
+    for index, (weight, price, gross, discount, paid, per_kg) in enumerate(portions, 2):
+        row = open_scan_row(rows.nth(index))
+        row.locator('[data-scan-unit=kg]').click()
+        expect(row.locator('summary')).to_contain_text(f'{weight} кг × {price} BYN/кг = {gross} BYN · скидка за весь вес {discount} BYN')
+        expect(row.locator('summary')).to_contain_text(f'после скидки ≈ {per_kg} BYN/кг')
+        expect(row.get_by_role('textbox', name='Скидка за весь вес')).to_be_visible()
+        expect(row.locator('.scan-row-calculation')).to_have_text(f'{gross} − {discount} = {paid} BYN · после скидки ≈ {per_kg} BYN/кг')
+
+    cheese = rows.nth(2)
     math = cheese.locator('.scan-row-calculation')
     expect(math).to_be_visible()
-    expect(math).to_have_text('3,89 − 0,27 = 3,62 BYN · ≈ 18,28 BYN/кг')
     assert math.evaluate("e => e.previousElementSibling.classList.contains('scan-row-numbers')")
     discount = cheese.locator('[data-scan-field=discount]')
     qty = cheese.locator('[data-scan-field=quantity]')
@@ -529,12 +550,32 @@ def test_green_receipt_discount_review(static_server_url, page_with_receipt_api_
     page.check('#scanConfirmed')
     page.click('#scanTransfer')
     expect(page.locator('#opAmount')).to_have_value('37.17')
-    item = page.evaluate("App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[2]")
+    items = page.evaluate("App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    item = items[2]
     assert item['discount_mode'] == 'amount' and float(item['discount_value']) == .27
     assert float(item['regular_unit_price']) == 19.63 and float(item['quantity']) == .198
     page.click('#openReceiptScan')
     expect(page.locator('#scanDiscountStatus')).to_contain_text('Скидка совпадает с чеком')
     expect(page.locator('#scanPrintedDiscount')).to_have_value('2.76')
+    page.click('#scanClose')
+    path = '/api/v1/operations'
+    response = expense_ledger.post(path, json={
+        'kind': 'expense', 'operation_date': '2026-10-12', 'currency': 'BYN',
+        'amount': '37.17', 'receipt_items': items,
+    })
+    assert response.status_code == 201, response.text
+    saved = expense_ledger.get(f"{path}/{response.json()['id']}").json()
+    assert saved['amount'] == '37.17'
+    assert page.evaluate('r => App.core.getReceiptDiscountSummary(r).savings', saved['receipt_items']) == 2.76
+    page.evaluate('op => App.actions.openOperationReceiptModal(op)', saved)
+    journal = page.locator('#operationReceiptItems .operation-receipt-item')
+    for index, (weight, price, gross, discount, paid, per_kg) in enumerate(portions, 2):
+        stored = saved['receipt_items'][index]
+        assert stored['line_total'] == paid.replace(',', '.')
+        assert stored['line_subtotal'] == gross.replace(',', '.')
+        details = journal.nth(index).locator('.operation-receipt-meta')
+        expect(details).to_contain_text(f'{weight} кг × {price} BYN/кг = {gross} BYN · скидка за весь вес {discount} BYN')
+        expect(details).to_contain_text(f'после скидки ≈ {per_kg} BYN/кг')
 
 
 @pytest.mark.e2e
@@ -600,8 +641,9 @@ def test_scanned_amount_recalculates_on_edits_and_preserves_receipt_header(stati
     discount.fill('0,73');expect(paid).to_have_value('4.00')
     paid.fill('4-0,01');paid.press('Enter');expect(discount).to_have_value('0.74')
     expect(paid).to_have_value('3.99')
-    qty.fill('0,32');expect(paid).to_have_value('3.94')  # Discount scales with weight: 0.74 → 0.73.
-    price.fill('15');expect(paid).to_have_value('4.07')
+    qty.fill('0,32');expect(paid).to_have_value('3.93')
+    expect(discount).to_have_value('0.74')  # The amount is for this portion, even when entered manually.
+    price.fill('15');expect(paid).to_have_value('4.06')
     paid.fill('4,80');expect(discount).to_have_value('0.00')
     expect(row.locator('.scan-discount-type')).to_be_hidden()
     paid.fill('5');expect(discount).to_have_value('0.00')
