@@ -54,8 +54,8 @@ services:
     mem_limit: 640m
     memswap_limit: 640m
     cpus: 0.75
-    # Let a scan use idle CPU while giving the interactive services priority under load.
-    cpu_shares: 256
+    # Keep the normal scheduling weight when the host is busy.
+    cpu_shares: 1024
     pids_limit: 64
     stop_grace_period: 10s
     healthcheck:
