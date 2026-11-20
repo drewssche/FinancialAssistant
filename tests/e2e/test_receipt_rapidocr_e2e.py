@@ -42,6 +42,46 @@ def test_remote_busy_can_retry_locally_without_auto_switch(static_server_url,pag
 
 
 @pytest.mark.e2e
+@pytest.mark.parametrize(('status', 'content_type', 'body', 'message'), [
+    (504, 'text/html', '<html><h1>504 Gateway Time-out</h1></html>', 'Сервер не успел распознать чек'),
+    (502, 'text/html', '<html>Bad Gateway</html>', 'Сервер не смог обработать фото'),
+    (200, 'text/html', '<html>Unexpected page</html>', 'ответ без текста чека'),
+    (200, 'application/json', '{', 'ответ без текста чека'),
+    (200, 'application/json', '{}', 'ответ без текста чека'),
+])
+def test_remote_failure_preserves_photo_for_manual_retry(
+    static_server_url, page_with_receipt_api_mock, status, content_type, body, message,
+):
+    page = page_with_receipt_api_mock
+    requests = []
+    page.route('**/api/v1/receipt-ocr/status', lambda route: route.fulfill(json={'available': True}))
+
+    def recognize(route):
+        requests.append(route.request.post_data_buffer)
+        if len(requests) == 1:
+            route.fulfill(status=status, content_type=content_type, body=body)
+        else:
+            route.fulfill(json={'text': TEXT, 'blocks': []})
+
+    page.route('**/api/v1/receipt-ocr/recognize', recognize)
+    start(page, static_server_url, 390)
+    upload(page)
+    page.locator('[data-corner="0"]').press('ArrowRight')
+    page.click('#scanRun')
+    expect(page.locator('#scanStatus')).to_contain_text(message)
+    expect(page.locator('#scanStatus')).to_contain_text('Tesseract')
+    expect(page.locator('#scanEngine')).to_have_value('rapid')
+    expect(page.locator('#scanReview')).not_to_be_visible()
+    expect(page.locator('#scanRun')).to_be_enabled()
+    assert len(requests) == 1
+
+    page.click('#scanRun')
+    expect(page.locator('#scanReview')).to_be_visible()
+    expect(page.locator('#scanTotal')).to_have_value('7.50')
+    assert len(requests) == 2 and requests[0] and requests[0] == requests[1]
+
+
+@pytest.mark.e2e
 def test_cancel_remote_ignores_late_result(static_server_url,page_with_receipt_api_mock):
     page=page_with_receipt_api_mock
     page.route('**/api/v1/receipt-ocr/status',lambda r:r.fulfill(json={'available':True}))
