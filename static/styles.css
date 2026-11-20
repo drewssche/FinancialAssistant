@@ -35,7 +35,7 @@
 @import url("./css/secondary-editors.css?v=20261118-purchase-entry");
 @import url("./css/ui-final-audit.css?v=20261014-audit1");
 @import url("./css/ui-simplification.css?v=20261118-payment-value");
-@import url("/static/css/receipt-scan.css?v=20261118-scan-plans");
+@import url("/static/css/receipt-scan.css?v=20261120-receipt-discounts");
 @import url("/static/css/ui-consistency.css?v=20261103-picker-layout-audit");
 /* Work timesheet */
 .work-section-head { gap: 16px; align-items: flex-start; }

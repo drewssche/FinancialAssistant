@@ -2,7 +2,48 @@
   // Conservative extraction: never repair digits, infer packaging or merge repeated rows.
   const money = value => /^\d{1,7}[.,]\d{2}$/.test(String(value).trim()) ? Math.round(Number(String(value).replace(',', '.')) * 100) : null;
   const subtotal = (price, quantity) => Number((BigInt(price) * BigInt(Math.round(quantity * 1000)) + 500n) / 1000n);
+  const validQuantity = q => Number.isFinite(q) && q > 0 && q <= 100000 && Math.abs(q * 1000 - Math.round(q * 1000)) <= 1e-6;
+  function rowSubtotal(row) {
+    if (!Number.isSafeInteger(row.price) || row.price <= 0 || row.price > 999999999 || !validQuantity(row.quantity)) return null;
+    return subtotal(row.price, row.quantity);
+  }
+  function receiptTotals(rows) {
+    let gross = 0, discount = 0, paid = 0;
+    for (const row of rows) {
+      const printed = Number.isSafeInteger(row.printed_total) && row.printed_total > 0 ? row.printed_total : null;
+      const before = rowSubtotal(row) ?? printed;
+      gross = gross !== null && before !== null ? gross + before : null;
+      discount = discount !== null && Number.isSafeInteger(row.discount) && row.discount >= 0 ? discount + row.discount : null;
+      paid = paid !== null && Number.isSafeInteger(row.total) && row.total > 0 ? paid + row.total : null;
+    }
+    return {gross, discount, paid};
+  }
+  // Only offer a remainder when both printed totals independently confirm the same line.
+  function missingLineDiscount(draft) {
+    if (!Number.isSafeInteger(draft.printed_discount) || !Number.isSafeInteger(draft.total)) return null;
+    let index = -1, remaining = draft.printed_discount, paid = 0;
+    for (const [i, row] of draft.rows.entries()) {
+      const gross = rowSubtotal(row);
+      if (gross === null) return null;
+      if (row.discount == null && row.discount_type && index === -1) {
+        if (row.printed_total != null && row.printed_total !== gross) return null;
+        index = i;
+        paid += gross;
+      } else {
+        if (!Number.isSafeInteger(row.discount) || row.discount < 0 || !(row.total > 0) ||
+            gross - row.discount !== row.total) return null;
+        paid += row.total;
+        remaining -= row.discount;
+      }
+    }
+    if (index < 0 || remaining < 0 || paid - remaining !== draft.total) return null;
+    const target = draft.rows[index];
+    const linePaid = rowSubtotal(target) - remaining;
+    if (linePaid <= 0 || (target.total != null && target.total !== linePaid)) return null;
+    return {index, amount: remaining};
+  }
   const amountAtEnd = line => money(line.match(/(?:^|[^\d.,])(\d{1,7}[.,]\d{2})\s*$/)?.[1] || '');
+  const fiscalLetters = {a: 'а', c: 'с', k: 'к', o: 'о', t: 'т'};
   const cleanName = line => line.replace(/(?:артикул|арт\.|код товара)\s*[:№]?\s*[a-zа-я0-9_-]+/gi, '').replace(/^\d{4,14}\s+(?=[а-яa-z])/i, '').replace(/(?:^|\s)\d{8,14}(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim();
   function extractCodes(source) {
     const found=new Map();
@@ -24,6 +65,7 @@
     const lines = String(text).slice(0, 80000).split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     const unsupported = /возврат|сторно/i.test(text);
     const rows = [], dates = new Set(), totals = new Set(), warnings = [];
+    const printedDiscounts = new Set(), printedReceiptTotals = new Set(), cardTotals = new Set();
     let names = [], ended = false, pendingDiscount = false, pendingDiscountType = 'promo', pendingDiscountBase = 0, shop = '';
     for (let i = 0; i < lines.length; i++) {
       const rawLine = lines[i];
@@ -39,6 +81,23 @@
         const merchant = /гринрозница/i.test(line) ? 'Green' : /евроторг/i.test(line) ? 'Евроопт' : /соседи|либрет[ие]к/i.test(line) ? 'Соседи' : '';
         if (merchant) shop = merchant;
         else if (!shop && /(?:ООО|ОАО|000\s*["«]|ЧТУП|магазин|аптека|общество с)/i.test(line)) shop = line;
+      }
+      // OCR mixes Latin and Cyrillic letters in footer labels. Leave monetary digits untouched.
+      const fiscalLine = line.replace(/[ackot]/gi, letter => fiscalLetters[letter.toLowerCase()]);
+      const receiptTotal = /^итого\s*[:.]?\s*(\d{1,7}[.,]\d{2})?$/i.exec(fiscalLine);
+      const cardTotal = /^[бb][аa][нh][кk][.\s]*[кk][аa][рp][тt][аa]\s*[:.]?\s*(\d{1,7}[.,]\d{2})?$/i.exec(line);
+      if (receiptTotal || cardTotal) {
+        const value = money((receiptTotal || cardTotal)[1] || lines[i + 1] || '');
+        if (value !== null) (receiptTotal ? printedReceiptTotals : cardTotals).add(value);
+        ended = true;
+      }
+      const discountFooter = /^итого\s*[.:]?\s*скид(?:ка|ки|ок)(?=$|[\s.:=−–—-])\s*[:.=]?\s*(.*)$/i.exec(fiscalLine);
+      if (discountFooter) {
+        const amount = /^[-−–—]?$/.test(discountFooter[1]) ? lines[i + 1] || '' : discountFooter[1];
+        const digits = /^[-−–—]?\s*(\d{1,7}\s*[.,]\s*\d{2})$/.exec(amount)?.[1];
+        printedDiscounts.add(digits ? money(digits.replace(/\s/g, '')) : null);
+        ended = true;
+        continue;
       }
       if (/итого[.,:]?\s*к[.,:]?\s*[оo][а-яa-z]{4,7}|(?:^|\s)к\s+[оo]плате(?:\s|$)/i.test(line)) {
         const value=amountAtEnd(line);
@@ -92,7 +151,7 @@
         const name = [...names.map(cleanName), prefix].filter(Boolean).join(' ').trim();
         const price = money(match[1]), quantity = Number(match[2].replace(',', '.')), total = money(match[3]);
         const calculated = subtotal(price, quantity);
-        rows.push({name, price, quantity, printed_total: total, total, discount: 0, discount_type: null,
+        rows.push({name, price, quantity, printed_quantity: quantity, printed_total: total, total, discount: 0, discount_type: null,
           source: [...names, line].join('\n'), issue: calculated !== total ? 'Цена × количество не совпадает с суммой строки' : ''});
         names = []; pendingDiscount = false;
       } else if (names.length && ((/(?:^|\s)[\dЗОOIl|]+[.,][\dОOIl|]{2}\s*[xхХX×*]\s*[\d!|]/i.test(normalized) && /\d[.,]\d/.test(normalized)) || (/^\d{8,14}\s/.test(normalized) && amountAtEnd(normalized)!==null && (normalized.match(/[а-яa-z]/gi)||[]).length<=4))) {
@@ -105,30 +164,45 @@
       else if (/упн|скко|платеж|документ|^[№N]\s*[дd][оo][кk]|^кол.?во|^цена|^г\.\s*минск|^чек:|^касса/i.test(line)) names = [];
       else if (/[а-яa-z]/i.test(line)) names = [...names, rawLine.replace(/\s+цена\s+кол.?во\s+итого\s*$/i,'')].slice(-4);
     }
-    for(const row of rows) row.code_entries=extractCodes(row.source);
+    const printedDiscount = printedDiscounts.size === 1 ? [...printedDiscounts][0] : null;
+    if (!totals.size && printedReceiptTotals.size === 1) {
+      const [printed] = printedReceiptTotals;
+      const sums = receiptTotals(rows);
+      const agreesWithLines = rows.length > 0 && sums.paid === printed && printedDiscount != null && sums.discount === printedDiscount;
+      if ((cardTotals.size === 1 && cardTotals.has(printed)) || (!cardTotals.size && agreesWithLines)) totals.add(printed);
+    }
+    for(const row of rows) {
+      row.code_entries=extractCodes(row.source);
+      row.has_printed_discount=Boolean(row.discount_type);
+    }
     if (dates.size !== 1) warnings.push('Проверьте дату покупки по чеку');
     if (totals.size !== 1) warnings.push('Проверьте итог к оплате');
     if (!rows.length) warnings.push('Строки не распознаны — исправьте текст или добавьте вручную');
     if (rows.some(r => r.issue)) warnings.push('Есть строки с несовпадением цены и количества');
-    return {unsupported: unsupported || warnings.includes('Отрицательные позиции требуют ручного ввода'), date: dates.size === 1 ? [...dates][0] : '', shop, total: totals.size === 1 ? [...totals][0] : null, rows, warnings};
+    return {unsupported: unsupported || warnings.includes('Отрицательные позиции требуют ручного ввода'), date: dates.size === 1 ? [...dates][0] : '', shop, total: totals.size === 1 ? [...totals][0] : null, rows, warnings,
+      ...(printedDiscounts.size ? {printed_discount: printedDiscount} : {})};
   }
   // Recalculate only after a user edits a number. Printed OCR values stay intact on load.
   function recalculateRow(row, field, previousQuantity=null) {
     const changed=[];
-    const validQuantity=Number.isFinite(row.quantity)&&row.quantity>0&&row.quantity<=100000&&Math.abs(row.quantity*1000-Math.round(row.quantity*1000))<=1e-6;
     if(['price','discount','total'].includes(field))delete row.discount_basis;
-    if(field==='quantity'&&Number.isSafeInteger(row.discount)&&row.discount>=0){
+    // Correcting a scanned weight keeps the absolute discount printed under that line.
+    const measured = row.sale_unit ? ['kg','g','l','ml'].includes(row.sale_unit) :
+      validQuantity(row.printed_quantity) && !Number.isInteger(row.printed_quantity) ||
+      row.printed_total != null && [previousQuantity, row.quantity].some(q => q > 0 && !Number.isInteger(q));
+    const printedDiscount = row.has_printed_discount ?? (row.printed_total != null && row.discount_type != null);
+    if(field==='quantity'&&!(measured && printedDiscount)&&Number.isSafeInteger(row.discount)&&row.discount>=0){
       if(!row.discount_basis&&Number.isFinite(previousQuantity)&&previousQuantity>0&&previousQuantity<=100000){
         row.discount_basis={quantity:Math.round(previousQuantity*1000),amount:row.discount};
       }
       const basis=row.discount_basis;
-      if(validQuantity&&basis&&Number.isSafeInteger(basis.quantity)&&basis.quantity>0&&Number.isSafeInteger(basis.amount)&&basis.amount>=0){
+      if(validQuantity(row.quantity)&&basis&&Number.isSafeInteger(basis.quantity)&&basis.quantity>0&&Number.isSafeInteger(basis.amount)&&basis.amount>=0){
         const denominator=BigInt(basis.quantity);
         row.discount=Number((BigInt(basis.amount)*BigInt(Math.round(row.quantity*1000))*2n+denominator)/(2n*denominator));
         changed.push('discount');
       }
     }
-    const gross=Number.isSafeInteger(row.price)&&row.price>0&&row.price<=999999999&&validQuantity ? subtotal(row.price,row.quantity) : null;
+    const gross=rowSubtotal(row);
     if(['price','quantity','discount'].includes(field)){
       row.total=gross!==null&&Number.isSafeInteger(row.discount)&&row.discount>=0 ? gross-row.discount : null;
       return [...changed,'total'];
@@ -139,7 +213,7 @@
     }
     return [];
   }
-  function validationIssues(draft) {
+  function validationIssues(draft, totals = receiptTotals(draft.rows)) {
     const errors = [];
     const add=(message,rowIndex=null)=>errors.push({message,rowIndex});
     if (draft.unsupported) add('Возврат или отрицательная позиция: используйте ручной ввод операции');
@@ -152,7 +226,7 @@
       const fields = [];
       if (!r.name.trim() || r.name.length > 160) fields.push('name');
       if (!Number.isInteger(r.price) || r.price <= 0) fields.push('price');
-      if (!Number.isFinite(r.quantity) || r.quantity <= 0 || r.quantity > 100000 || Math.abs(r.quantity * 1000 - Math.round(r.quantity * 1000)) > 1e-6) fields.push('quantity');
+      if (!validQuantity(r.quantity)) fields.push('quantity');
       if (!Number.isInteger(r.discount) || r.discount < 0) fields.push('discount');
       if (!Number.isInteger(r.total) || r.total <= 0) fields.push('total');
       if (fields.length) errors.push({message: `Проверьте поля позиции ${i + 1}`, rowIndex: i, fields});
@@ -160,6 +234,9 @@
       sum += r.total || 0;
     });
     if (sum !== draft.total) add(`Сумма позиций ${(sum / 100).toFixed(2)} не совпадает с итогом чека`);
+    if (draft.rows.length && Number.isSafeInteger(draft.printed_discount) && totals.discount !== null && draft.printed_discount !== totals.discount) {
+      errors.push({message: 'Сумма скидок по позициям расходится со строкой «Итого скидка»', rowIndex: null, field: 'printed_discount'});
+    }
     return errors;
   }
   function validate(draft) { return validationIssues(draft).map(issue=>issue.message); }
@@ -230,5 +307,5 @@
     if(!(quantity>0&&quantity<1e8)||Math.abs(quantity*1000-Math.round(quantity*1000))>1e-6)return result;
     return {...result,package_quantity:quantity,package_unit:({кг:'kg',г:'g',мл:'ml',л:'l',шт:'piece'})[sizes[0][2].toLowerCase().replace('.','')],catalog_size_from_name:true};
   }
-  window.App.receiptScanParser = {parse, validate, validationIssues, money, subtotal, recalculateRow, mergeDuplicates, mergedMoneyChanged, splitMergedRow, catalogMeasurement};
+  window.App.receiptScanParser = {parse, validate, validationIssues, money, subtotal, rowSubtotal, receiptTotals, missingLineDiscount, recalculateRow, mergeDuplicates, mergedMoneyChanged, splitMergedRow, catalogMeasurement};
 })();

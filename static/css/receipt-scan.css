@@ -171,6 +171,21 @@
 
 .scan-row-calculation {grid-column:1/-1;margin:0;line-height:1.45;overflow-wrap:anywhere;}
 
+#scanDiscountReview {
+  margin-top: 12px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
+}
+.scan-discount-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.scan-discount-totals dt { color: var(--muted); font-size: .75rem; }
+.scan-discount-totals dd { margin: 3px 0 0; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+#scanDiscountStatus { padding: 8px 0 3px; cursor: pointer; font-size: .8rem; }
+#scanDiscountReview .field { margin-top: 8px; max-width: 20rem; }
+#scanFillDiscount { margin-top: 6px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 420px) {
+  .scan-discount-totals { grid-template-columns: 1fr; gap: 4px; }
+  .scan-discount-totals > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .scan-discount-totals dd { margin: 0; text-align: right; }
+}
+
 .scan-engine-choice { margin-top:16px; min-width:0; max-width:100%; }
 .scan-engine-choice select { width:100%; min-width:0; max-width:100%; }
 

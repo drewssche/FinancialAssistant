@@ -469,6 +469,100 @@ def test_scan_numeric_expressions_and_invalid_results(static_server_url,page_wit
 
 
 @pytest.mark.e2e
+@pytest.mark.parametrize('width', [320, 1440])
+def test_green_receipt_discount_review(static_server_url, page_with_receipt_api_mock, width):
+    page = page_with_receipt_api_mock
+    start(page, static_server_url, width)
+    receipt = """ООО ГРИНРОЗНИЦА
+№ ДОК 123
+Набор продуктов
+31.49 x1.000 31.49
+Скидка -2.21
+Пакет
+0.59 x1.000 0.59
+Сыр вес
+19.63 x0.198 3.89
+Скидка -0.27
+"""
+    receipt += 'Сырок\n4006381333931 0.99 x1.000 0.99\nСкидка -0.07\n' * 4
+    stub(page, receipt + 'ИТОГО К ОПЛАТЕ 37.17\nИТОГО СКИДКА -2.75\n12.10.2026 12:00:00')
+    upload(page)
+    page.click('#scanRun')
+    expect(page.locator('#scanGrossSum')).to_have_text('39,93 BYN')
+    expect(page.locator('#scanDiscountSum')).to_have_text('2,76 BYN')
+    expect(page.locator('#scanPaidSum')).to_have_text('37,17 BYN')
+    expect(page.locator('#scanDiscountStatus')).to_contain_text('расхождение 0,01 BYN')
+    page.check('#scanConfirmed')
+    expect(page.locator('#scanTransfer')).to_be_disabled()
+    page.get_by_role('button', name='К сверке скидки').click()
+    reference = page.locator('#scanPrintedDiscount')
+    expect(reference).to_be_focused()
+    reference.fill('−2,76')
+    reference.press('Enter')
+    expect(page.locator('#scanDiscountStatus')).to_contain_text('Скидка совпадает с чеком')
+    expect(page.locator('#scanConfirmed')).not_to_be_checked()
+    reference.fill('1/0')
+    page.check('#scanConfirmed')
+    expect(page.locator('#scanTransfer')).to_be_disabled()
+    reference.fill('-2,76')
+    reference.press('Tab')
+
+    rows = page.locator('#scanRows .scan-row')
+    expect(rows.last.locator('summary')).to_contain_text('3,68 BYN')
+    cheese = open_scan_row(rows.nth(2))
+    cheese.locator('[data-scan-unit=kg]').click()
+    math = cheese.locator('.scan-row-calculation')
+    expect(math).to_be_visible()
+    expect(math).to_have_text('3,89 − 0,27 = 3,62 BYN · ≈ 18,28 BYN/кг')
+    assert math.evaluate("e => e.previousElementSibling.classList.contains('scan-row-numbers')")
+    discount = cheese.locator('[data-scan-field=discount]')
+    qty = cheese.locator('[data-scan-field=quantity]')
+    qty.fill('0,298')
+    expect(discount).to_have_value('0.27')
+    expect(cheese.locator('[data-scan-field=total]')).to_have_value('5.58')
+    qty.fill('0,198')
+    discount.fill('−0,27')
+    discount.press('Enter')
+    expect(discount).to_have_value('0.27')
+    expect(page.locator('#scanPaidSum')).to_have_text('37,17 BYN')
+    assert page.locator('#receiptScanDialog').evaluate('e => e.scrollWidth <= e.clientWidth + 1')
+    page.check('#scanConfirmed')
+    page.click('#scanTransfer')
+    expect(page.locator('#opAmount')).to_have_value('37.17')
+    item = page.evaluate("App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[2]")
+    assert item['discount_mode'] == 'amount' and float(item['discount_value']) == .27
+    assert float(item['regular_unit_price']) == 19.63 and float(item['quantity']) == .198
+    page.click('#openReceiptScan')
+    expect(page.locator('#scanDiscountStatus')).to_contain_text('Скидка совпадает с чеком')
+    expect(page.locator('#scanPrintedDiscount')).to_have_value('2.76')
+
+
+@pytest.mark.e2e
+def test_missing_discount_offered_only_when_both_printed_totals_agree(static_server_url, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    start(page, static_server_url)
+    stub(page, TEXT.replace('Скидка -0.50', 'Скидка') + '\nИТОГО СКИДКА −0.50')
+    upload(page)
+    page.click('#scanRun')
+    fill = page.locator('#scanFillDiscount')
+    expect(fill).to_contain_text('0,50 BYN')
+    expect(page.locator('#scanDiscountSum')).to_have_text('—')
+    bread = open_scan_row(page.locator('.scan-row').last)
+    bread_discount = bread.locator('[data-scan-field=discount]')
+    bread_discount.fill('')
+    expect(fill).to_be_hidden()
+    bread_discount.fill('0')
+    page.fill('#scanTotal', '7.51')
+    expect(fill).to_be_hidden()
+    page.fill('#scanTotal', '7.50')
+    fill.click()
+    expect(page.locator('.scan-row').first.locator('[data-scan-field=discount]')).to_have_value('0.50')
+    expect(page.locator('#scanPaidSum')).to_have_text('7,50 BYN')
+    expect(page.locator('#scanDiscountStatus')).to_contain_text('Скидка совпадает с чеком')
+    expect(page.locator('#scanConfirmed')).not_to_be_checked()
+
+
+@pytest.mark.e2e
 def test_scan_missing_paid_total_and_manual_paid_recalculate_discount(static_server_url,page_with_receipt_api_mock):
     page=page_with_receipt_api_mock;start(page,static_server_url)
     # Exercise a partially recognized row without fabricating a printed total.
@@ -625,7 +719,7 @@ def test_review_saves_expense_once(static_server_url, page_with_receipt_api_mock
     page.click('#scanReceiptCta')
     expect(page.locator('#createModal')).to_be_hidden()
     # A fractional quantity and a line discount both affect the confirmed total.
-    stub(page, TEXT.replace('3.00 x2.000', '12.00 x0.500'))
+    stub(page, TEXT.replace('3.00 x2.000', '12.00 x0.500') + '\nИТОГО СКИДКА −0.50')
     upload(page)
     page.click('#scanRun')
     page.select_option('#scanCurrency', currency)
@@ -656,8 +750,10 @@ def test_review_saves_expense_once(static_server_url, page_with_receipt_api_mock
     first = saved['receipt_items'][0]
     assert float(first['quantity']) == 0.5 and float(first['discount_value']) == 0.50
     assert float(first['regular_unit_price']) == 12.0
+    assert first['line_total'] == '5.50'
     attachment = expense_ledger.get(f"{path}/{saved['id']}/receipt-scan").json()
     assert attachment['image'] and attachment['original_text'] and attachment['review']['total'] == 750
+    assert attachment['review']['printed_discount'] == 50
     page.click('#scanReceiptCta')
     expect(page.locator('#scanDropzone')).to_be_visible()
     expect(page.locator('#scanSubmitRetry')).to_be_hidden()

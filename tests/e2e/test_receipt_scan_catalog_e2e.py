@@ -483,7 +483,7 @@ def test_quantity_rescales_discount_per_unit_and_total(static_server_url,page_wi
     qty=row.locator('[data-scan-field=quantity]');qty.fill('2')
     expect(row.locator('[data-scan-field=discount]')).to_have_value('0.72')
     expect(row.locator('[data-scan-field=total]')).to_have_value('2.98')
-    expect(row.locator('.scan-row-calculation')).to_contain_text('1.85 × 2 − 0.72 = 2.98 BYN')
+    expect(row.locator('.scan-row-calculation')).to_contain_text('3,70 − 0,72 = 2,98 BYN')
     qty.fill('');qty.fill('1')
     expect(row.locator('[data-scan-field=discount]')).to_have_value('0.36')
     expect(row.locator('[data-scan-field=total]')).to_have_value('1.49')

@@ -7,6 +7,9 @@
     return result.ok && result.value >= 0 && result.value <= (quantity ? 100000 : 9999999.99) ? result.value : null;
   }
   const inputMoney = value => {const result = inputNumber(value);return result == null ? null : Math.round(result * 100);};
+  // A receipt often prints the deduction with a minus. Store its magnitude once.
+  const discountText = value => String(value).trim().replace(/^[-−–—]\s*(?=\d+(?:[.,]\d+)?$)/, '');
+  const inputDiscount = value => inputMoney(discountText(value));
   const node = id => document.getElementById(id);
   const dialog = document.createElement('dialog');
   dialog.id='receiptScanDialog';dialog.className='receipt-scan-dialog';dialog.setAttribute('aria-labelledby','receiptScanTitle');
@@ -36,6 +39,17 @@
         <label class="field"><span>Магазин</span><input id="scanShop" maxlength="160" placeholder="Выбрать или ввести магазин" autocomplete="off" required></label>
       </div>
       <label class="field"><span>Итого по чеку</span><input id="scanTotal" inputmode="decimal" aria-describedby="scanMathHint" required></label><label class="field"><span>Валюта</span><select id="scanCurrency"><option>BYN</option><option>RUB</option><option>USD</option><option>EUR</option></select></label></div>
+    <section id="scanDiscountReview" aria-label="Сверка скидок" hidden>
+      <dl class="scan-discount-totals">
+        <div><dt>До скидок</dt><dd id="scanGrossSum"></dd></div>
+        <div><dt>Скидки по позициям</dt><dd id="scanDiscountSum"></dd></div>
+        <div><dt>К оплате по позициям</dt><dd id="scanPaidSum"></dd></div>
+      </dl>
+      <details><summary id="scanDiscountStatus" aria-live="polite">Сверить со строкой «Итого скидка»</summary>
+        <label class="field"><span>«Итого скидка» с чека</span><input id="scanPrintedDiscount" inputmode="decimal" placeholder="Не указано" aria-describedby="scanDiscountStatus"></label>
+      </details>
+      <button type="button" class="btn btn-secondary" id="scanFillDiscount" hidden></button>
+    </section>
     <div class="scan-review-toolbar"><strong>Позиции</strong><button type="button" id="scanShowPhoto" class="btn btn-secondary" aria-haspopup="dialog">Посмотреть чек</button>${iconButton('scanAddRow','plus','Добавить строку')}${iconButton('scanShowText','receipt','Распознанный текст')}<button type="button" id="scanNextIssue" class="btn btn-secondary" hidden></button></div>
     <div id="scanEmptyRows" hidden><p>Позиции не найдены. Их можно добавить вручную кнопкой «+».</p><button type="button" id="scanRetry" class="btn btn-secondary">${icons.svg('refresh')}Распознать ещё раз</button><button type="button" id="scanRetryCancel" class="btn btn-secondary" hidden>Отменить распознавание</button><p id="scanRetryStatus" class="muted-small" role="status"></p></div>
     <p class="sr-only" id="scanMathHint">Можно вводить вычисления: 7,11 − 0,71 · Enter — получить результат.</p><div id="scanRows"></div>
@@ -102,6 +116,10 @@
     storedImage=saved.image||null;source=saved.source||null;points=saved.points||[[0,0],[1,0],[1,1],[0,1]];
     draft=saved.draft||saved.review;originalText=saved.originalText||saved.original_text||'';
     node('scanText').value=saved.text||originalText;node('scanCurrency').value=saved.currency||draft?.currency||'BYN';
+    if (draft?.rows && !Object.hasOwn(draft, 'printed_discount') && node('scanText').value) {
+      const original = parser.parse(node('scanText').value);
+      if (Object.hasOwn(original, 'printed_discount')) draft.printed_discount = original.printed_discount;
+    }
     applied=Boolean(saved.applied);transferred=false;
     if(saved.image){
       const blob=new Blob([Uint8Array.from(atob(saved.image),c=>c.charCodeAt(0))],{type:'image/webp'});
@@ -117,16 +135,21 @@
   function renderDraft(){
     dialog.dataset.stage='review';node('scanReview').hidden=false;
     node('scanDate').value=draft.date||'';node('scanShop').value=draft.shop||'';node('scanTotal').value=decimal(draft.total);
+    node('scanPrintedDiscount').value=decimal(draft.printed_discount);
     node('scanConfirmed').checked=false;renderRows();validate();
   }
   function operationReview(mode, previous, keepSavedCodes=false){
     const prefix=mode==='create'?'op':'edit', rows=state[mode+'ReceiptItems']?.filter(r=>r.name);
     if(!rows?.length)return previous;
-    return {date:node(prefix+'Date').value,shop:rows[0].shop_name||'',total:inputMoney(node(prefix+'Amount').value),currency:node(prefix+'Currency').value,rows:rows.map((r,index)=>{
+    return {...(previous && Object.hasOwn(previous, 'printed_discount') ? {printed_discount:previous.printed_discount} : {}),
+      date:node(prefix+'Date').value,shop:rows[0].shop_name||'',total:inputMoney(node(prefix+'Amount').value),currency:node(prefix+'Currency').value,rows:rows.map((r,index)=>{
       const money=window.App.receiptPricing.calculate(r), price=Number(r.regular_unit_price||r.unit_price);
       const old=previous?.rows?.[index];
-      const codes=keepSavedCodes&&!r.code_entries?.length&&old?.name===r.name?old.code_entries:r.code_entries;
+      const sameLine=old?.name===r.name;
+      const codes=keepSavedCodes&&!r.code_entries?.length&&sameLine?old.code_entries:r.code_entries;
       return {...r,code_errors:[],code_entries:codes||[],catalog:r.product_id||r.template_id?{...r}:null,category_touched:true,price:Math.round(price*100),
+        printed_quantity:sameLine ? old.printed_quantity ?? Number(r.quantity) : Number(r.quantity),
+        has_printed_discount:sameLine && (old.has_printed_discount ?? (old.printed_total != null && old.discount_type != null)),
         quantity:Number(r.quantity),discount:Math.max(0,Math.round(((money.subtotal??money.total)-money.total)*100)),total:Math.round(money.total*100)};
     })};
   }
@@ -341,6 +364,7 @@
   const decimal=cents=>cents==null?'':(cents/100).toFixed(2);
   const codeLookupKey=row=>JSON.stringify([node('scanShop').value,(row.code_entries||[]).map(e=>[e.code,e.manual_kind?e.kind:'auto'])]);
   function showDraft(value,keepFilledMeta=false){
+    if (keepFilledMeta && draft?.printed_discount != null) value.printed_discount = draft.printed_discount;
     draft=value;
     for(const row of draft.rows){if(row.total==null)parser.recalculateRow(row,'price');}
     draft.rows.forEach((row,index)=>row.scan_order=index);
@@ -349,6 +373,8 @@
     for(const [id,field] of [['scanDate',draft.date],['scanShop',draft.shop],['scanTotal',decimal(draft.total)]]){
       if(!keepFilledMeta||!node(id).value)node(id).value=field;
     }
+    node('scanPrintedDiscount').value=decimal(draft.printed_discount);
+    node('scanDiscountReview').querySelector('details').open=false;
     node('scanReview').hidden=false;node('scanConfirmed').checked=false;renderRows();validate();
   }
   function setCatalogOpen(list, open){
@@ -386,7 +412,12 @@
   }
   node('scanNextIssue').onclick = () => {
     const indexes = draft.rows.map((row, index) => rowsWithIssues.has(row) ? index : -1).filter(index => index >= 0);
-    if (!indexes.length) return;
+    if (!indexes.length) {
+      node('scanDiscountReview').querySelector('details').open = true;
+      node('scanPrintedDiscount').focus({preventScroll:true});
+      node('scanPrintedDiscount').scrollIntoView({block:'center'});
+      return;
+    }
     const index = indexes.find(i => i > draft.rows.indexOf(lastVisitedIssue)) ?? indexes[0];
     lastVisitedIssue = draft.rows[index];
     const el = node('scanRows').children[index];
@@ -409,7 +440,8 @@
       heading.className = 'scan-row-summary';
       heading.innerHTML = '<strong></strong><b></b><span class="scan-row-quantity"></span><span class="scan-row-warning"></span>';
       el.append(heading, fields);
-      fields.querySelector('.scan-row-actions').after(fields.querySelector('.scan-row-numbers'), fields.querySelector('.scan-row-error'));
+      fields.querySelector('.scan-row-actions').after(fields.querySelector('.scan-row-numbers'),
+        fields.querySelector('.scan-row-calculation'), fields.querySelector('.scan-row-error'));
       el.reviewRow = row;
       el.open = expandedRows.get(row) || false;
       el.ontoggle = () => { if (el.isConnected) expandedRows.set(row, el.open); };
@@ -580,7 +612,9 @@
       el.addEventListener('input',e=>{
         const field=e.target.dataset.scanField;if(!field)return;
         const previousQuantity=row.quantity;
-        row[field]=field==='name'||field==='discount_type'?e.target.value:field==='quantity'?inputNumber(e.target.value,true):inputMoney(e.target.value);
+        if (field === 'name' || field === 'discount_type') row[field] = e.target.value;
+        else if (field === 'quantity') row.quantity = inputNumber(e.target.value,true);
+        else row[field] = field === 'discount' ? inputDiscount(e.target.value) : inputMoney(e.target.value);
         if(field==='name'){row.name_touched=true;row.catalog_new=false;if(row.catalog){row.catalog_name_touched=true;row.site_selection=null;closeCatalogLists();}else unlink();el.refreshCatalog();search();}
         for(const changed of parser.recalculateRow(row,field,previousQuantity)){
           const input=el.querySelector(`[data-scan-field=${changed}]`);input.value=decimal(row[changed]);
@@ -626,9 +660,53 @@
   }
   dialog.addEventListener('pointerdown',e=>{if(!e.target.closest('.scan-name'))closeCatalogLists();});
   function readMeta(){if(!draft)return;draft.date=node('scanDate').value;draft.shop=node('scanShop').value;draft.total=inputMoney(node('scanTotal').value);}
+  function showDiscountTotals(totals, currency, mismatch, invalid) {
+    const expected = draft.printed_discount;
+    const panel = node('scanDiscountReview');
+    panel.hidden = !draft.rows.length || !(Object.hasOwn(draft, 'printed_discount') ||
+      draft.rows.some(row => row.discount > 0 || row.discount_type && row.discount == null) ||
+      draft.total > 0 && totals.gross > draft.total);
+    if (panel.hidden) return;
+    const amount = cents => cents == null ? '—' : moneyFormat.format(cents / 100) + ' ' + currency;
+    node('scanGrossSum').textContent = amount(totals.gross);
+    node('scanDiscountSum').textContent = amount(totals.discount);
+    node('scanPaidSum').textContent = amount(totals.paid);
+    const status = node('scanDiscountStatus');
+    status.classList.toggle('scan-error', invalid || mismatch);
+    let message = 'Сверить со строкой «Итого скидка»';
+    if (invalid) message = 'Проверьте введённую сумму скидки';
+    else if (mismatch) message = `В чеке ${amount(expected)} · расхождение ${amount(Math.abs(totals.discount - expected))}`;
+    else if (expected != null) message = (totals.discount == null ? 'Скидка в чеке · ' : 'Скидка совпадает с чеком · ') + amount(expected);
+    if (status.textContent !== message) status.textContent = message;
+    const suggestion = !invalid && totals.discount === null ? parser.missingLineDiscount(draft) : null;
+    const fill = node('scanFillDiscount');
+    fill.hidden = !suggestion;
+    if (suggestion) {
+      const name = draft.rows[suggestion.index].name || `Позиция ${suggestion.index + 1}`;
+      fill.textContent = `Подставить скидку ${amount(suggestion.amount)} для «${name}»`;
+    }
+  }
+  node('scanFillDiscount').onclick = () => {
+    const suggestion = parser.missingLineDiscount(draft);
+    if (!suggestion) return;
+    const row = node('scanRows').children[suggestion.index];
+    const input = row.querySelector('[data-scan-field=discount]');
+    row.open = true;
+    input.value = decimal(suggestion.amount);
+    input.dispatchEvent(new Event('input', {bubbles:true}));
+    input.focus();
+  };
   function validate(){
-    if(!draft)return;readMeta();const issues=parser.validationIssues(draft);
-    const errors=issues.map(issue=>issue.message),globalErrors=issues.filter(issue=>issue.rowIndex===null).map(issue=>issue.message);
+    if(!draft)return;readMeta();
+    const totals=parser.receiptTotals(draft.rows), issues=parser.validationIssues(draft, totals);
+    const errors=issues.map(issue=>issue.message),globalErrors=issues.filter(issue=>issue.rowIndex===null && issue.field!=='printed_discount').map(issue=>issue.message);
+    const currency=node('scanCurrency').value;
+    const printedInput=node('scanPrintedDiscount');
+    const invalid=Boolean(printedInput.value.trim() && inputDiscount(printedInput.value) == null);
+    printedInput.setAttribute('aria-invalid', String(invalid));
+    if(invalid) errors.push('Проверьте введённую сумму скидки');
+    const discountMismatch=issues.some(issue=>issue.field==='printed_discount');
+    showDiscountTotals(totals, currency, discountMismatch, invalid);
     const codeErrors=draft.rows.map(row=>window.App.receiptCodes.validationError(window.App.receiptCodes.payload(row),draft.shop));
     const rowIssues = new Map(issues.filter(issue => issue.rowIndex !== null).map(issue => [issue.rowIndex, issue]));
     codeErrors.forEach((reason,index)=>{if(reason)errors.push(`Позиция ${index+1}: ${reason}`);});
@@ -646,10 +724,17 @@
         applyPrice.disabled=Boolean(applyPrice.dataset.catalogCurrency&&applyPrice.dataset.catalogCurrency!==node('scanCurrency').value);
         applyPrice.title=applyPrice.disabled?'Валюта цены отличается от валюты чека':'Подставить цену и пересчитать оплату по количеству и скидке';
       }
-      const gross=Number.isFinite(row.quantity)&&row.quantity>0&&row.quantity<=100000&&Number.isSafeInteger(row.price)&&row.price>0?parser.subtotal(row.price,row.quantity):null;
+      const gross=parser.rowSubtotal(row);
       const show=gross!==null&&Number.isInteger(row.discount)&&row.discount>0;
+      el.querySelector('[data-scan-field=price]').previousElementSibling.textContent =
+        window.App.measurements.priceLabel(row) + (row.discount > 0 ? ' до скидки' : '');
       calculation.hidden=!show;
-      calculation.textContent=show?`${decimal(row.price)} × ${row.quantity} − ${decimal(row.discount)} = ${decimal(gross-row.discount)} ${node('scanCurrency').value}. Скидка ${decimal(row.discount)} — за всё количество.`:'';
+      if (show) {
+        const net=gross-row.discount;
+        const unit=window.App.measurements.units[row.sale_unit];
+        const unitPrice=unit && row.quantity!==1 && net>0 ? ` · ≈ ${moneyFormat.format(net / 100 / row.quantity)} ${currency}/${unit}` : '';
+        calculation.textContent=`${moneyFormat.format(gross/100)} − ${moneyFormat.format(row.discount/100)} = ${moneyFormat.format(net/100)} ${currency}${unitPrice}`;
+      }
       el.querySelector('.scan-codes-host').refreshCodeState?.();
     });
     const summary=node('scanArithmetic');
@@ -657,15 +742,14 @@
     if (anchor.nextElementSibling !== summary) anchor.after(summary);
     const count = draft.rows.filter(row => rowsWithIssues.has(row)).length;
     const next = node('scanNextIssue');
-    next.hidden = !count;
-    next.textContent = count ? `К ошибке · ${count}` : '';
-    next.title = 'Перейти к следующей позиции с ошибкой';
+    next.hidden = !draft.rows.length || (!count && !discountMismatch && !invalid);
+    next.textContent = count ? `К ошибке · ${count}` : 'К сверке скидки';
+    next.title = count ? 'Перейти к следующей позиции с ошибкой' : 'Сверить общую скидку с чеком';
     dialog.classList.toggle('has-positions', draft.rows.length > 0);
     node('scanEmptyRows').hidden=draft.rows.length>0;
     summary.textContent=globalErrors.length?globalErrors.join(' · '):errors.length?'':'Суммы сходятся. Сверьте названия и цифры с фото.';
     summary.hidden=!summary.textContent||(!draft.rows.length&&!draft.unsupported);summary.classList.toggle('scan-error',!!globalErrors.length);
     const submit=node('scanTransfer');
-    const currency=node('scanCurrency').value;
     const amount=draft.total>0?' · '+moneyFormat.format(draft.total/100)+' '+currency:'';
     submit.querySelector('span').textContent=standalone?'Записать расход'+amount:'Перенести в черновик';
     submit.disabled=errors.length>0||!node('scanConfirmed').checked||transferred||saving;
@@ -680,17 +764,24 @@
     validate();
   }
   for(const id of ['scanDate','scanShop','scanTotal','scanCurrency'])node(id).addEventListener('input',()=>metaChanged(id));
+  node('scanPrintedDiscount').addEventListener('input', e => {
+    const value=e.target.value.trim(), cents=inputDiscount(value);
+    if (!value || cents!=null) draft.printed_discount=value ? cents : null;
+    metaChanged('scanPrintedDiscount');
+  });
   node('scanShop').addEventListener('change',()=>metaChanged('scanShop'));
   function commitCalculation(input) {
     const quantity=input.dataset.scanField==='quantity';
-    const result=inputNumber(input.value,quantity);
+    const discount=input.dataset.scanField==='discount' || input.id==='scanPrintedDiscount';
+    if(input.id==='scanPrintedDiscount' && !input.value.trim())return;
+    const result=inputNumber(discount ? discountText(input.value) : input.value,quantity);
     if(result==null){input.setAttribute('aria-invalid','true');return;}
     input.removeAttribute('aria-invalid');
     input.value=quantity?String(result):result.toFixed(2);
     // Input already recalculated dependent fields; formatting alone must not recalculate again.
     validate();
   }
-  const numericField=input=>input.matches?.('#scanTotal, [data-scan-field=price], [data-scan-field=quantity], [data-scan-field=discount], [data-scan-field=total]');
+  const numericField=input=>input.matches?.('#scanTotal, #scanPrintedDiscount, [data-scan-field=price], [data-scan-field=quantity], [data-scan-field=discount], [data-scan-field=total]');
   node('scanReview').addEventListener('focusout',e=>{if(numericField(e.target))commitCalculation(e.target);});
   node('scanReview').addEventListener('keydown',e=>{if(e.key==='Enter'&&numericField(e.target)){e.preventDefault();commitCalculation(e.target);}});
   node('scanTotal').addEventListener('input', e => {

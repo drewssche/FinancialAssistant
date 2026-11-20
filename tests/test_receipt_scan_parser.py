@@ -110,8 +110,42 @@ def test_green_discounts_and_spaced_decimal_separators():
 Ваши скидки
 Купоны 0.60""")
     d=result['draft'];assert result['errors']==[] and d['shop']=='Green'
+    assert d['printed_discount'] == 131
     assert [r['total'] for r in d['rows']]==[499,1029,640,139]
     assert [r['discount'] for r in d['rows']]==[0,0,71,60]
+
+
+def test_discount_footer_checks_line_discounts_without_changing_the_paid_total():
+    receipt = """ООО ГРИНРОЗНИЦА
+№ ДОК 123
+Сыр вес
+19.63 x0.198 3.89
+Скидка −0.27
+Пакет
+0.59 x1.000 0.59
+ИТОГО К ОПЛАТЕ 4.21
+12.10.2026 12:00:00"""
+    for footer in ['ИТОГО СКИДКА -0.27', 'Итого скидка:\n− 0,27', 'ИТОГО СКИДОК 0.27', 'ИTOГО CКИДKA −\n0,27']:
+        result = run(receipt + '\n' + footer)
+        draft = result['draft']
+        assert not result['errors'] and draft['printed_discount'] == 27
+        assert [(r['discount'], r['total']) for r in draft['rows']] == [(27, 362), (0, 59)]
+    mismatch = run(receipt + '\nИТОГО СКИДКА −0.28')
+    assert mismatch['errors'] == ['Сумма скидок по позициям расходится со строкой «Итого скидка»']
+    assert mismatch['draft']['total'] == 421
+    assert run(receipt + '\nИТОГО СКИДКА\nБАНК.КАРТА 4.21')['draft']['printed_discount'] is None
+    assert run(receipt + '\nИТОГО СКИДКА 0.27\nИТОГО СКИДКА 0.72')['draft']['printed_discount'] is None
+    assert 'printed_discount' not in run(receipt)['draft']
+
+
+def test_plain_total_requires_independent_confirmation_when_payable_is_missing():
+    rows = 'ООО Green\n№ ДОК 123\nСыр\n19.63 x0.198 3.89\nСкидка -0.27\n'
+    receipt = rows + 'ИТОГО 3.62\n'
+    assert run(receipt)['draft']['total'] is None
+    assert run(receipt + 'BAHK.KAPTA 3.62')['draft']['total'] == 362
+    assert run(receipt + 'ИТОГО СКИДКА -0.27')['draft']['total'] == 362
+    assert run(receipt + 'ИТОГО СКИДКА -0.26')['draft']['total'] is None
+    assert run(receipt + 'ИТОГО СКИДКА -0.27\nБАНК.КАРТА 3.60')['draft']['total'] is None
 
 
 def test_discount_after_unreadable_item_never_attaches_to_previous():
