@@ -96,6 +96,94 @@ def test_tag_summary_uses_the_currency_of_the_tagged_amount(client):
     payment = paid(whole)
     assert payment["totals"] == {"USD": 10}
     assert [(r["id"], r["amount"], r["currency"]) for r in payment["entries"]] == [(receipt["id"], 10, "USD")]
+    mixed = client.get(f"{ops}/purpose-tags/summary", params={"tag": tag}).json()
+    assert mixed["converted"] is True
+    assert mixed["balances"] == {"BYN": {"income": 0, "expense": 22.30, "net": -22.30}}
+    single = client.get(f"{ops}/purpose-tags/summary", params={"tag": whole}).json()
+    assert single["converted"] is False
+    assert single["balances"] == {"USD": {"income": 0, "expense": 10, "net": -10}}
+
+
+def test_tag_balance_includes_income_and_excludes_unconfirmed_plans(client):
+    ops = "/api/v1/operations"
+    tag = "др-2026"
+
+    def post(url, **fields):
+        response = client.post(url, json={"tags": [tag], **fields})
+        assert response.status_code == 201, response.text
+        return response.json()
+
+    def summary():
+        return client.get(f"{ops}/purpose-tags/summary", params={"tag": "#ДР-2026"}).json()
+
+    gift = post(ops, kind="income", operation_date="2026-11-20", amount="100.00", note="Подарок")
+    post("/api/v1/plans", kind="income", scheduled_date="2026-11-22", amount="25.00")
+    post("/api/v1/plans", kind="expense", scheduled_date="2026-11-23", amount="30.00")
+    result = summary()
+    assert result["balances"]["BYN"] == {"income": 100, "expense": 0, "net": 100}
+    assert result["received"]["entries"][0]["id"] == gift["id"]
+    assert result["planned_income"]["totals"] == {"BYN": 25}
+    assert result["planned"]["totals"] == {"BYN": 30}
+    # The same tag on the parent and one line counts the whole receipt once.
+    post(ops, kind="expense", operation_date="2026-11-20", receipt_items=[
+        {"name":"Заказ", "quantity":1, "unit_price":"248.25", "tags":[tag]},
+        {"name":"Доставка", "quantity":1, "unit_price":"22.49"},
+    ])
+    assert summary()["balances"]["BYN"] == {"income": 100, "expense": 270.74, "net": -170.74}
+    post(ops, kind="income", operation_date="2026-11-21", amount="170.74")
+    assert summary()["balances"]["BYN"] == {"income": 270.74, "expense": 270.74, "net": 0}
+
+    from app.api.deps import get_current_user_id
+    from app.main import app
+    app.dependency_overrides[get_current_user_id] = lambda: 2
+    other = summary()
+    assert other["balances"] == {} and other["received"]["count"] == other["planned_income"]["count"] == 0
+
+
+def test_combined_tag_balance_uses_each_operations_saved_rate(client):
+    ops = "/api/v1/operations"
+    tag = "праздник"
+    for fields in (
+        {"kind":"income", "amount":"10.00", "currency":"USD", "fx_rate":"3.50", "tags":[tag]},
+        {"kind":"expense", "amount":"4.00", "currency":"BYN", "tags":[tag]},
+        {"kind":"expense", "currency":"USD", "fx_rate":"3.21", "receipt_items":[
+            {"name":"Личная покупка", "unit_price":"9.00", "quantity":1},
+            {"name":"Открытка", "unit_price":"0.20", "quantity":1, "tags":[tag]},
+            {"name":"Конверт", "unit_price":"0.30", "quantity":1, "tags":[tag]},
+        ]},
+    ):
+        response = client.post(ops, json={"operation_date":"2026-11-20", **fields})
+        assert response.status_code == 201, response.text
+    result = client.get(f"{ops}/purpose-tags/summary", params={"tag":tag}).json()
+    assert result["received"]["totals"] == {"USD": 10}
+    assert result["paid"]["totals"] == {"USD": 0.50, "BYN": 4}
+    assert result["balances"] == {"BYN":{"income":35, "expense":5.61, "net":29.39}}
+    partial = next(row for row in result["paid"]["entries"] if row["currency"] == "USD")
+    assert partial["description"] == "Позиций по тегу · 2"
+
+
+def test_tag_balance_totals_cover_older_entries_and_keep_incompatible_bases_separate(client):
+    from datetime import date
+    from app.db.models import Operation
+    from app.db.session import get_db
+    from app.main import app
+
+    session = app.dependency_overrides[get_db]()
+    db = next(session)
+    try:
+        for i in range(31):
+            db.add(Operation(user_id=1, operation_date=date(2026, 1, i+1), kind="expense",
+                             currency="USD", base_currency="BYN", original_amount=1, amount=3, fx_rate=3, tags=["тег"]))
+        db.add(Operation(user_id=1, operation_date=date(2026, 2, 1), kind="income",
+                         currency="EUR", base_currency="EUR", original_amount=40, amount=40, fx_rate=1, tags=["тег"]))
+        db.commit()
+    finally:
+        session.close()
+    result = client.get("/api/v1/operations/purpose-tags/summary", params={"tag":"тег"}).json()
+    assert result["converted"] is False
+    assert result["balances"] == {"USD":{"income":0, "expense":31, "net":-31},
+                                  "EUR":{"income":40, "expense":0, "net":40}}
+    assert result["paid"]["count"] == 31 and len(result["paid"]["entries"]) == 30
 
 
 def test_standalone_plan_tags_and_legacy_line_update(client):

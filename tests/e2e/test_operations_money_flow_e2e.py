@@ -1204,3 +1204,80 @@ def test_find_old_receipt_and_open_matching_line(static_server_url, page_with_mo
     expect(modal.locator("#operationReceiptMeta mark")).to_have_text(shop)
     expect(modal.locator(".operation-receipt-item").first).to_be_in_viewport()
     assert not detail_requests
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("page_with_money_flow_api_mock", ["desktop", "phone"], indirect=True)
+def test_tag_balance_from_journal(static_server_url, page_with_money_flow_api_mock, receipt_ledger, tmp_path):
+    page = page_with_money_flow_api_mock
+    tag = "др-2026"
+    ops = "/api/v1/operations"
+
+    def post(kind, day, **fields):
+        response = receipt_ledger.post(ops, json={"kind":kind, "operation_date":day, **fields})
+        assert response.status_code == 201, response.text
+        return response.json()["id"]
+
+    gift_id = post("income", "2026-11-20", amount="100.00", note="Подарок на день рождения", tags=[tag])
+    for day, note, amount in [
+        ("20", "Такси за заказом", "22.49"), ("19", "Украшения для праздника", "40.00"),
+        ("18", "Белая футболка с печатью на заказ, размер XL, печать на хлопке", "57.50"),
+        ("17", "Футболка с принтом", "44.72"), ("16", "Подарочная футболка", "34.30"),
+    ]:
+        post("expense", "2026-11-" + day, amount=amount, note=note, tags=[tag])
+    post("expense", "2026-11-11", receipt_items=[
+        {"name":"Фотобумага", "quantity":1, "unit_price":"71.73", "tags":[tag]},
+        {"name":"Кабель", "quantity":1, "unit_price":"10.00"},
+    ])
+
+    def read_from_ledger(route):
+        url = urlparse(route.request.url)
+        response = receipt_ledger.get(url.path + "?" + url.query)
+        route.fulfill(status=response.status_code, content_type="application/json", body=response.content)
+
+    for path in ("money-flow*", "money-flow/summary*", "purpose-tags/summary?*"):
+        page.route("**/api/v1/operations/" + path, read_from_ledger)
+    _open_app(page, static_server_url)
+    phone = page.evaluate("navigator.maxTouchPoints > 0")
+    if phone:
+        page.locator("#mobileNavToggleBtn").tap()
+    page.locator("button[data-section='operations']").click()
+    page.get_by_role("textbox", name="Поиск по магазину, товару или комментарию").fill("#" + tag)
+    chip = page.locator(f"#operationsBody tr[data-operation-row-id='{gift_id}'] button[data-purchase-tag]").first
+    search_all = page.get_by_role("button", name="Искать за всё время")
+    chip.or_(search_all).first.wait_for()
+    if search_all.is_visible():
+        search_all.click()
+    chip.click()
+    expect = sync_api.expect
+    dialog = page.get_by_role("dialog", name="Сводка по тегу #" + tag)
+    expect(dialog.locator(".tag-net")).to_contain_text("−170,74")
+    expect(dialog.get_by_role("heading", name="Итог · расход")).to_be_visible()
+    expect(dialog.locator(".tag-breakdown")).to_contain_text("100,00")
+    expect(dialog.locator(".tag-breakdown")).to_contain_text("270,74")
+    expect(dialog.locator(".tag-entry")).to_have_count(7)
+    expect(dialog.locator(".tag-entry").filter(has_text="Подарок на день рождения")).to_contain_text("+100,00")
+    expect(dialog.locator(".tag-entry").filter(has_text="Фотобумага")).to_contain_text("−71,73")
+    expect(dialog.get_by_text("Запланировано")).to_have_count(0)
+    if phone:
+        page.set_viewport_size({"width":320, "height":640})
+    assert dialog.evaluate("""d => {
+      const b = d.querySelector('.tag-dialog-body');
+      const r = d.getBoundingClientRect();
+      return b.scrollWidth <= b.clientWidth + 1 && r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight;
+    }""")
+    dialog.screenshot(path=tmp_path / ("tag-phone.png" if phone else "tag-desktop.png"))
+    dialog.locator(".tag-dialog-body").evaluate("b => b.scrollTop = b.scrollHeight")
+    expect(dialog.get_by_role("button", name="Закрыть сводку", exact=True)).to_be_in_viewport()
+    page.keyboard.press("Escape")
+    expect(chip).to_be_focused()
+
+    post("income", "2026-11-21", amount="170.74", tags=[tag])
+    chip.click()
+    expect(dialog.get_by_role("heading", name="Нулевой баланс")).to_be_visible()
+    expect(dialog.locator(".tag-net")).to_contain_text("0,00")
+    dialog.get_by_role("button", name="Закрыть сводку", exact=True).click()
+    post("income", "2026-11-21", amount="1.00", tags=[tag])
+    chip.click()
+    expect(dialog.get_by_role("heading", name="Итог · доход")).to_be_visible()
+    expect(dialog.locator(".tag-net")).to_contain_text("+1,00")

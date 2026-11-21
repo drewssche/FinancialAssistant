@@ -1797,12 +1797,15 @@ def test_plan_tags_mobile_desktop(static_server_url, page_with_plans_api_mock, w
     expect(chip).to_be_visible()
     group = {"entries":[], "count":0, "totals":{}}
     page.route("**/purpose-tags/summary?*", lambda r: r.fulfill(json={
-        "tag":"кофемашина", "paid":group, "planned":{**group, "totals":{"BYN": "26.90"}}
+        "tag":"кофемашина", "balances":{}, "converted":False, "received":group, "paid":group,
+        "planned_income":group, "planned":{"count":1, "totals":{"BYN":"26.90"}, "entries":[
+            {"id":1, "date":"2026-11-15", "note":"Барный коврик", "amount":"26.90", "currency":"BYN"}]}
     }))
     chip.click()
-    dialog = page.get_by_role("dialog", name="Расходы и планы по тегу")
+    dialog = page.get_by_role("dialog", name="Сводка по тегу #кофемашина")
     expect(dialog).to_contain_text("Запланировано")
+    expect(dialog).to_contain_text("Пока нет операций")
     expect(dialog).to_contain_text("26,90")
     box = dialog.bounding_box()
     assert 0 <= box["x"] and box["x"] + box["width"] <= width + 1
-    dialog.locator(".modal-head button").click()
+    dialog.get_by_role("button", name="Закрыть сводку", exact=True).click()
